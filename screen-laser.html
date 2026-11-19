@@ -568,6 +568,7 @@
     let isReceivingRemoteStream = false;
     let isNativeVideoPlaying = false;
     let remoteConfirmedNativeVideo = false;
+    let pendingRemoteStream = null; // OS 핸드셰이크 완료 전 수신된 WebRTC 스트림 버퍼
     let fallbackSenderTimer = null;
     let isEncodingFrame = false;
     let waitingForFrameAck = false;
@@ -855,11 +856,16 @@
           try { currentMediaCall.close(); } catch (e) {}
         }
         currentMediaCall = call;
-        call.answer();
+        call.answer(undefined, { sdpTransform: preferH264SDP });
         call.on("stream", (remoteStream) => {
           closeInviteeModalOnly();
-          const recvRoute = getActiveRouteKey("receive");
-          getModuleByRoute(recvRoute).receiveStream(remoteStream);
+          if (REMOTE_OS === "UNKNOWN") {
+            // OS 핸드셰이크 완료 전이면 버퍼링 (os_handshake case에서 처리)
+            pendingRemoteStream = remoteStream;
+          } else {
+            const recvRoute = getActiveRouteKey("receive");
+            getModuleByRoute(recvRoute).receiveStream(remoteStream);
+          }
         });
       });
 
@@ -1080,7 +1086,14 @@
         }
 
         if (localStream) {
-          pushLocalStreamToRemote();
+          // OS 핸드셰이크 응답 도착 후 올바른 모듈로 송출 (레이스 컨디션 방지)
+          // os_handshake case에서 pushLocalStreamToRemote() 호출
+          // 400ms 이내 응답 없으면 PC 가정으로 폴백
+          setTimeout(() => {
+            if (localStream && REMOTE_OS === "UNKNOWN") {
+              pushLocalStreamToRemote();
+            }
+          }, 400);
         } else {
           conn.send({ type: "request_remote_stream" });
           document.getElementById("stageStatusTitle").textContent = "상대방과 연결됨! (화면 공유 시 즉시 표시됩니다)";
@@ -1099,9 +1112,15 @@
             REMOTE_OS = payload.os || "PC";
             updateP2pStatusUI("connected", `${MY_OS} ↔ ${REMOTE_OS} ●`);
             updateOsRouteBadge();
-            // 상대 OS가 뒤늦게 파악되었고 내가 이미 송출 중이면 해당 조합 모듈로 재동기화
+            // OS 확정 후 올바른 모듈로 송출 (레이스 컨디션 해소)
             if (localStream) {
               pushLocalStreamToRemote();
+            }
+            // OS 확정 전 버퍼링된 원격 WebRTC 스트림 처리
+            if (pendingRemoteStream) {
+              const recvRoute = getActiveRouteKey("receive");
+              getModuleByRoute(recvRoute).receiveStream(pendingRemoteStream);
+              pendingRemoteStream = null;
             }
             break;
 
@@ -1140,7 +1159,11 @@
           case "live_frame": {
             closeInviteeModalOnly();
             if (dataConn && dataConn.open) {
-              try { dataConn.send({ type: "frame_ack" }); } catch (e) {}
+              // 수신 버퍼 여유 있을 때만 ack 전송 (역압 흐름 제어 — 버퍼 초과 시 송신측 과부하 방지)
+              const bufAmt = dataConn.dataChannel ? dataConn.dataChannel.bufferedAmount : 0;
+              if (bufAmt < 32768) {
+                try { dataConn.send({ type: "frame_ack" }); } catch (e) {}
+              }
             }
             if (!isNativeVideoPlaying) {
               const recvRoute = payload.routeKey || getActiveRouteKey("receive");
@@ -1212,10 +1235,32 @@
 
     function ensureHiddenVideoActive(stream) {
       const hiddenVid = document.getElementById("senderHiddenVideo");
-      if (hiddenVid && hiddenVid.srcObject !== stream) {
+      if (!hiddenVid) return;
+      // iOS Safari: 뷰포트 완전 외부(-9999px)에서는 비디오 디코딩이 throttle됨
+      // 모든 iOS 조합에서 동일하게 1×1px로 좌상단 고정 (디코딩 유지)
+      hiddenVid.style.left = "0px";
+      hiddenVid.style.top = "0px";
+      hiddenVid.style.width = "1px";
+      hiddenVid.style.height = "1px";
+      hiddenVid.style.opacity = "0.01";
+      if (hiddenVid.srcObject !== stream) {
         hiddenVid.srcObject = stream;
         hiddenVid.play().catch(() => {});
       }
+    }
+
+    // H.264 코덱을 최우선으로 재정렬하여 iOS Safari WebRTC 호환성 확보
+    // iOS WebKit은 VP8/VP9 하드웨어 디코딩이 불안정하여 H.264를 반드시 우선 협상해야 함
+    function preferH264SDP(sdp) {
+      return sdp.replace(/(m=video \d+ \S+ )([\d ]+)/, (match, prefix, payloads) => {
+        const list = payloads.trim().split(' ');
+        const h264Pts = list.filter(pt =>
+          new RegExp(`a=rtpmap:${pt} H264`, 'i').test(sdp) ||
+          new RegExp(`a=rtpmap:${pt} H265`, 'i').test(sdp)
+        );
+        const others = list.filter(pt => !h264Pts.includes(pt));
+        return prefix + [...h264Pts, ...others].join(' ');
+      });
     }
 
     function sendWebRtcMediaCall(stream, targetPeer) {
@@ -1224,7 +1269,7 @@
         if (currentMediaCall) {
           try { currentMediaCall.close(); } catch (e) {}
         }
-        currentMediaCall = peer.call(targetPeer, stream);
+        currentMediaCall = peer.call(targetPeer, stream, { sdpTransform: preferH264SDP });
       } catch (e) {}
     }
 
@@ -1300,8 +1345,8 @@
       }
       isEncodingFrame = false;
       waitingForFrameAck = false;
-      const hiddenVid = document.getElementById("senderHiddenVideo");
-      if (hiddenVid) hiddenVid.srcObject = null;
+      // srcObject를 null로 초기화하지 않음:
+      // null 설정 순간 iOS Safari가 디코딩을 중단하여 videoWidth=0 → 직후 ensureHiddenVideoActive 재할당 시 블랙 프레임 발생
     }
 
     function prepareStageForIncomingStream(w, h, routeKey) {
@@ -1343,22 +1388,28 @@
       videoEl.setAttribute("webkit-playsinline", "true");
 
       const confirmNativePlaying = () => {
-        if (videoEl.videoWidth > 0 && !videoEl.paused) {
-          isNativeVideoPlaying = true;
-          demoCanvas.classList.add("hidden");
-          videoEl.classList.remove("hidden");
-          iosBanner.classList.add("hidden");
-          iosBanner.classList.remove("flex");
+        if (isNativeVideoPlaying) return; // 중복 호출 방지
+        // readyState >= 3(HAVE_FUTURE_DATA): 실제 프레임 도착 보장 조건 추가
+        if (videoEl.videoWidth > 0 && !videoEl.paused && videoEl.readyState >= 3) {
+          // rAF 1회 대기: iOS Safari의 가짜 play() resolve(첫 프레임 미렌더링) 방지
+          requestAnimationFrame(() => {
+            if (isNativeVideoPlaying || videoEl.videoWidth === 0) return;
+            isNativeVideoPlaying = true;
+            demoCanvas.classList.add("hidden");
+            videoEl.classList.remove("hidden");
+            iosBanner.classList.add("hidden");
+            iosBanner.classList.remove("flex");
 
-          const resBadge = document.getElementById("stageResolutionBadge");
-          resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight} HD`;
-          resBadge.classList.remove("hidden");
-          document.getElementById("streamModeHint").textContent = `[${REMOTE_OS} ➔ ${MY_OS}] WebRTC HD 스트리밍`;
-          resizeLaserOverlayCanvas();
+            const resBadge = document.getElementById("stageResolutionBadge");
+            resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight} HD`;
+            resBadge.classList.remove("hidden");
+            document.getElementById("streamModeHint").textContent = `[${REMOTE_OS} ➔ ${MY_OS}] WebRTC HD 스트리밍`;
+            resizeLaserOverlayCanvas();
 
-          if (dataConn && dataConn.open) {
-            dataConn.send({ type: "native_video_ok" });
-          }
+            if (dataConn && dataConn.open) {
+              dataConn.send({ type: "native_video_ok" });
+            }
+          });
         }
       };
 
@@ -1373,7 +1424,10 @@
         videoEl.play().then(confirmNativePlaying).catch(handleAutoplayBlocked);
       };
       videoEl.onplaying = confirmNativePlaying;
-      videoEl.play().then(confirmNativePlaying).catch(handleAutoplayBlocked);
+      // loadedmetadata 이전에 srcObject가 이미 준비된 경우에만 즉시 play() 호출 (AbortError 방지)
+      if (videoEl.readyState >= 1) {
+        videoEl.play().then(confirmNativePlaying).catch(handleAutoplayBlocked);
+      }
     }
 
     const incomingFrameImg = new Image();
@@ -1432,7 +1486,8 @@
         videoEl.classList.remove("hidden");
         videoEl.muted = true;
         videoEl.play().then(() => {
-          if (videoEl.videoWidth > 0) {
+          if (videoEl.videoWidth > 0 && !isNativeVideoPlaying) {
+            // isNativeVideoPlaying 체크: confirmNativePlaying과 중복 native_video_ok 전송 방지
             isNativeVideoPlaying = true;
             document.getElementById("demoScreenCanvas").classList.add("hidden");
             document.getElementById("iosForcePlayBanner").classList.add("hidden");
@@ -2298,6 +2353,12 @@
     });
 
     window.addEventListener("resize", resizeLaserOverlayCanvas);
+    // iOS Safari의 주소창 동적 축소는 resize 이벤트를 발생시키지 않으므로
+    // visualViewport API로 실제 뷰포트 변화(레이저 좌표 오프셋 원인)를 감지
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", resizeLaserOverlayCanvas);
+      window.visualViewport.addEventListener("scroll", resizeLaserOverlayCanvas);
+    }
 
     window.addEventListener("DOMContentLoaded", () => {
       if (!canShareDesktopScreen()) {
