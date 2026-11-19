@@ -7,9 +7,9 @@
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- MQTT.js (PC ↔ iOS 노-WebRTC WSS 바이너리 스트리밍 & 통합 시그널링) -->
+  <!-- MQTT.js (공통 WSS 시그널링 + iOS 수신 전용 WSS 바이너리 캔버스 엔진) -->
   <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
-  <!-- PeerJS (PC ↔ PC 고속 60fps WebRTC 전용) -->
+  <!-- PeerJS (PC↔PC, iOS→PC, Android↔PC, iOS→Android WebRTC 스트리밍) -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -140,7 +140,7 @@
       <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white whitespace-nowrap">
         실시간 화면 공유 및 레이저 포인터
       </h1>
-      <p class="text-xs font-mono text-cyan-400 tracking-wider mt-0.5">LIVE SCREEN &amp; LASER · DUAL ENGINE (PC WebRTC / iOS WSS)</p>
+      <p class="text-xs font-mono text-cyan-400 tracking-wider mt-0.5">LIVE SCREEN &amp; LASER (PC · iOS · ANDROID 방향별 전용 엔진)</p>
     </div>
 
     <div class="flex flex-wrap items-center justify-center gap-2 shrink-0">
@@ -211,7 +211,7 @@
         </div>
       </div>
 
-      <!-- iOS/모바일 비디오 자동재생 잠금 해제 배너 (WebRTC 폴백 시에만 사용) -->
+      <!-- 모바일/WebRTC 자동재생 잠금 해제 배너 -->
       <button
         id="iosForcePlayBanner"
         type="button"
@@ -231,14 +231,14 @@
           초대 링크·QR로 연결하면 PC·아이폰·안드로이드 화면이 공유됩니다
         </h2>
         <p id="emptyStageSubtext" class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-5">
-          • <strong class="text-cyan-300">PC ↔ PC:</strong> WebRTC 60fps 초고화질 다이렉트 스트리밍.<br />
-          • <strong class="text-emerald-300">PC ↔ 아이폰(신규 엔진):</strong> WebRTC를 쓰지 않는 <strong class="text-emerald-300">WSS 바이너리 캔버스</strong> 방식으로 5G·방화벽·Safari 차단 없이 즉시 연결됩니다.
+          • <strong class="text-cyan-300">방향별 최적 엔진 자동 선택:</strong> PC·아이폰·안드로이드 조합에 따라 <strong class="text-emerald-300">WSS 캔버스</strong> 또는 <strong class="text-cyan-300">WebRTC</strong>가 독립 동작합니다.<br />
+          • <strong class="text-purple-300">화면·카메라·사진 칠판:</strong> 내 기기 화면 공유, 카메라 실시간 중계, 사진 칠판을 모두 지원합니다.
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-2">
           <button type="button" id="btnMainScreenShare" onclick="startLocalScreenShare()" class="btn-primary px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
             <span>🖥️</span>
-            <span>PC 화면 공유 시작</span>
+            <span id="btnMainScreenShareLabel">내 화면 공유 시작</span>
           </button>
           <button type="button" id="btnMainCameraShare" onclick="startLocalCameraShare('environment')" class="px-4 py-3 rounded-xl bg-purple-950/90 hover:bg-purple-900 border border-purple-400/50 text-xs sm:text-sm font-extrabold text-purple-200 transition flex items-center gap-1.5">
             <span>📷</span>
@@ -259,7 +259,7 @@
         </div>
       </div>
 
-      <!-- 2) 실시간 비디오(PC↔PC) & 바이너리 프레임 캔버스(PC↔iOS) & 양방향 레이저 오버레이 -->
+      <!-- 2) 실시간 비디오(WebRTC) & 바이너리 프레임 캔버스(WSS) & 양방향 레이저 오버레이 -->
       <div id="mediaViewportWrap" class="hidden relative w-full h-full flex items-center justify-center overflow-hidden">
         <video
           id="sharedScreenVideo"
@@ -358,7 +358,7 @@
 
           <div class="w-full grid grid-cols-3 gap-1.5">
             <button type="button" onclick="startLocalScreenShare()" class="btn-primary py-2 rounded-xl text-[11px] font-extrabold">
-              🖥️ PC화면
+              🖥️ 화면공유
             </button>
             <button type="button" onclick="startLocalCameraShare('environment')" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-[11px] font-bold text-purple-300 transition">
               📷 폰카메라
@@ -392,7 +392,7 @@
           </button>
         </div>
 
-        <!-- 연결 상태 및 듀얼 엔진 상태 배지 -->
+        <!-- 연결 상태 및 방향별 라우트 상태 배지 -->
         <div class="mt-3 pt-2.5 border-t border-slate-800/90 flex flex-col items-center gap-1.5">
           <div id="p2pStatusPill" class="w-full py-1.5 px-3 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center gap-2">
             <span id="p2pStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
@@ -405,7 +405,7 @@
             onclick="toggleTransportPreference()"
             class="w-full py-1 px-2 rounded-lg bg-slate-950/90 hover:bg-slate-800 border border-slate-700/80 text-[10.5px] font-bold text-emerald-300 transition"
           >
-            ⚙️ 엔진: 자동 (PC↔PC WebRTC / iOS WSS 릴레이)
+            ⚙️ 엔진: 방향별 자동 라우팅
           </button>
         </div>
       </div>
@@ -477,7 +477,7 @@
       class="btn-primary w-full py-4 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2 shadow-xl mb-2.5"
     >
       <span>🖥️</span>
-      <span>내 PC 화면 공유하기 (전체화면·창·탭 선택)</span>
+      <span id="modalBtnShareDesktopText">내 화면 공유하기 (전체화면·창·앱 미러링)</span>
     </button>
 
     <div id="modalMobileShareGroup" class="grid grid-cols-2 gap-2 mb-2.5">
@@ -516,21 +516,25 @@
 <!-- 토스트 알림 컨테이너 -->
 <div id="toastContainer" class="fixed top-4 right-4 z-[10000] flex flex-col gap-2 pointer-events-none"></div>
 
-<!-- 송출 캡처용 숨김 비디오 & 캔버스 (닫는 태그 수정 완료) -->
+<!-- PC 송출 캡처용 숨김 비디오 & 캔버스 -->
 <video id="senderHiddenVideo" autoplay playsinline webkit-playsinline="true" muted style="position:fixed; left:-9999px; top:-9999px; width:2px; height:2px; opacity:0.01; pointer-events:none;"></video>
 <canvas id="senderCaptureCanvas" class="hidden"></canvas>
 
 <script>
 /* ============================================================================
- *  You-tility Screen & Laser v3.0 — Dual-Engine Architecture
+ *  You-tility Screen & Laser v4.0 — 방향별 세분화 독립 라우팅 아키텍처
  *  --------------------------------------------------------------------------
- *  1) Signaling / Laser / Pen / Circle / Chat :
- *     100% WSS (MQTT over TLS) -> NAT/방화벽/LTE/5G/iOS Safari 완벽 통과
- *  2) Video/Screen Transport :
- *     - PC ↔ PC        : PeerJS WebRTC MediaStream (60fps HD, 실패 시 WSS 자동 폴백)
- *     - PC ↔ iOS/Mobile: No-WebRTC WSS Binary Canvas Engine
- *                        (바이너리 JPEG + 변화감지 Diff + 정지 시 HD 키프레임
- *                         + 수신 ACK 기반 흐름제어 + AES-GCM 암호화)
+ *  [검증 완료 - 100% 그대로 보존]
+ *   1) PC -> PC       : PeerJS WebRTC 60fps 직접 스트리밍 (실패 시 WSS 폴백)
+ *   2) PC -> iOS      : WSS 바이너리 캔버스 엔진 (hiddenVideo + HD선명 + ACK)
+ *
+ *  [방향별 세분화 모듈]
+ *   3) iOS -> PC      : PeerJS WebRTC 1순위 (iOS 백그라운드 화면 미러링 유지)
+ *   4) PC -> Android  : PeerJS WebRTC 1순위 (6초 미수신 시 WSS 폴백)
+ *   5) Android -> PC  : PeerJS WebRTC 1순위 (6초 미수신 시 WSS 폴백)
+ *   6) iOS -> Android : PeerJS WebRTC 1순위 (iOS 백그라운드 미러링 + Android 수신)
+ *   7) Android -> iOS : WSS 바이너리 캔버스 (보이는 video 캡처 + iOS 100% 수신)
+ *   8) iOS -> iOS / Android -> Android 보조 라우트 포함
  * ============================================================================ */
 
 const WSS_BROKERS = [
@@ -567,10 +571,10 @@ const MY_SENDER_TAG = (() => {
 
 // ---------------- 전역 상태 ----------------
 const state = {
-  role: "host",               // 'host' | 'viewer'
-  roomPin: "",                // 6자리 PIN
-  roomHash: "",               // SHA-256 기반 난독화 토픽 ID
-  aesKey: null,               // Web Crypto AES-GCM 키 (HTTPS 환경)
+  role: "host",
+  roomPin: "",
+  roomHash: "",
+  aesKey: null,
   brokerIdx: 0,
   mqttClient: null,
   mqttConnected: false,
@@ -579,14 +583,16 @@ const state = {
   peerConnected: false,
   remoteClientId: null,
   remoteOS: null,
-  remotePeerId: null,         // PC↔PC WebRTC 용 PeerJS ID
+  remotePeerId: null,
   lastPeerSeenAt: 0,
 
-  // 전송 엔진 정책
+  // 전송 정책 & 현재 활성 경로
   transportPref: "auto",      // 'auto' | 'wss'
   activeEngine: "standby",    // 'standby' | 'webrtc' | 'wss'
+  activeRouteKey: null,       // 예: "PC->iOS", "iOS->PC"
+  pendingWebRtcSend: false,   // PeerJS ID가 늦게 도착했을 때 자동 송출 재시도용
 
-  // PeerJS (PC↔PC 전용)
+  // PeerJS (전 OS 공통 초기화)
   peer: null,
   myPeerId: null,
   currentMediaCall: null,
@@ -614,19 +620,18 @@ const state = {
   activeDisplayMode: "empty", // 'empty' | 'video' | 'canvas'
   mediaNaturalW: 16,
   mediaNaturalH: 9,
-  videoFitMode: "contain",    // 'contain' | 'cover'
+  videoFitMode: "contain",
   isPseudoFullscreen: false,
-  lastFrameUrl: null,
   rxFrameCount: 0,
   rxFpsTimer: null,
   rxLastFps: 0,
 
   // 주석(레이저/펜/동그라미) 상태
-  tool: "laser",              // 'laser' | 'pen' | 'circle'
+  tool: "laser",
   isDrawing: false,
   currentStroke: null,
   currentCircle: null,
-  annotations: [],            // { type: 'pen', color, points: [{x,y}] } | { type: 'circle', color, cx, cy, rx, ry }
+  annotations: [],
   lasers: {
     local: { points: [], color: "#fb7185" },
     remote: { points: [], color: "#22d3ee" }
@@ -672,6 +677,235 @@ state.wssDiffCanvas.width = 64;
 state.wssDiffCanvas.height = 36;
 const diffCtx = state.wssDiffCanvas.getContext("2d", { willReadFrequently: true });
 
+/* ============================================================================
+ *  [핵심] 방향별 세분화 독립 라우트 테이블 (DIRECTION_ROUTES)
+ *  --------------------------------------------------------------------------
+ *  각 경로는 서로 완전히 독립되어 있어, 특정 방향만 수정해도
+ *  검증 완료된 PC->PC / PC->iOS 경로는 절대 영향을 받지 않습니다.
+ * ============================================================================ */
+function getRouteKey(fromOS, toOS) {
+  return `${fromOS || "PC"}->${toOS || "PC"}`;
+}
+
+const DIRECTION_ROUTES = {
+
+  /* --------------------------------------------------------------------------
+   * [1] PC → PC (검증 완료 — 기존 WebRTC 60fps 로직 100% 보존)
+   * -------------------------------------------------------------------------- */
+  "PC->PC": {
+    label: "PC → PC",
+    engine: "webrtc",
+    engineLabel: "⚡ WebRTC 60fps P2P",
+    wssSource: "hidden",
+    wssProfile: { motionMaxDim: 760, hdMaxDim: 1280, motionQuality: 0.48, hdQuality: 0.78, motionIntervalMs: 85, hdIntervalMs: 130 },
+    watchdogMs: 6000,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("PC->PC", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("PC->PC", stream);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [2] PC → 아이폰 (검증 완료 — 기존 WSS 바이너리 캔버스 로직 100% 보존)
+   * -------------------------------------------------------------------------- */
+  "PC->iOS": {
+    label: "PC → 아이폰",
+    engine: "wss",
+    engineLabel: "🚀 WSS 바이너리 캔버스 (iOS 전용)",
+    wssSource: "hidden", // PC에서는 숨김 비디오 캡처가 100% 안정 검증됨
+    wssProfile: { motionMaxDim: 760, hdMaxDim: 1280, motionQuality: 0.48, hdQuality: 0.78, motionIntervalMs: 85, hdIntervalMs: 130 },
+    watchdogMs: 0,
+    startSend(stream) {
+      // 검증된 기존 PC -> iOS 방식 그대로 실행
+      return startWssRouteSend("PC->iOS", stream, this.wssSource, this.wssProfile);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [3] 아이폰 → PC (복구: WebRTC 1순위 — 백그라운드 화면 미러링 & 카메라 유지)
+   * -------------------------------------------------------------------------- */
+  "iOS->PC": {
+    label: "아이폰 → PC",
+    engine: "webrtc",
+    engineLabel: "🍎⚡ WebRTC 실시간 미러링",
+    wssSource: "visible", // 폴백 시 iOS Safari 숨김 비디오 정지 회피용
+    wssProfile: { motionMaxDim: 640, hdMaxDim: 1080, motionQuality: 0.46, hdQuality: 0.74, motionIntervalMs: 95, hdIntervalMs: 140 },
+    watchdogMs: 6500,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("iOS->PC", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("iOS->PC", stream);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [4] PC → 안드로이드 (WebRTC 1순위, 방화벽 실패 시 WSS 자동 폴백)
+   * -------------------------------------------------------------------------- */
+  "PC->Android": {
+    label: "PC → 안드로이드",
+    engine: "webrtc",
+    engineLabel: "⚡ WebRTC HD (폴백 WSS)",
+    wssSource: "hidden",
+    wssProfile: { motionMaxDim: 760, hdMaxDim: 1280, motionQuality: 0.48, hdQuality: 0.78, motionIntervalMs: 85, hdIntervalMs: 130 },
+    watchdogMs: 6000,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("PC->Android", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("PC->Android", stream);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [5] 안드로이드 → PC (WebRTC 1순위 — 화면/카메라 백그라운드 유지)
+   * -------------------------------------------------------------------------- */
+  "Android->PC": {
+    label: "안드로이드 → PC",
+    engine: "webrtc",
+    engineLabel: "🤖⚡ WebRTC 실시간 송출",
+    wssSource: "visible",
+    wssProfile: { motionMaxDim: 680, hdMaxDim: 1120, motionQuality: 0.48, hdQuality: 0.76, motionIntervalMs: 90, hdIntervalMs: 135 },
+    watchdogMs: 6000,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("Android->PC", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("Android->PC", stream);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [6] 아이폰 → 안드로이드 (WebRTC 1순위 — 아이폰 미러링 유지 + 안드로이드 수신)
+   * -------------------------------------------------------------------------- */
+  "iOS->Android": {
+    label: "아이폰 → 안드로이드",
+    engine: "webrtc",
+    engineLabel: "🍎→🤖 WebRTC 미러링",
+    wssSource: "visible",
+    wssProfile: { motionMaxDim: 640, hdMaxDim: 1024, motionQuality: 0.45, hdQuality: 0.72, motionIntervalMs: 100, hdIntervalMs: 145 },
+    watchdogMs: 6500,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("iOS->Android", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("iOS->Android", stream);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [7] 안드로이드 → 아이폰 (WSS 캔버스 고정 — iOS 수신 100% 보장 + visible 캡처)
+   * -------------------------------------------------------------------------- */
+  "Android->iOS": {
+    label: "안드로이드 → 아이폰",
+    engine: "wss",
+    engineLabel: "🤖→🍎 WSS 바이너리 캔버스",
+    wssSource: "visible", // 모바일 송출자는 화면에 보이는 video에서 캡처해야 안 멈춤
+    wssProfile: { motionMaxDim: 680, hdMaxDim: 1080, motionQuality: 0.48, hdQuality: 0.75, motionIntervalMs: 95, hdIntervalMs: 140 },
+    watchdogMs: 0,
+    startSend(stream) {
+      return startWssRouteSend("Android->iOS", stream, this.wssSource, this.wssProfile);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [보조 8] 아이폰 → 아이폰 (수신이 iOS이므로 WSS 캔버스 + visible 캡처)
+   * -------------------------------------------------------------------------- */
+  "iOS->iOS": {
+    label: "아이폰 → 아이폰",
+    engine: "wss",
+    engineLabel: "🍎→🍎 WSS 바이너리 캔버스",
+    wssSource: "visible",
+    wssProfile: { motionMaxDim: 640, hdMaxDim: 1024, motionQuality: 0.45, hdQuality: 0.72, motionIntervalMs: 100, hdIntervalMs: 145 },
+    watchdogMs: 0,
+    startSend(stream) {
+      return startWssRouteSend("iOS->iOS", stream, this.wssSource, this.wssProfile);
+    }
+  },
+
+  /* --------------------------------------------------------------------------
+   * [보조 9] 안드로이드 → 안드로이드 (WebRTC 1순위 + WSS 폴백)
+   * -------------------------------------------------------------------------- */
+  "Android->Android": {
+    label: "안드로이드 → 안드로이드",
+    engine: "webrtc",
+    engineLabel: "🤖→🤖 WebRTC (폴백 WSS)",
+    wssSource: "visible",
+    wssProfile: { motionMaxDim: 680, hdMaxDim: 1080, motionQuality: 0.48, hdQuality: 0.75, motionIntervalMs: 95, hdIntervalMs: 140 },
+    watchdogMs: 6000,
+    startSend(stream) {
+      if (state.transportPref === "wss") {
+        return startWssRouteSend("Android->Android", stream, this.wssSource, this.wssProfile);
+      }
+      return startWebRtcRouteSend("Android->Android", stream);
+    }
+  }
+};
+
+function getRoute(fromOS, toOS) {
+  const key = getRouteKey(fromOS, toOS);
+  return { key, ...(DIRECTION_ROUTES[key] || DIRECTION_ROUTES["PC->iOS"]) };
+}
+
+// ---------------- 라우트 공용 송출 실행기 ----------------
+function startWssRouteSend(routeKey, stream, sourceMode, profile) {
+  state.pendingWebRtcSend = false;
+  if (state.currentMediaCall) {
+    try { state.currentMediaCall.close(); } catch (_) {}
+    state.currentMediaCall = null;
+  }
+  state.activeEngine = "wss";
+  state.activeRouteKey = routeKey;
+
+  let captureVideoEl;
+  if (sourceMode === "hidden") {
+    // PC 송출(PC->iOS 등): 기존에 검증된 hiddenVideo 방식 100% 그대로 사용
+    el.hiddenVideo.srcObject = stream;
+    el.hiddenVideo.play().catch(() => {});
+    captureVideoEl = el.hiddenVideo;
+  } else {
+    // 모바일 송출(Android->iOS, iOS 폴백 등): 화면에 보이는 el.video에서 직접 캡처
+    if (el.video.srcObject !== stream) {
+      el.video.srcObject = stream;
+      el.video.muted = true;
+      el.video.play().catch(() => {});
+    }
+    captureVideoEl = el.video;
+  }
+
+  startWssFrameSender(captureVideoEl, profile, routeKey);
+  updateEngineHintUI();
+}
+
+function startWebRtcRouteSend(routeKey, stream) {
+  stopWssFrameSender();
+  state.activeRouteKey = routeKey;
+
+  if (!state.peer || state.peer.destroyed) {
+    initPeerJs();
+  }
+
+  // 상대방 PeerJS ID 또는 내 PeerJS가 아직 열리지 않았으면 대기 후 자동 발사
+  if (!state.peer || !state.myPeerId || !state.remotePeerId) {
+    state.pendingWebRtcSend = true;
+    sendCtrl({ type: "request_peer_id" });
+    setStageStatus(`[${DIRECTION_ROUTES[routeKey].label}] WebRTC 연결 준비 중...`, true, "WebRTC 대기");
+    updateEngineHintUI();
+    return;
+  }
+
+  state.pendingWebRtcSend = false;
+  if (state.currentMediaCall) {
+    try { state.currentMediaCall.close(); } catch (_) {}
+  }
+  state.activeEngine = "webrtc";
+  state.currentMediaCall = state.peer.call(state.remotePeerId, stream);
+  setStageStatus(`[${DIRECTION_ROUTES[routeKey].label}] WebRTC 실시간 송출 중`, true, `${routeKey} · WebRTC`);
+  updateEngineHintUI();
+}
+
 // ---------------- 토스트 & UI 유틸 ----------------
 function showToast(msg, type = "info") {
   const div = document.createElement("div");
@@ -716,19 +950,23 @@ function setStageStatus(title, isLive = false, badgeText = "") {
 }
 
 function updateEngineHintUI() {
-  const myLabel = MY_OS === "iOS" ? "🍎 iOS (아이폰/아이패드)" : MY_OS === "Android" ? "🤖 Android" : "💻 PC";
+  const myLabel = MY_OS === "iOS" ? "🍎 iOS" : MY_OS === "Android" ? "🤖 Android" : "💻 PC";
   if (!state.peerConnected) {
     el.streamModeHint.textContent = `내 기기: ${myLabel} · 연결 대기 중`;
+  } else if (state.activeRouteKey && DIRECTION_ROUTES[state.activeRouteKey]) {
+    const r = DIRECTION_ROUTES[state.activeRouteKey];
+    const modeTag = state.activeEngine === "wss" ? "🚀 WSS 캔버스" : "⚡ WebRTC";
+    el.streamModeHint.textContent = `활성 경로 [${r.label}] · ${modeTag}`;
   } else {
-    const engineLabel = shouldUseWssEngine()
-      ? "🚀 WSS 바이너리 캔버스 (No-WebRTC)"
-      : "⚡ WebRTC 60fps P2P";
-    el.streamModeHint.textContent = `${MY_OS} ↔ ${state.remoteOS} · ${engineLabel}`;
+    const outRoute = getRoute(MY_OS, state.remoteOS);
+    const inRoute = getRoute(state.remoteOS, MY_OS);
+    el.streamModeHint.textContent = `송출[${outRoute.key}:${outRoute.engine.toUpperCase()}] · 수신[${inRoute.key}:${inRoute.engine.toUpperCase()}]`;
   }
+
   el.engineOverrideBtn.textContent =
     state.transportPref === "wss"
-      ? "⚙️ 엔진: WSS 릴레이 강제 (아이폰 호환)"
-      : "⚙️ 엔진: 자동 (PC↔PC WebRTC / iOS WSS)";
+      ? "⚙️ 엔진: WSS 릴레이 강제 (전 방향)"
+      : "⚙️ 엔진: 방향별 자동 라우팅 (7개 경로)";
 }
 
 function toggleTransportPreference() {
@@ -736,20 +974,13 @@ function toggleTransportPreference() {
   updateEngineHintUI();
   showToast(
     state.transportPref === "wss"
-      ? "WSS 바이너리 캔버스 엔진을 강제 사용합니다."
-      : "자동 듀얼 엔진 모드로 전환했습니다.",
+      ? "모든 방향을 WSS 바이너리 캔버스 엔진으로 강제 전환합니다."
+      : "방향별 자동 라우팅 모드로 복원했습니다.",
     "info"
   );
   if (state.peerConnected && state.localStream) {
     restartActiveLocalBroadcast();
   }
-}
-
-function shouldUseWssEngine() {
-  if (state.transportPref === "wss") return true;
-  if (MY_OS !== "PC") return true;
-  if (state.remoteOS && state.remoteOS !== "PC") return true;
-  return false;
 }
 
 // ---------------- 암호화 & 토픽 해시 (PIN 기반 종단간 보안) ----------------
@@ -770,7 +1001,6 @@ async function deriveRoomSecurity(pin) {
       ["encrypt", "decrypt"]
     );
   } else {
-    // HTTP / file:// 테스트 환경 폴백
     let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
     for (let i = 0; i < seed.length; i++) {
       h1 = Math.imul(h1 ^ seed.charCodeAt(i), 0x01000193);
@@ -826,7 +1056,6 @@ async function unpackBinaryFrame(rawPayload) {
   const encFlag = view.getUint8(5);
   const senderTag = view.getUint16(6, false);
 
-  // 내가 보낸 프레임 에코는 즉시 무시
   if (senderTag === MY_SENDER_TAG) return null;
 
   let jpegBytes;
@@ -843,7 +1072,7 @@ async function unpackBinaryFrame(rawPayload) {
   return { seq, flags, jpegBytes };
 }
 
-// ---------------- MQTT WSS 연결 (모든 기기 공통 시그널링 + PC↔iOS 영상 엔진) ----------------
+// ---------------- MQTT WSS 연결 (모든 기기 공통 시그널링 + WSS 영상 채널) ----------------
 function disconnectMqtt() {
   if (state.mqttClient) {
     try { state.mqttClient.end(true); } catch (_) {}
@@ -917,9 +1146,7 @@ async function connectRoomWss(pin, preferredBrokerIdx = 0) {
       setStatusBadge("WSS 재연결 중...", "amber");
     });
 
-    client.on("error", () => {
-      // fallbackTimer가 예비 브로커 전환을 처리
-    });
+    client.on("error", () => {});
   });
 }
 
@@ -935,9 +1162,9 @@ function sendLaserMsg(obj) {
   state.mqttClient.publish(topicOf("laser"), payload, { qos: 0 });
 }
 
-// ---------------- PeerJS 초기화 (PC ↔ PC WebRTC 고속 스트리밍 전용) ----------------
-function initPeerJsForPC() {
-  if (MY_OS !== "PC" || typeof Peer === "undefined") return;
+// ---------------- PeerJS 초기화 (PC · iOS · Android 전 기기 활성화) ----------------
+function initPeerJs() {
+  if (typeof Peer === "undefined") return;
   if (state.peer && !state.peer.destroyed) return;
 
   try {
@@ -947,40 +1174,51 @@ function initPeerJsForPC() {
     peer.on("open", (id) => {
       state.myPeerId = id;
       if (state.mqttConnected) {
-        sendCtrl({ type: "hello", os: MY_OS, peerId: state.myPeerId, role: state.role });
+        sendCtrl({ type: "peer_id_update", os: MY_OS, peerId: id });
+      }
+      // WebRTC 송출 대기 중이었다면 즉시 발사
+      if (state.pendingWebRtcSend && state.localStream && state.remotePeerId) {
+        restartActiveLocalBroadcast();
       }
     });
 
     peer.on("call", (call) => {
-      if (shouldUseWssEngine()) {
+      // 수신 방향(상대OS -> 내OS)의 라우트 정책 확인!
+      // 예: iOS->PC 수신 시 PC는 WebRTC 허용 / PC->iOS 수신 시 iOS는 WSS 전용
+      const incomingRoute = getRoute(state.remoteOS || "PC", MY_OS);
+      if (state.transportPref === "wss" || incomingRoute.engine !== "webrtc") {
         try { call.close(); } catch (_) {}
         return;
       }
+
       if (state.currentMediaCall) {
         try { state.currentMediaCall.close(); } catch (_) {}
       }
       state.currentMediaCall = call;
+      state.activeRouteKey = incomingRoute.key;
       call.answer(); // PeerJS 표준 API
 
       call.on("stream", (remoteStream) => {
-        attachWebRtcRemoteVideo(remoteStream);
+        attachWebRtcRemoteVideo(remoteStream, incomingRoute);
       });
 
       call.on("close", () => {
-        if (state.activeEngine === "webrtc") {
+        if (state.activeEngine === "webrtc" && !state.localStream) {
           setStageStatus("상대방 화면 공유가 종료되었습니다", false);
         }
       });
     });
 
     peer.on("error", () => {
-      // PC↔PC WebRTC 오류 시에도 WSS 엔진으로 폴백 가능
+      // WebRTC 오류 시 해당 경로의 Watchdog가 WSS 폴백으로 처리
     });
   } catch (_) {}
 }
 
-function attachWebRtcRemoteVideo(remoteStream) {
+function attachWebRtcRemoteVideo(remoteStream, incomingRoute) {
   state.activeEngine = "webrtc";
+  state.activeRouteKey = incomingRoute.key;
+  updateEngineHintUI();
   showMediaStage("video");
   el.video.srcObject = remoteStream;
   el.video.muted = true;
@@ -996,9 +1234,11 @@ function attachWebRtcRemoteVideo(remoteStream) {
   };
   tryPlay();
 
-  // readyState >= 2 기준 빠른 판정 + 6초 타임아웃 시 WSS 자동 폴백
+  // readyState >= 2 기준 빠른 판정 + 경로별 watchdogMs 초과 시 WSS 자동 폴백
   clearTimeout(state.webrtcWatchdogTimer);
   const startAt = Date.now();
+  const timeoutMs = incomingRoute.watchdogMs || 6000;
+
   const checkReady = () => {
     if (state.activeEngine !== "webrtc") return;
     if (el.video.videoWidth > 0 && !el.video.paused && el.video.readyState >= 2) {
@@ -1006,15 +1246,17 @@ function attachWebRtcRemoteVideo(remoteStream) {
       state.mediaNaturalH = el.video.videoHeight;
       el.iosForcePlayBanner.classList.add("hidden");
       el.iosForcePlayBanner.classList.remove("flex");
-      setStageStatus("PC ↔ PC 초고속 WebRTC 실시간 수신 중", true, `${el.video.videoWidth}×${el.video.videoHeight} · WebRTC`);
+      setStageStatus(
+        `[${incomingRoute.label}] WebRTC 실시간 수신 중`,
+        true,
+        `${el.video.videoWidth}×${el.video.videoHeight} · WebRTC`
+      );
       resizeLaserCanvas();
       return;
     }
-    if (Date.now() - startAt > 6000) {
-      showToast("P2P 방화벽 감지 → WSS 바이너리 릴레이 모드로 자동 전환합니다.", "warn");
-      state.transportPref = "wss";
-      updateEngineHintUI();
-      sendCtrl({ type: "fallback_to_wss" }, 1);
+    if (Date.now() - startAt > timeoutMs) {
+      showToast(`[${incomingRoute.label}] P2P 방화벽 감지 → WSS 릴레이로 자동 전환합니다.`, "warn");
+      sendCtrl({ type: "fallback_to_wss", routeKey: incomingRoute.key }, 1);
       return;
     }
     state.webrtcWatchdogTimer = setTimeout(checkReady, 250);
@@ -1022,7 +1264,7 @@ function attachWebRtcRemoteVideo(remoteStream) {
   checkReady();
 }
 
-// ---------------- 제어 메시지 처리 (Handshake / Chat / 요청) ----------------
+// ---------------- 제어 메시지 처리 (Handshake / PeerID 동기화 / Chat / 요청) ----------------
 function handleIncomingCtrlMessage(payload) {
   let msg;
   try {
@@ -1040,15 +1282,20 @@ function handleIncomingCtrlMessage(payload) {
       state.peerConnected = true;
       state.remoteClientId = msg.from;
       state.remoteOS = msg.os || "PC";
-      state.remotePeerId = msg.peerId || null;
+      if (msg.peerId) state.remotePeerId = msg.peerId;
 
       setStatusBadge(`CONNECTED (${MY_OS} ↔ ${state.remoteOS})`, "green");
       el.requestRemoteShareBtn.classList.remove("hidden");
       el.requestRemoteShareBtn.classList.add("flex");
       updateEngineHintUI();
 
-      // 상대방에게 내 정보 회신 (무한 루프 방지를 위해 hello_ack 사용)
-      sendCtrl({ type: "hello_ack", os: MY_OS, peerId: state.myPeerId, role: state.role, sharing: Boolean(state.localStream || state.localShareKind === "photo") });
+      sendCtrl({
+        type: "hello_ack",
+        os: MY_OS,
+        peerId: state.myPeerId,
+        role: state.role,
+        sharing: Boolean(state.localStream || state.localShareKind === "photo")
+      });
 
       if (!wasConnected) {
         showToast(`상대방(${state.remoteOS})과 연결되었습니다!`, "success");
@@ -1056,7 +1303,6 @@ function handleIncomingCtrlMessage(payload) {
           openInviteeModal();
         }
       }
-      // 이미 내가 공유 중이면 새 접속자에게 즉시 스트림/키프레임 송출
       if (state.localStream) {
         restartActiveLocalBroadcast();
       } else if (state.localShareKind === "photo" && el.frameCanvas.width > 0) {
@@ -1070,7 +1316,7 @@ function handleIncomingCtrlMessage(payload) {
       state.peerConnected = true;
       state.remoteClientId = msg.from;
       state.remoteOS = msg.os || "PC";
-      state.remotePeerId = msg.peerId || null;
+      if (msg.peerId) state.remotePeerId = msg.peerId;
 
       setStatusBadge(`CONNECTED (${MY_OS} ↔ ${state.remoteOS})`, "green");
       el.requestRemoteShareBtn.classList.remove("hidden");
@@ -1078,13 +1324,36 @@ function handleIncomingCtrlMessage(payload) {
       updateEngineHintUI();
 
       if (!wasConnected) {
-        showToast(`상대방(${state.remoteOS})과 연결 완료! (${shouldUseWssEngine() ? "WSS 릴레이 엔진" : "WebRTC 엔진"})`, "success");
+        showToast(`상대방(${state.remoteOS})과 연결 완료!`, "success");
         if (state.role === "viewer" && !msg.sharing) {
           openInviteeModal();
         }
       }
+      if (state.pendingWebRtcSend && state.localStream && state.remotePeerId) {
+        restartActiveLocalBroadcast();
+      }
       if (msg.sharing) {
         sendCtrl({ type: "request_keyframe" });
+      }
+      break;
+    }
+
+    case "peer_id_update": {
+      if (msg.os) state.remoteOS = msg.os;
+      if (msg.peerId) {
+        state.remotePeerId = msg.peerId;
+        if (state.pendingWebRtcSend && state.localStream) {
+          restartActiveLocalBroadcast();
+        }
+      }
+      break;
+    }
+
+    case "request_peer_id": {
+      if (state.myPeerId) {
+        sendCtrl({ type: "peer_id_update", os: MY_OS, peerId: state.myPeerId });
+      } else {
+        initPeerJs();
       }
       break;
     }
@@ -1102,15 +1371,17 @@ function handleIncomingCtrlMessage(payload) {
       state.wssFirstFrameSent = false;
       if (state.localShareKind === "photo") {
         resendCurrentCanvasAsPhoto();
+      } else if (state.localStream) {
+        restartActiveLocalBroadcast();
       }
       break;
     }
 
     case "fallback_to_wss": {
-      state.transportPref = "wss";
-      updateEngineHintUI();
       if (state.localStream) {
-        restartActiveLocalBroadcast();
+        const outRoute = getRoute(MY_OS, state.remoteOS);
+        showToast(`[${outRoute.label}] WSS 릴레이 폴백 모드로 전환합니다.`, "warn");
+        startWssRouteSend(outRoute.key, state.localStream, outRoute.wssSource, outRoute.wssProfile);
       }
       break;
     }
@@ -1141,7 +1412,7 @@ function handleIncomingCtrlMessage(payload) {
   }
 }
 
-// ---------------- [신규 핵심] WSS 바이너리 캔버스 프레임 송출 엔진 ----------------
+// ---------------- WSS 바이너리 캔버스 프레임 송출 엔진 (기존 검증 코드 100% 보존) ----------------
 function stopWssFrameSender() {
   state.wssSenderActive = false;
   if (state.wssSenderTimer) {
@@ -1150,8 +1421,18 @@ function stopWssFrameSender() {
   }
 }
 
-function startWssFrameSender(videoSourceEl) {
+function startWssFrameSender(videoSourceEl, profile, routeKey) {
   stopWssFrameSender();
+  const cfg = profile || {
+    motionMaxDim: 760,
+    hdMaxDim: 1280,
+    motionQuality: 0.48,
+    hdQuality: 0.78,
+    motionIntervalMs: 85,
+    hdIntervalMs: 130
+  };
+  const routeLabel = (DIRECTION_ROUTES[routeKey] && DIRECTION_ROUTES[routeKey].label) || routeKey || "WSS";
+
   state.activeEngine = "wss";
   state.wssSenderActive = true;
   state.wssSeq = 0;
@@ -1175,7 +1456,6 @@ function startWssFrameSender(videoSourceEl) {
       }
 
       const now = Date.now();
-      // 수신 ACK 기반 흐름제어: 직전 프레임 ACK가 아직 안 왔고 900ms 미만이면 대기 (버퍼 랙 방지)
       const waitingAck = state.wssSeq > state.wssLastAckSeq && (now - state.wssInFlightAt < 900);
       if (waitingAck) {
         state.wssSenderTimer = setTimeout(loop, 45);
@@ -1198,7 +1478,7 @@ function startWssFrameSender(videoSourceEl) {
         diffScore = sum / samples;
       }
 
-      let sendMode = null; // null | 'motion' | 'hd'
+      let sendMode = null;
       if (!state.wssFirstFrameSent || state.wssForceKeyframe) {
         sendMode = "hd";
       } else if (diffScore > 2.2) {
@@ -1206,7 +1486,6 @@ function startWssFrameSender(videoSourceEl) {
         state.wssLastMotionAt = now;
         state.wssHdStillSent = false;
       } else if (!state.wssHdStillSent && (now - state.wssLastMotionAt >= 450)) {
-        // 화면이 0.45초 멈추면 작은 글씨까지 선명한 HD 정지 프레임 1장 자동 전송!
         sendMode = "hd";
       }
 
@@ -1215,13 +1494,12 @@ function startWssFrameSender(videoSourceEl) {
         return;
       }
 
-      // 변화 기준 저장
       state.wssPrevDiffData = new Uint8ClampedArray(curData);
 
-      // 2) 적응형 해상도 & 화질 설정
+      // 2) 경로별 적응형 해상도 & 화질 설정
       const isHd = sendMode === "hd";
-      const maxDim = isHd ? 1280 : (MY_OS === "PC" ? 760 : 640);
-      const quality = isHd ? 0.78 : 0.48;
+      const maxDim = isHd ? cfg.hdMaxDim : cfg.motionMaxDim;
+      const quality = isHd ? cfg.hdQuality : cfg.motionQuality;
       const scale = Math.min(1, maxDim / Math.max(vw, vh));
       const tw = Math.max(2, Math.round(vw * scale));
       const th = Math.max(2, Math.round(vh * scale));
@@ -1247,14 +1525,14 @@ function startWssFrameSender(videoSourceEl) {
 
         const kb = (packet.byteLength / 1024).toFixed(1);
         setStageStatus(
-          `${state.localShareKind === "camera" ? "카메라" : "PC 화면"} WSS 릴레이 송출 중`,
+          `[${routeLabel}] WSS 릴레이 송출 중`,
           true,
           `${tw}×${th} · ${isHd ? "HD선명" : "고속"} · ${kb}KB`
         );
       }
 
-      state.wssSenderTimer = setTimeout(loop, isHd ? 130 : 85);
-    } catch (err) {
+      state.wssSenderTimer = setTimeout(loop, isHd ? cfg.hdIntervalMs : cfg.motionIntervalMs);
+    } catch (_) {
       state.wssSenderTimer = setTimeout(loop, 200);
     }
   };
@@ -1262,7 +1540,7 @@ function startWssFrameSender(videoSourceEl) {
   loop();
 }
 
-// ---------------- [신규 핵심] WSS 바이너리 캔버스 수신 & 렌더링 엔진 (iOS 100% 호환) ----------------
+// ---------------- WSS 바이너리 캔버스 수신 & 렌더링 엔진 (기존 검증 코드 100% 보존) ----------------
 async function handleIncomingBinaryFrame(rawPayload) {
   try {
     const frame = await unpackBinaryFrame(rawPayload);
@@ -1282,17 +1560,19 @@ async function handleIncomingBinaryFrame(rawPayload) {
         state.mediaNaturalW = img.naturalWidth;
         state.mediaNaturalH = img.naturalHeight;
         state.activeEngine = "wss";
+        const inRoute = getRoute(state.remoteOS || "PC", MY_OS);
+        state.activeRouteKey = inRoute.key;
+        updateEngineHintUI();
         showMediaStage("canvas");
 
         state.rxFrameCount += 1;
         const modeTag = frame.flags === 3 ? "사진 칠판" : frame.flags === 2 ? "HD 선명" : `실시간 ${state.rxLastFps || "~"}fps`;
         setStageStatus(
-          `상대방(${state.remoteOS || "기기"}) 화면 수신 중`,
+          `[${inRoute.label}] 화면 수신 중`,
           true,
           `${img.naturalWidth}×${img.naturalHeight} · WSS · ${modeTag}`
         );
 
-        // 수신 완료 즉시 ACK 전송 (송출기 버퍼 제어)
         if (frame.flags !== 3) {
           sendCtrl({ type: "frame_ack", seq: frame.seq });
         }
@@ -1305,7 +1585,6 @@ async function handleIncomingBinaryFrame(rawPayload) {
   } catch (_) {}
 }
 
-// FPS 카운터
 state.rxFpsTimer = setInterval(() => {
   state.rxLastFps = state.rxFrameCount;
   state.rxFrameCount = 0;
@@ -1314,6 +1593,7 @@ state.rxFpsTimer = setInterval(() => {
 // ---------------- 화면 공유 / 카메라 / 사진 칠판 송출 시작 ----------------
 function stopLocalMediaOnly() {
   stopWssFrameSender();
+  state.pendingWebRtcSend = false;
   if (state.currentMediaCall) {
     try { state.currentMediaCall.close(); } catch (_) {}
     state.currentMediaCall = null;
@@ -1328,43 +1608,24 @@ function stopLocalMediaOnly() {
 }
 
 function restartActiveLocalBroadcast() {
-  if (!state.localStream) return;
-
-  if (shouldUseWssEngine() || !state.remotePeerId || MY_OS !== "PC") {
-    // PC ↔ iPhone 또는 강제 WSS 모드: WebRTC 없이 WSS 바이너리 캔버스 엔진 가동
-    if (state.currentMediaCall) {
-      try { state.currentMediaCall.close(); } catch (_) {}
-      state.currentMediaCall = null;
-    }
-    el.hiddenVideo.srcObject = state.localStream;
-    el.hiddenVideo.play().catch(() => {});
-    startWssFrameSender(el.hiddenVideo);
-  } else {
-    // PC ↔ PC: PeerJS WebRTC 고속 스트리밍
-    stopWssFrameSender();
-    if (state.peer && state.remotePeerId) {
-      if (state.currentMediaCall) {
-        try { state.currentMediaCall.close(); } catch (_) {}
-      }
-      state.activeEngine = "webrtc";
-      state.currentMediaCall = state.peer.call(state.remotePeerId, state.localStream);
-      setStageStatus("PC ↔ PC 초고속 WebRTC 송출 중", true, "WebRTC · 60fps");
-    }
-  }
-  updateEngineHintUI();
+  if (!state.localStream || !state.peerConnected) return;
+  const route = getRoute(MY_OS, state.remoteOS);
+  route.startSend(state.localStream);
 }
 
 async function startLocalScreenShare() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    showToast("모바일 브라우저는 OS 화면 공유를 지원하지 않습니다. [카메라 중계] 또는 [사진 칠판]을 사용해 주세요.", "warn");
+    showToast("이 브라우저는 화면 공유(getDisplayMedia)를 지원하지 않습니다. [카메라 중계] 또는 [사진 칠판]을 사용해 주세요.", "warn");
     return;
   }
   closeInviteeModal();
   try {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 24, max: 30 }, cursor: "always" },
-      audio: false
-    });
+    // PC는 기존 옵션 유지, 모바일(iOS/Android)은 OS 호환성이 가장 높은 표준 옵션 사용
+    const constraints = MY_OS === "PC"
+      ? { video: { frameRate: { ideal: 24, max: 30 }, cursor: "always" }, audio: false }
+      : { video: true, audio: false };
+
+    const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
     stopLocalMediaOnly();
     state.localStream = stream;
     state.localShareKind = "screen";
@@ -1377,22 +1638,28 @@ async function startLocalScreenShare() {
       showToast("화면 공유가 종료되었습니다.", "info");
     };
 
-    // 내 화면 미리보기
     showMediaStage("video");
     el.video.srcObject = stream;
     el.video.muted = true;
     await el.video.play().catch(() => {});
 
-    const settings = track.getSettings();
-    state.mediaNaturalW = settings.width || 1280;
-    state.mediaNaturalH = settings.height || 720;
+    const settings = track.getSettings ? track.getSettings() : {};
+    state.mediaNaturalW = settings.width || el.video.videoWidth || 1280;
+    state.mediaNaturalH = settings.height || el.video.videoHeight || 720;
+    el.video.onloadedmetadata = () => {
+      if (el.video.videoWidth > 0) {
+        state.mediaNaturalW = el.video.videoWidth;
+        state.mediaNaturalH = el.video.videoHeight;
+        resizeLaserCanvas();
+      }
+    };
     resizeLaserCanvas();
 
     if (state.peerConnected) {
       restartActiveLocalBroadcast();
     } else {
-      setStageStatus("내 PC 화면 준비 완료 (상대방 접속 대기 중)", true, `${state.mediaNaturalW}×${state.mediaNaturalH}`);
-      showToast("PC 화면 공유 시작! 아이폰에서 QR을 스캔하면 즉시 화면이 뜹니다.", "success");
+      setStageStatus(`내 ${MY_OS} 화면 준비 완료 (상대방 접속 대기 중)`, true, `${state.mediaNaturalW}×${state.mediaNaturalH}`);
+      showToast("화면 공유 시작! 상대방이 연결되면 즉시 전송됩니다.", "success");
     }
   } catch (err) {
     if (err && err.name !== "NotAllowedError") {
@@ -1435,7 +1702,7 @@ async function startLocalCameraShare(facingMode = "environment") {
       setStageStatus("카메라 중계 준비 완료 (상대방 연결 대기 중)", true, "CAMERA");
     }
     showToast("카메라 실시간 중계를 시작했습니다.", "success");
-  } catch (err) {
+  } catch (_) {
     showToast("카메라를 열 수 없습니다. 브라우저 카메라 권한을 허용해 주세요.", "error");
   }
 }
@@ -1506,6 +1773,7 @@ function showMediaStage(mode) {
 
 function resetRemoteStageOnly() {
   state.activeDisplayMode = "empty";
+  state.activeRouteKey = null;
   el.video.srcObject = null;
   el.video.classList.add("hidden");
   el.frameCanvas.classList.add("hidden");
@@ -1515,6 +1783,7 @@ function resetRemoteStageOnly() {
   el.iosForcePlayBanner.classList.remove("flex");
   el.emptyStageGuide.classList.remove("hidden");
   setStageStatus("화면 대기 중 (공유를 시작하거나 상대방 화면을 기다리세요)", false);
+  updateEngineHintUI();
 }
 
 function forceUnlockVideoPlayback() {
@@ -1536,7 +1805,6 @@ function toggleVideoFitMode() {
   el.fitModeToggleBtn.textContent = state.videoFitMode === "cover" ? "📐 꽉채우기" : "📐 비율맞춤";
 }
 
-// iOS Safari 완벽 대응 전체화면 토글
 function toggleStageFullscreen() {
   const isNativeFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
 
@@ -1756,7 +2024,6 @@ function pushLaserPoint(who, x, y) {
   if (state.lasers[who].points.length > 26) state.lasers[who].points.shift();
 }
 
-// 60fps 레이저 & 주석 렌더 루프
 function renderOverlayLoop() {
   const w = el.laserCanvas.clientWidth || 1;
   const h = el.laserCanvas.clientHeight || 1;
@@ -1765,7 +2032,6 @@ function renderOverlayLoop() {
   const rect = getMediaContentRect();
   const now = performance.now();
 
-  // 1) 영구 주석(펜·동그라미)
   for (const item of state.annotations) {
     laserCtx.save();
     laserCtx.strokeStyle = item.color;
@@ -1794,7 +2060,6 @@ function renderOverlayLoop() {
     laserCtx.restore();
   }
 
-  // 2) 잔상 레이저 포인터 (내 레이저: 코랄핑크 / 상대방 레이저: 시안)
   ["local", "remote"].forEach((who) => {
     const laser = state.lasers[who];
     laser.points = laser.points.filter((p) => now - p.t < 750);
@@ -1853,10 +2118,9 @@ function startSampleDemoMode() {
   ctx.fillRect(40, 40, 1200, 72);
   ctx.fillStyle = "#22d3ee";
   ctx.font = "bold 28px sans-serif";
-  ctx.fillText("You-tility Dual-Engine Demo (PC ↔ iPhone WSS Canvas)", 70, 86);
+  ctx.fillText("You-tility 방향별 세분화 라우팅 데모 (PC · iOS · Android)", 70, 86);
 
-  // 샘플 카드 3개
-  ["① 여기 레이저로 짚어보세요", "② 동그라미로 강조하기", "③ 아이폰에서 0.1초 즉시 렌더링"].forEach((txt, i) => {
+  ["① PC → iOS: WSS 캔버스 보존", "② iOS → PC: WebRTC 미러링", "③ Android 양방향 독립 라우팅"].forEach((txt, i) => {
     const x = 60 + i * 395;
     ctx.fillStyle = "#1e293b";
     ctx.strokeStyle = i === 1 ? "#fbbf24" : "#38bdf8";
@@ -1864,7 +2128,7 @@ function startSampleDemoMode() {
     ctx.fillRect(x, 160, 365, 220);
     ctx.strokeRect(x, 160, 365, 220);
     ctx.fillStyle = "#f8fafc";
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = "bold 21px sans-serif";
     ctx.fillText(txt, x + 24, 275);
   });
 
@@ -1984,7 +2248,13 @@ function openInviteeModal(isRequest = false) {
   document.getElementById("inviteeModalTitle").textContent = isRequest
     ? "상대방이 화면 공유를 요청했습니다!"
     : "상대방과 연결되었습니다!";
-  document.getElementById("modalBtnShareDesktop").classList.toggle("hidden", MY_OS !== "PC");
+  // 모든 OS(PC, iOS, Android)에서 화면 공유 버튼 표시
+  const screenLabel = MY_OS === "iOS"
+    ? "내 아이폰 화면 미러링 공유하기"
+    : MY_OS === "Android"
+      ? "내 안드로이드 화면 공유하기"
+      : "내 PC 화면 공유하기 (전체화면·창·탭 선택)";
+  document.getElementById("modalBtnShareDesktopText").textContent = screenLabel;
   el.inviteeModal.classList.remove("hidden");
   el.inviteeModal.classList.add("flex");
 }
@@ -2035,26 +2305,28 @@ function clearQuickMessages() {
 
 // ---------------- 앱 부트스트랩 ----------------
 (async function bootstrap() {
+  // 내 OS에 맞게 화면 공유 버튼 라벨만 자연스럽게 표시 (버튼 숨김 제거)
+  const mainLabel = document.getElementById("btnMainScreenShareLabel");
+  if (mainLabel) {
+    mainLabel.textContent =
+      MY_OS === "iOS" ? "아이폰 화면 공유 시작"
+      : MY_OS === "Android" ? "안드로이드 화면 공유 시작"
+      : "PC 화면 공유 시작";
+  }
+
   updateEngineHintUI();
 
-  // 모바일에서는 PC 화면공유 버튼 숨김 처리 (혼란 방지)
-  if (MY_OS !== "PC") {
-    const pcBtn = document.getElementById("btnMainScreenShare");
-    if (pcBtn) pcBtn.classList.add("hidden");
-  } else {
-    initPeerJsForPC();
-  }
+  // PC, iOS, Android 모든 기기에서 PeerJS 초기화 (iOS→PC 등 WebRTC 송출 대비)
+  initPeerJs();
 
   const params = new URLSearchParams(window.location.search);
   const invitedPin = (params.get("pin") || "").replace(/\D/g, "").slice(0, 6);
   const invitedBroker = parseInt(params.get("b") || "0", 10) || 0;
 
   if (invitedPin.length === 6) {
-    // QR 또는 초대 URL로 접속한 경우 자동 연결
     switchRoleTab("viewer");
     await connectToRemoteByPin(invitedPin, false, invitedBroker);
   } else {
-    // 새 방(Host) 생성
     state.role = "host";
     const newPin = generateSixDigitPin();
     state.roomPin = newPin;
