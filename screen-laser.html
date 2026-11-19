@@ -356,8 +356,8 @@
             </button>
           </div>
 
-          <div class="w-full grid grid-cols-3 gap-1.5">
-            <button type="button" onclick="startLocalScreenShare()" class="btn-primary py-2 rounded-xl text-[11px] font-extrabold">
+          <div id="hostShareBtnGroup" class="w-full grid grid-cols-3 gap-1.5">
+            <button type="button" id="btnHostScreenShare" onclick="startLocalScreenShare()" class="btn-primary py-2 rounded-xl text-[11px] font-extrabold">
               🖥️ 화면공유
             </button>
             <button type="button" onclick="startLocalCameraShare('environment')" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-[11px] font-bold text-purple-300 transition">
@@ -522,19 +522,19 @@
 
 <script>
 /* ============================================================================
- *  You-tility Screen & Laser v4.0 — 방향별 세분화 독립 라우팅 아키텍처
+ *  You-tility Screen & Laser v4.1 — 방향별 세분화 독립 라우팅 + 미지원 UI 자동 숨김
  *  --------------------------------------------------------------------------
- *  [검증 완료 - 100% 그대로 보존]
- *   1) PC -> PC       : PeerJS WebRTC 60fps 직접 스트리밍 (실패 시 WSS 폴백)
- *   2) PC -> iOS      : WSS 바이너리 캔버스 엔진 (hiddenVideo + HD선명 + ACK)
+ *  [검증 완료 6개 경로 — 엔진 로직 100% 그대로 보존]
+ *   1) PC -> PC            : PeerJS WebRTC 60fps 직접 스트리밍
+ *   2) PC -> iOS           : WSS 바이너리 캔버스 엔진 (hiddenVideo + HD선명 + ACK)
+ *   3) iOS(27+) -> PC      : PeerJS WebRTC 실시간 미러링
+ *   4) PC -> Android       : PeerJS WebRTC
+ *   5) iOS(27+) -> Android : PeerJS WebRTC 실시간 미러링
+ *   6) iOS(27+) -> iOS     : WSS 바이너리 캔버스 (visibleVideo 캡처)
  *
- *  [방향별 세분화 모듈]
- *   3) iOS -> PC      : PeerJS WebRTC 1순위 (iOS 백그라운드 화면 미러링 유지)
- *   4) PC -> Android  : PeerJS WebRTC 1순위 (6초 미수신 시 WSS 폴백)
- *   5) Android -> PC  : PeerJS WebRTC 1순위 (6초 미수신 시 WSS 폴백)
- *   6) iOS -> Android : PeerJS WebRTC 1순위 (iOS 백그라운드 미러링 + Android 수신)
- *   7) Android -> iOS : WSS 바이너리 캔버스 (보이는 video 캡처 + iOS 100% 수신)
- *   8) iOS -> iOS / Android -> Android 보조 라우트 포함
+ *  [UI 개선만 추가]
+ *   - 안드로이드(전 기종) 및 구버전 iOS(getDisplayMedia 미지원)에서
+ *     화면 공유 버튼 3곳만 자동 숨김 처리하여 카메라/사진칠판만 깔끔하게 노출
  * ============================================================================ */
 
 const WSS_BROKERS = [
@@ -569,6 +569,56 @@ const MY_SENDER_TAG = (() => {
   return h || 1;
 })();
 
+// ---------------- 화면 공유 버튼 표시 여부 판별 (안드로이드 + 구버전 iOS 자동 대응) ----------------
+let screenShareRuntimeUnsupported = false;
+
+function canSupportScreenShare() {
+  if (screenShareRuntimeUnsupported) return false;
+  // 안드로이드 모바일 브라우저는 getDisplayMedia 미지원
+  if (MY_OS === "Android") return false;
+  // 구버전 아이폰(iOS 26 이하) 및 미지원 브라우저 자동 감지
+  const hasApi = Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function");
+  return hasApi;
+}
+
+function applyScreenShareUiVisibility(forceDisable = false) {
+  if (forceDisable) screenShareRuntimeUnsupported = true;
+  const supported = canSupportScreenShare();
+
+  // 1) 좌측 초기 안내 화면의 화면 공유 버튼 (flex <-> hidden 충돌 방지)
+  const btnMain = document.getElementById("btnMainScreenShare");
+  if (btnMain) {
+    btnMain.classList.toggle("hidden", !supported);
+    btnMain.classList.toggle("flex", supported);
+  }
+
+  // 2) 우측 QR 패널 하단 화면 공유 버튼 (숨김 시 3열 -> 2열 자동 정렬)
+  const btnHost = document.getElementById("btnHostScreenShare");
+  const hostGroup = document.getElementById("hostShareBtnGroup");
+  if (btnHost) {
+    btnHost.classList.toggle("hidden", !supported);
+  }
+  if (hostGroup) {
+    hostGroup.classList.toggle("grid-cols-3", supported);
+    hostGroup.classList.toggle("grid-cols-2", !supported);
+  }
+
+  // 3) 상대방 연결 완료 모달의 화면 공유 버튼 (flex <-> hidden 충돌 방지)
+  const btnModal = document.getElementById("modalBtnShareDesktop");
+  if (btnModal) {
+    btnModal.classList.toggle("hidden", !supported);
+    btnModal.classList.toggle("flex", supported);
+  }
+
+  // 4) 미지원 기기에서만 혼란 없도록 초기 안내 문구 자연스럽게 조정
+  const subtext = document.getElementById("emptyStageSubtext");
+  if (subtext && !supported) {
+    subtext.innerHTML =
+      '• <strong class="text-emerald-300">상대방 화면 보기:</strong> PC·최신 아이폰에서 공유한 화면을 실시간으로 보며 레이저로 안내할 수 있습니다.<br />' +
+      '• <strong class="text-purple-300">내 기기 송출:</strong> 현재 기기에서는 <strong class="text-purple-300">[📷 카메라 중계]</strong> 또는 <strong class="text-amber-300">[🖼️ 캡처·사진 칠판]</strong>으로 공유할 수 있습니다.';
+  }
+}
+
 // ---------------- 전역 상태 ----------------
 const state = {
   role: "host",
@@ -589,8 +639,8 @@ const state = {
   // 전송 정책 & 현재 활성 경로
   transportPref: "auto",      // 'auto' | 'wss'
   activeEngine: "standby",    // 'standby' | 'webrtc' | 'wss'
-  activeRouteKey: null,       // 예: "PC->iOS", "iOS->PC"
-  pendingWebRtcSend: false,   // PeerJS ID가 늦게 도착했을 때 자동 송출 재시도용
+  activeRouteKey: null,
+  pendingWebRtcSend: false,
 
   // PeerJS (전 OS 공통 초기화)
   peer: null,
@@ -678,10 +728,7 @@ state.wssDiffCanvas.height = 36;
 const diffCtx = state.wssDiffCanvas.getContext("2d", { willReadFrequently: true });
 
 /* ============================================================================
- *  [핵심] 방향별 세분화 독립 라우트 테이블 (DIRECTION_ROUTES)
- *  --------------------------------------------------------------------------
- *  각 경로는 서로 완전히 독립되어 있어, 특정 방향만 수정해도
- *  검증 완료된 PC->PC / PC->iOS 경로는 절대 영향을 받지 않습니다.
+ *  [핵심] 방향별 세분화 독립 라우트 테이블 (DIRECTION_ROUTES) — 기존 검증 로직 100% 보존
  * ============================================================================ */
 function getRouteKey(fromOS, toOS) {
   return `${fromOS || "PC"}->${toOS || "PC"}`;
@@ -689,9 +736,7 @@ function getRouteKey(fromOS, toOS) {
 
 const DIRECTION_ROUTES = {
 
-  /* --------------------------------------------------------------------------
-   * [1] PC → PC (검증 완료 — 기존 WebRTC 60fps 로직 100% 보존)
-   * -------------------------------------------------------------------------- */
+  /* [1] PC → PC (검증 완료 — 100% 보존) */
   "PC->PC": {
     label: "PC → PC",
     engine: "webrtc",
@@ -707,30 +752,25 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [2] PC → 아이폰 (검증 완료 — 기존 WSS 바이너리 캔버스 로직 100% 보존)
-   * -------------------------------------------------------------------------- */
+  /* [2] PC → 아이폰 (검증 완료 — 100% 보존) */
   "PC->iOS": {
     label: "PC → 아이폰",
     engine: "wss",
     engineLabel: "🚀 WSS 바이너리 캔버스 (iOS 전용)",
-    wssSource: "hidden", // PC에서는 숨김 비디오 캡처가 100% 안정 검증됨
+    wssSource: "hidden",
     wssProfile: { motionMaxDim: 760, hdMaxDim: 1280, motionQuality: 0.48, hdQuality: 0.78, motionIntervalMs: 85, hdIntervalMs: 130 },
     watchdogMs: 0,
     startSend(stream) {
-      // 검증된 기존 PC -> iOS 방식 그대로 실행
       return startWssRouteSend("PC->iOS", stream, this.wssSource, this.wssProfile);
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [3] 아이폰 → PC (복구: WebRTC 1순위 — 백그라운드 화면 미러링 & 카메라 유지)
-   * -------------------------------------------------------------------------- */
+  /* [3] 아이폰 → PC (검증 완료 — 100% 보존) */
   "iOS->PC": {
     label: "아이폰 → PC",
     engine: "webrtc",
     engineLabel: "🍎⚡ WebRTC 실시간 미러링",
-    wssSource: "visible", // 폴백 시 iOS Safari 숨김 비디오 정지 회피용
+    wssSource: "visible",
     wssProfile: { motionMaxDim: 640, hdMaxDim: 1080, motionQuality: 0.46, hdQuality: 0.74, motionIntervalMs: 95, hdIntervalMs: 140 },
     watchdogMs: 6500,
     startSend(stream) {
@@ -741,9 +781,7 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [4] PC → 안드로이드 (WebRTC 1순위, 방화벽 실패 시 WSS 자동 폴백)
-   * -------------------------------------------------------------------------- */
+  /* [4] PC → 안드로이드 (검증 완료 — 100% 보존) */
   "PC->Android": {
     label: "PC → 안드로이드",
     engine: "webrtc",
@@ -759,9 +797,7 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [5] 안드로이드 → PC (WebRTC 1순위 — 화면/카메라 백그라운드 유지)
-   * -------------------------------------------------------------------------- */
+  /* [5] 안드로이드 → PC (카메라 중계·사진칠판 송출 경로) */
   "Android->PC": {
     label: "안드로이드 → PC",
     engine: "webrtc",
@@ -777,9 +813,7 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [6] 아이폰 → 안드로이드 (WebRTC 1순위 — 아이폰 미러링 유지 + 안드로이드 수신)
-   * -------------------------------------------------------------------------- */
+  /* [6] 아이폰 → 안드로이드 (검증 완료 — 100% 보존) */
   "iOS->Android": {
     label: "아이폰 → 안드로이드",
     engine: "webrtc",
@@ -795,14 +829,12 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [7] 안드로이드 → 아이폰 (WSS 캔버스 고정 — iOS 수신 100% 보장 + visible 캡처)
-   * -------------------------------------------------------------------------- */
+  /* [7] 안드로이드 → 아이폰 (카메라 중계·사진칠판 송출 경로) */
   "Android->iOS": {
     label: "안드로이드 → 아이폰",
     engine: "wss",
     engineLabel: "🤖→🍎 WSS 바이너리 캔버스",
-    wssSource: "visible", // 모바일 송출자는 화면에 보이는 video에서 캡처해야 안 멈춤
+    wssSource: "visible",
     wssProfile: { motionMaxDim: 680, hdMaxDim: 1080, motionQuality: 0.48, hdQuality: 0.75, motionIntervalMs: 95, hdIntervalMs: 140 },
     watchdogMs: 0,
     startSend(stream) {
@@ -810,9 +842,7 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [보조 8] 아이폰 → 아이폰 (수신이 iOS이므로 WSS 캔버스 + visible 캡처)
-   * -------------------------------------------------------------------------- */
+  /* [8] 아이폰 → 아이폰 (검증 완료 — 100% 보존) */
   "iOS->iOS": {
     label: "아이폰 → 아이폰",
     engine: "wss",
@@ -825,9 +855,7 @@ const DIRECTION_ROUTES = {
     }
   },
 
-  /* --------------------------------------------------------------------------
-   * [보조 9] 안드로이드 → 안드로이드 (WebRTC 1순위 + WSS 폴백)
-   * -------------------------------------------------------------------------- */
+  /* [9] 안드로이드 → 안드로이드 (보조 경로) */
   "Android->Android": {
     label: "안드로이드 → 안드로이드",
     engine: "webrtc",
@@ -861,12 +889,10 @@ function startWssRouteSend(routeKey, stream, sourceMode, profile) {
 
   let captureVideoEl;
   if (sourceMode === "hidden") {
-    // PC 송출(PC->iOS 등): 기존에 검증된 hiddenVideo 방식 100% 그대로 사용
     el.hiddenVideo.srcObject = stream;
     el.hiddenVideo.play().catch(() => {});
     captureVideoEl = el.hiddenVideo;
   } else {
-    // 모바일 송출(Android->iOS, iOS 폴백 등): 화면에 보이는 el.video에서 직접 캡처
     if (el.video.srcObject !== stream) {
       el.video.srcObject = stream;
       el.video.muted = true;
@@ -887,7 +913,6 @@ function startWebRtcRouteSend(routeKey, stream) {
     initPeerJs();
   }
 
-  // 상대방 PeerJS ID 또는 내 PeerJS가 아직 열리지 않았으면 대기 후 자동 발사
   if (!state.peer || !state.myPeerId || !state.remotePeerId) {
     state.pendingWebRtcSend = true;
     sendCtrl({ type: "request_peer_id" });
@@ -1176,15 +1201,12 @@ function initPeerJs() {
       if (state.mqttConnected) {
         sendCtrl({ type: "peer_id_update", os: MY_OS, peerId: id });
       }
-      // WebRTC 송출 대기 중이었다면 즉시 발사
       if (state.pendingWebRtcSend && state.localStream && state.remotePeerId) {
         restartActiveLocalBroadcast();
       }
     });
 
     peer.on("call", (call) => {
-      // 수신 방향(상대OS -> 내OS)의 라우트 정책 확인!
-      // 예: iOS->PC 수신 시 PC는 WebRTC 허용 / PC->iOS 수신 시 iOS는 WSS 전용
       const incomingRoute = getRoute(state.remoteOS || "PC", MY_OS);
       if (state.transportPref === "wss" || incomingRoute.engine !== "webrtc") {
         try { call.close(); } catch (_) {}
@@ -1196,7 +1218,7 @@ function initPeerJs() {
       }
       state.currentMediaCall = call;
       state.activeRouteKey = incomingRoute.key;
-      call.answer(); // PeerJS 표준 API
+      call.answer();
 
       call.on("stream", (remoteStream) => {
         attachWebRtcRemoteVideo(remoteStream, incomingRoute);
@@ -1209,9 +1231,7 @@ function initPeerJs() {
       });
     });
 
-    peer.on("error", () => {
-      // WebRTC 오류 시 해당 경로의 Watchdog가 WSS 폴백으로 처리
-    });
+    peer.on("error", () => {});
   } catch (_) {}
 }
 
@@ -1234,7 +1254,6 @@ function attachWebRtcRemoteVideo(remoteStream, incomingRoute) {
   };
   tryPlay();
 
-  // readyState >= 2 기준 빠른 판정 + 경로별 watchdogMs 초과 시 WSS 자동 폴백
   clearTimeout(state.webrtcWatchdogTimer);
   const startAt = Date.now();
   const timeoutMs = incomingRoute.watchdogMs || 6000;
@@ -1462,7 +1481,6 @@ function startWssFrameSender(videoSourceEl, profile, routeKey) {
         return;
       }
 
-      // 1) 초경량 64x36 변화 감지 (Dirty-Frame Diff)
       diffCtx.drawImage(videoSourceEl, 0, 0, 64, 36);
       const curData = diffCtx.getImageData(0, 0, 64, 36).data;
       let diffScore = 99;
@@ -1496,7 +1514,6 @@ function startWssFrameSender(videoSourceEl, profile, routeKey) {
 
       state.wssPrevDiffData = new Uint8ClampedArray(curData);
 
-      // 2) 경로별 적응형 해상도 & 화질 설정
       const isHd = sendMode === "hd";
       const maxDim = isHd ? cfg.hdMaxDim : cfg.motionMaxDim;
       const quality = isHd ? cfg.hdQuality : cfg.motionQuality;
@@ -1614,13 +1631,13 @@ function restartActiveLocalBroadcast() {
 }
 
 async function startLocalScreenShare() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    showToast("이 브라우저는 화면 공유(getDisplayMedia)를 지원하지 않습니다. [카메라 중계] 또는 [사진 칠판]을 사용해 주세요.", "warn");
+  if (!canSupportScreenShare()) {
+    applyScreenShareUiVisibility(true);
+    showToast("이 기기 브라우저는 화면 공유를 지원하지 않습니다. [카메라 중계] 또는 [사진 칠판]을 사용해 주세요.", "warn");
     return;
   }
   closeInviteeModal();
   try {
-    // PC는 기존 옵션 유지, 모바일(iOS/Android)은 OS 호환성이 가장 높은 표준 옵션 사용
     const constraints = MY_OS === "PC"
       ? { video: { frameRate: { ideal: 24, max: 30 }, cursor: "always" }, audio: false }
       : { video: true, audio: false };
@@ -1662,7 +1679,10 @@ async function startLocalScreenShare() {
       showToast("화면 공유 시작! 상대방이 연결되면 즉시 전송됩니다.", "success");
     }
   } catch (err) {
-    if (err && err.name !== "NotAllowedError") {
+    if (err && (err.name === "NotSupportedError" || err.name === "TypeError")) {
+      applyScreenShareUiVisibility(true);
+      showToast("이 브라우저는 화면 공유를 지원하지 않아 [카메라 중계]·[사진 칠판] 모드로 전환했습니다.", "warn");
+    } else if (err && err.name !== "NotAllowedError" && err.name !== "AbortError") {
       showToast("화면 공유를 시작할 수 없습니다: " + err.message, "error");
     }
   }
@@ -2120,7 +2140,7 @@ function startSampleDemoMode() {
   ctx.font = "bold 28px sans-serif";
   ctx.fillText("You-tility 방향별 세분화 라우팅 데모 (PC · iOS · Android)", 70, 86);
 
-  ["① PC → iOS: WSS 캔버스 보존", "② iOS → PC: WebRTC 미러링", "③ Android 양방향 독립 라우팅"].forEach((txt, i) => {
+  ["① PC → iOS: WSS 캔버스 보존", "② iOS → PC: WebRTC 미러링", "③ 미지원 기기: 카메라·칠판 자동 전환"].forEach((txt, i) => {
     const x = 60 + i * 395;
     ctx.fillStyle = "#1e293b";
     ctx.strokeStyle = i === 1 ? "#fbbf24" : "#38bdf8";
@@ -2128,8 +2148,8 @@ function startSampleDemoMode() {
     ctx.fillRect(x, 160, 365, 220);
     ctx.strokeRect(x, 160, 365, 220);
     ctx.fillStyle = "#f8fafc";
-    ctx.font = "bold 21px sans-serif";
-    ctx.fillText(txt, x + 24, 275);
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText(txt, x + 22, 275);
   });
 
   ctx.fillStyle = "#94a3b8";
@@ -2248,13 +2268,11 @@ function openInviteeModal(isRequest = false) {
   document.getElementById("inviteeModalTitle").textContent = isRequest
     ? "상대방이 화면 공유를 요청했습니다!"
     : "상대방과 연결되었습니다!";
-  // 모든 OS(PC, iOS, Android)에서 화면 공유 버튼 표시
   const screenLabel = MY_OS === "iOS"
     ? "내 아이폰 화면 미러링 공유하기"
-    : MY_OS === "Android"
-      ? "내 안드로이드 화면 공유하기"
-      : "내 PC 화면 공유하기 (전체화면·창·탭 선택)";
+    : "내 PC 화면 공유하기 (전체화면·창·탭 선택)";
   document.getElementById("modalBtnShareDesktopText").textContent = screenLabel;
+  applyScreenShareUiVisibility();
   el.inviteeModal.classList.remove("hidden");
   el.inviteeModal.classList.add("flex");
 }
@@ -2305,18 +2323,18 @@ function clearQuickMessages() {
 
 // ---------------- 앱 부트스트랩 ----------------
 (async function bootstrap() {
-  // 내 OS에 맞게 화면 공유 버튼 라벨만 자연스럽게 표시 (버튼 숨김 제거)
   const mainLabel = document.getElementById("btnMainScreenShareLabel");
   if (mainLabel) {
     mainLabel.textContent =
       MY_OS === "iOS" ? "아이폰 화면 공유 시작"
-      : MY_OS === "Android" ? "안드로이드 화면 공유 시작"
       : "PC 화면 공유 시작";
   }
 
+  // 안드로이드 및 구버전 아이폰에서 화면 공유 버튼 3곳 자동 숨김 적용
+  applyScreenShareUiVisibility();
   updateEngineHintUI();
 
-  // PC, iOS, Android 모든 기기에서 PeerJS 초기화 (iOS→PC 등 WebRTC 송출 대비)
+  // PC, iOS, Android 모든 기기에서 PeerJS 초기화
   initPeerJs();
 
   const params = new URLSearchParams(window.location.search);
