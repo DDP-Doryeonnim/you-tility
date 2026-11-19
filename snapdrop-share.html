@@ -3,27 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>초간단 QR 파일 전송 | You-틸리티</title>
+  <title>실시간 화면 공유 및 레이저 포인터 | You-틸리티</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- QR코드 생성 라이브러리 -->
+  <!-- WebRTC P2P 실시간 영상·데이터 통신 엔진 (PeerJS) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- QR 코드 즉시 생성 엔진 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- 안드로이드·아이폰·PC 호환 MQTT 클라이언트 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
     * {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
-      background-color: #070b14;
-      color: #f8fafc;
+      background-color: #070A10;
+      color: #F8FAFC;
       min-height: 100vh;
       overflow-x: hidden;
-      position: relative;
       margin: 0;
     }
     .aurora-bg {
@@ -36,18 +33,18 @@
     .aurora-orb-1 {
       position: absolute;
       top: -160px;
-      left: 16%;
-      width: 540px;
-      height: 540px;
+      left: 12%;
+      width: 560px;
+      height: 560px;
       background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
       filter: blur(55px);
     }
     .aurora-orb-2 {
       position: absolute;
       top: -100px;
-      right: 12%;
-      width: 500px;
-      height: 500px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
       background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
       filter: blur(55px);
     }
@@ -57,90 +54,103 @@
       -webkit-text-fill-color: transparent;
     }
     .glass-panel {
-      background: rgba(15, 23, 42, 0.76);
+      background: rgba(15, 23, 42, 0.86);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
     }
-    .my-code-box {
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.78) 100%);
-      border: 1.5px solid rgba(56, 189, 248, 0.45);
-      box-shadow: 0 0 24px rgba(56, 189, 248, 0.15), inset 0 0 16px rgba(56, 189, 248, 0.08);
-    }
-    .dark-input {
-      background: rgba(9, 13, 22, 0.92);
-      border: 1.5px solid rgba(148, 163, 184, 0.32);
-      color: #f8fafc;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .dark-input:focus {
-      outline: none;
-      border-color: #f472b6;
-      box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.2);
-    }
-    .btn-connect {
+    .btn-primary {
       background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
       color: #ffffff;
-      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);
-      transition: transform 0.16s ease, filter 0.16s ease, opacity 0.16s ease;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
     }
-    .btn-connect:hover:not(:disabled) {
+    .btn-primary:hover:not(:disabled) {
       transform: translateY(-1px);
       filter: brightness(1.08);
     }
-    .btn-connect:disabled {
-      background: rgba(51, 65, 85, 0.7);
-      color: #94a3b8;
-      box-shadow: none;
+    .btn-primary:disabled {
+      opacity: 0.4;
       cursor: not-allowed;
+      box-shadow: none;
     }
-    .drop-zone {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(11, 17, 32, 0.85) 100%);
-      border: 2.5px dashed rgba(56, 189, 248, 0.65);
-      border-radius: 20px;
-      padding: 40px 20px;
-      text-align: center;
+    .stage-grid {
+      background-color: #080c14;
+      background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
+      background-size: 20px 20px;
+    }
+    .floating-dock {
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(244, 63, 94, 0.55);
+      box-shadow: 0 0 28px rgba(244, 63, 94, 0.25), 0 12px 24px rgba(0, 0, 0, 0.75);
+      max-width: 96vw;
+    }
+    .tool-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px 11px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      transition: all 0.15s ease;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.14);
+      user-select: none;
+      white-space: nowrap;
     }
-    .drop-zone:hover,
-    .drop-zone.drag-over {
-      border-color: #f472b6;
-      box-shadow: 0 0 35px rgba(244, 114, 182, 0.28), inset 0 0 24px rgba(56, 189, 248, 0.12);
-      transform: translateY(-2px);
+    @media (min-width: 640px) {
+      .tool-btn {
+        padding: 7px 14px;
+      }
     }
-    .progress-bar {
-      width: 100%;
-      height: 12px;
-      background: rgba(30, 41, 59, 0.9);
-      border-radius: 999px;
-      overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.2);
+    .tool-btn:hover {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.06);
     }
-    .progress-fill {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #34d399 100%);
-      transition: width 0.08s ease;
+    .tool-btn.active-laser {
+      color: #fb7185;
+      background: rgba(244, 63, 94, 0.18);
+      box-shadow: inset 0 0 12px rgba(244, 63, 94, 0.35);
     }
-    .debug-log {
-      height: 120px;
-      overflow-y: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      line-height: 1.55;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #38bdf8;
+    .tool-btn.active-cyan {
+      color: #22d3ee;
+      background: rgba(34, 211, 238, 0.18);
+      box-shadow: inset 0 0 12px rgba(34, 211, 238, 0.35);
     }
-    .log-ok { color: #4ade80; }
-    .log-warn { color: #facc15; }
-    .log-err { color: #f87171; }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
-    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 999px; }
+    .tool-btn.active-amber {
+      color: #facc15;
+      background: rgba(250, 204, 21, 0.18);
+      box-shadow: inset 0 0 12px rgba(250, 204, 21, 0.35);
+    }
+    #stageFullscreenTarget:fullscreen,
+    #stageFullscreenTarget:-webkit-full-screen {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      background-color: #05070B !important;
+    }
+    .pseudo-fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      z-index: 9999 !important;
+      border-radius: 0 !important;
+      border: none !important;
+      background-color: #05070B !important;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 999px; }
   </style>
 </head>
 <body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -149,1120 +159,1964 @@
     <div class="aurora-orb-2"></div>
   </div>
 
-  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-7">
-    <!-- 상단 공통 헤더 -->
-    <header class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
-      <div class="flex items-center gap-3.5 w-full sm:w-auto justify-between sm:justify-start">
-        <a href="./index.html" class="flex items-center gap-3">
+  <div class="relative z-10 max-w-[1780px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+    
+    <!-- 상단 헤더 (초기화, 데모 모드, 전체화면, 양방향 끝내기) -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-3.5">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start shrink-0">
+        <a href="./index.html" class="flex items-center gap-3 shrink-0 whitespace-nowrap">
           <div>
             <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
             <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
           </div>
         </a>
-        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition shrink-0 whitespace-nowrap">
           <span>←</span>
           <span>대시보드</span>
         </a>
       </div>
 
       <div class="text-center">
-        <h1 class="text-xl sm:text-2xl md:text-[26px] font-bold tracking-tight text-white">
-          🚀 초간단 QR 파일 슝! <span class="text-xs font-mono text-emerald-400 align-middle">v6.0 TURBO</span>
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white whitespace-nowrap">
+          실시간 화면 공유 및 레이저 포인터
         </h1>
-        <p class="text-xs text-slate-400 mt-0.5">P2P 직통 터보 + 12연속 배치 파이프라인 초고속 전송</p>
+        <p class="text-xs font-mono text-cyan-400 tracking-wider mt-0.5">LIVE SCREEN &amp; LASER (PC · iOS · ANDROID)</p>
       </div>
 
-      <div class="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-full">
-        <span id="headerDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-        <span id="headerStatus">터널 준비중</span>
+      <div class="flex flex-wrap items-center justify-center gap-2 shrink-0">
+        <button type="button" onclick="resetScreenWorkspace(true)" class="px-3.5 py-2 rounded-xl bg-rose-950/85 hover:bg-rose-900 border border-rose-500/50 text-xs font-extrabold text-rose-200 transition flex items-center gap-1.5 whitespace-nowrap">
+          <span>🗑️</span>
+          <span>초기화</span>
+        </button>
+        <button type="button" onclick="startSampleDemoMode()" class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-extrabold text-cyan-300 transition flex items-center gap-1.5 whitespace-nowrap" title="혼자서도 가상 화면 위에서 레이저 포인터·형광펜·동그라미·전체화면 기능을 즉시 테스트합니다">
+          <span>🧪</span>
+          <span>데모 (Demo)</span>
+        </button>
+        <button type="button" onclick="toggleStageFullscreen()" class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-purple-500/40 text-xs font-extrabold text-purple-300 transition flex items-center gap-1.5 whitespace-nowrap">
+          <span>⛶</span>
+          <span>전체화면 보기</span>
+        </button>
+        <button type="button" onclick="stopAllSharingAndDisconnect(true)" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-extrabold transition flex items-center gap-1.5 shadow-lg whitespace-nowrap" title="공유와 연결을 종료하며 상대방 화면도 즉시 함께 종료됩니다">
+          <span>■</span>
+          <span>끝내기</span>
+        </button>
       </div>
     </header>
 
-    <!-- [QR 자동 접속 배너] -->
-    <div id="autoConnectBanner" class="hidden glass-panel rounded-2xl p-6 mb-5 border-cyan-400/50 text-center">
-      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cyan-500/20 text-cyan-300 mb-3 animate-spin">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      </div>
-      <h2 id="autoConnectTitle" class="text-lg font-extrabold text-cyan-300">QR 코드 인식 완료! 상대 기기와 즉시 연결 중...</h2>
-      <p class="text-xs text-slate-300 mt-1">연결이 완료되면 자동으로 파일 전송 화면으로 넘어갑니다.</p>
-    </div>
+    <!-- 숨겨진 이미지 칠판 업로드 입력기 -->
+    <input type="file" id="boardImageInput" accept="image/*" class="hidden" onchange="handleBoardImageUpload(this.files)" />
 
-    <!-- [STEP 1 뷰] 기기 연결 화면 -->
-    <div id="stepConnectView" class="space-y-5 mb-5">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
-        <!-- 좌측(7칸): QR 스캔으로 연결 -->
-        <section class="md:col-span-7 glass-panel rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-base sm:text-lg font-extrabold text-cyan-300">📷 방법 1. 폰 카메라로 QR 찍기 (자동 연결)</span>
-              <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">추천</span>
-            </div>
-            <p class="text-xs sm:text-sm text-slate-300 mb-4">
-              상대방 스마트폰 카메라로 아래 QR코드를 비추면 <strong>접속 번호가 자동 인식</strong>되어 양쪽 모두 즉시 파일 전송 화면으로 넘어갑니다.
-            </p>
+    <!-- ==================== 메인 2단 레이아웃 ==================== -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+
+      <!-- [좌측 9칸 (75%)] 실시간 공유 화면 스테이지 (전체화면 전환 타겟) -->
+      <section
+        id="stageFullscreenTarget"
+        class="lg:col-span-9 glass-panel stage-grid rounded-2xl relative overflow-hidden flex flex-col items-center justify-center h-[540px] lg:h-[78vh] min-h-[500px] select-none"
+      >
+        <!-- 상단 상태 오버레이 바 -->
+        <div class="absolute top-3 left-3 right-3 z-30 flex items-center justify-between gap-2 pointer-events-none">
+          <div class="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/85 border border-slate-800 backdrop-blur-md min-w-0">
+            <span id="stageLiveDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 shrink-0"></span>
+            <span id="stageStatusTitle" class="text-xs font-extrabold text-slate-200 truncate">화면 대기 중 (초대 링크나 QR을 상대방에게 보내세요)</span>
+            <span id="stageResolutionBadge" class="hidden px-2 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-cyan-300 shrink-0"></span>
           </div>
 
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-5 bg-slate-900/85 border border-slate-800 rounded-2xl p-5">
-            <div class="bg-white p-3 rounded-xl shadow-lg shrink-0 flex items-center justify-center min-w-[146px] min-h-[146px]">
-              <div id="qrcode" class="text-xs text-slate-800 font-bold text-center">QR 생성 중...</div>
-            </div>
-
-            <div class="flex flex-col items-center sm:items-start text-center sm:text-left w-full">
-              <span class="text-xs text-slate-400 font-medium mb-1">내 기기 고유 번호 (4자리)</span>
-              <div id="myCode" class="my-code-box w-full rounded-xl py-2.5 px-4 text-center text-3xl font-black tracking-[8px] text-cyan-300 font-mono select-all mb-2.5">
-                ----
-              </div>
-              <button id="copyLinkBtn" type="button" onclick="copyInviteLink()"
-                class="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-semibold text-slate-200 transition flex items-center justify-center gap-1.5">
-                <span>🔗</span>
-                <span id="copyLinkText">초대 링크 복사하기</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 우측(5칸): 4자리 번호 직접 입력 -->
-        <section class="md:col-span-5 glass-panel rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-base font-extrabold text-pink-300">🔢 방법 2. 번호로 직접 연결</span>
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/30 font-semibold">번호 입력</span>
-            </div>
-            <p class="text-xs text-slate-400 mb-4">
-              QR을 찍기 어려운 환경에서는 상대방의 <strong>4자리 숫자</strong>를 입력하고 연결하기를 누르세요.
-            </p>
-          </div>
-
-          <div class="space-y-3 my-auto">
-            <label class="block text-xs text-slate-300 font-semibold">상대방 4자리 번호 입력</label>
-            <input
-              type="text"
-              id="targetCode"
-              maxlength="4"
-              placeholder="0000"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="dark-input w-full rounded-xl px-4 py-3.5 text-2xl text-center font-black font-mono tracking-[10px] placeholder:text-slate-600"
-            />
+          <div class="pointer-events-auto flex items-center gap-1.5 shrink-0">
             <button
-              id="connectBtn"
               type="button"
-              onclick="connectPeer()"
-              disabled
-              class="btn-connect w-full py-3.5 rounded-xl text-sm sm:text-base font-extrabold"
+              id="fitModeToggleBtn"
+              onclick="toggleVideoFitMode()"
+              class="hidden px-2.5 py-1.5 rounded-xl bg-slate-950/85 hover:bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200 transition backdrop-blur-md"
+              title="화면을 비율대로 맞출지 꽉 채울지 전환합니다"
             >
-              터널 개통 중...
+              📐 비율맞춤
+            </button>
+            <button
+              type="button"
+              id="stageFullscreenBtn"
+              onclick="toggleStageFullscreen()"
+              class="px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-cyan-950 border border-cyan-500/50 text-xs font-extrabold text-cyan-300 transition flex items-center gap-1.5 shadow-lg backdrop-blur-md"
+            >
+              <span id="fullscreenBtnIcon">⛶</span>
+              <span id="fullscreenBtnText">전체화면 보기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- iOS 사파리 자동재생 잠금 해제용 플로팅 버튼 (필요 시에만 자동 표시) -->
+        <button
+          id="iosForcePlayBanner"
+          type="button"
+          onclick="forceUnlockVideoPlayback()"
+          class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-2xl items-center gap-1.5 animate-bounce"
+        >
+          <span>▶️</span>
+          <span>화면을 터치하면 실시간 화면이 활성화됩니다</span>
+        </button>
+
+        <!-- 1) 초기 빈 화면 안내 (방 생성자 / 접속자 안내) -->
+        <div id="emptyStageGuide" class="z-10 max-w-xl text-center p-5">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3.5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-3xl sm:text-4xl shadow-2xl">
+            🖥️
+          </div>
+          <h2 id="emptyStageHeading" class="text-base sm:text-xl font-extrabold text-white mb-2">
+            초대 링크·QR로 연결하면 PC·스마트폰 화면이 실시간 공유됩니다
+          </h2>
+          <p id="emptyStageSubtext" class="text-xs sm:text-sm text-slate-400 leading-relaxed mb-5">
+            • <strong class="text-cyan-300">상대방 화면을 보려면:</strong> 우측 <strong class="text-cyan-300">🔗 초대 URL 복사</strong>나 <strong class="text-cyan-300">QR코드</strong>를 상대방에게 보내세요.<br />
+            • <strong class="text-emerald-300">내 PC 화면을 아이폰·상대방에게 보여주려면:</strong> 아래 <strong class="text-emerald-300">[내 PC 화면 공유 시작]</strong>을 누른 뒤 QR/URL을 보내세요.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <button type="button" onclick="startLocalScreenShare()" class="btn-primary px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+              <span>🖥️</span>
+              <span>내 PC 화면 공유 시작</span>
+            </button>
+            <button type="button" onclick="requestRemoteToShareScreen()" id="requestRemoteShareBtn" class="hidden px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition items-center gap-1.5 shadow-lg">
+              <span>📢</span>
+              <span>상대방(PC) 화면 공유 요청하기</span>
+            </button>
+            <button type="button" onclick="copyInviteUrl()" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs sm:text-sm font-extrabold text-cyan-300 transition flex items-center gap-1.5">
+              <span>🔗</span>
+              <span>초대 URL 복사</span>
+            </button>
+            <button type="button" onclick="startLocalCameraShare()" class="px-3.5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-xs sm:text-sm font-bold text-purple-300 transition flex items-center gap-1.5">
+              <span>📷</span>
+              <span>카메라 중계 (폰)</span>
+            </button>
+            <button type="button" onclick="document.getElementById('boardImageInput').click()" class="px-3.5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs sm:text-sm font-bold text-slate-200 transition flex items-center gap-1.5">
+              <span>🖼️</span>
+              <span>사진 칠판 공유</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2) 실시간 비디오 & 하이브리드 프레임 캔버스 & 양방향 레이저 오버레이 영역 -->
+        <div id="mediaViewportWrap" class="hidden relative w-full h-full flex items-center justify-center overflow-hidden">
+          <!-- WebRTC 네이티브 스트림 비디오 -->
+          <video
+            id="sharedScreenVideo"
+            autoplay
+            playsinline
+            webkit-playsinline="true"
+            muted
+            class="w-full h-full object-contain pointer-events-none select-none"
+          ></video>
+
+          <!-- 하이브리드 실시간 프레임 수신(iPhone/방화벽 100% 보장용) & 데모 캔버스 -->
+          <canvas
+            id="demoScreenCanvas"
+            class="hidden w-full h-full object-contain pointer-events-none select-none"
+          ></canvas>
+
+          <!-- 최상단 양방향 인터랙티브 레이저·펜·동그라미 드로잉 캔버스 -->
+          <canvas
+            id="laserOverlayCanvas"
+            class="absolute inset-0 w-full h-full z-20 cursor-crosshair touch-none"
+          ></canvas>
+        </div>
+
+        <!-- 3) 하단 플로팅 레이저·펜·동그라미·지우기·전체화면·종료 독(Dock) -->
+        <div class="floating-dock absolute bottom-3.5 left-1/2 -translate-x-1/2 z-30 px-2.5 py-1.5 rounded-2xl flex items-center gap-1 overflow-x-auto">
+          <button type="button" id="toolBtnLaser" onclick="selectPointerTool('laser')" class="tool-btn active-laser" title="마우스를 움직이거나 터치하면 상대방 화면에 빛나는 빨간 레이저 포인터가 실시간으로 표시됩니다">
+            <span class="text-base leading-none">☀️</span>
+            <span>레이저</span>
+          </button>
+          <button type="button" id="toolBtnPen" onclick="selectPointerTool('pen')" class="tool-btn" title="화면 위에 네온 형광펜으로 선이나 화살표를 그립니다">
+            <span class="text-base leading-none">🖊️</span>
+            <span>펜</span>
+          </button>
+          <button type="button" id="toolBtnCircle" onclick="selectPointerTool('circle')" class="tool-btn" title="클릭하거나 드래그한 위치에 강조 동그라미를 쳐서 클릭할 버튼을 알려줍니다">
+            <span class="text-base leading-none">⭕</span>
+            <span>동그라미</span>
+          </button>
+          <button type="button" onclick="clearAllAnnotations(true)" class="tool-btn hover:text-rose-300" title="화면에 그려진 펜 선과 동그라미를 모두 지웁니다">
+            <span class="text-base leading-none">🧹</span>
+            <span>지우기</span>
+          </button>
+          <div class="w-px h-7 bg-slate-700/80 mx-0.5 shrink-0"></div>
+          <button type="button" onclick="toggleStageFullscreen()" class="tool-btn hover:text-cyan-300" title="공유 화면과 레이저 도구를 꽉 찬 전체화면으로 전환합니다">
+            <span class="text-base leading-none" id="dockFullscreenIcon">⛶</span>
+            <span id="dockFullscreenText">전체화면</span>
+          </button>
+          <button type="button" onclick="stopAllSharingAndDisconnect(true)" class="tool-btn text-rose-300 hover:text-rose-200" title="양쪽 화면 공유 및 연결을 즉시 함께 종료합니다">
+            <span class="text-base leading-none">■</span>
+            <span>종료</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- [우측 3칸 (25%)] HOST / VIEWER 연결 패널 & 실시간 간편 메시지 -->
+      <aside class="lg:col-span-3 flex flex-col gap-3.5 h-auto lg:h-[78vh] min-h-[500px]">
+        
+        <!-- 상단 카드: 방 번호(PIN) · QR · 수동 연결 탭 -->
+        <div class="glass-panel rounded-2xl p-4 flex flex-col justify-between shrink-0">
+          <!-- 탭 전환 -->
+          <div class="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-slate-800 mb-3">
+            <button
+              type="button"
+              id="roleTabHost"
+              onclick="switchRoleTab('host')"
+              class="py-1.5 rounded-lg text-xs font-extrabold transition bg-rose-500/25 border border-rose-500/60 text-rose-200 shadow"
+            >
+              내 QR · 초대코드
+            </button>
+            <button
+              type="button"
+              id="roleTabViewer"
+              onclick="switchRoleTab('viewer')"
+              class="py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white"
+            >
+              상대방 PIN 입력
             </button>
           </div>
 
-          <div class="text-[11px] text-slate-400 mt-3 text-center">
-            ⚡ 연결 즉시 P2P 터보 엔진이 자동 가동되어 초고속으로 전송합니다.
-          </div>
-        </section>
-      </div>
-    </div>
+          <!-- [A] 방장(안내자) 패널: 6자리 PIN + QR + 초대 URL 복사 + 화면 공유 버튼 -->
+          <div id="hostControlPanel" class="flex flex-col items-center text-center">
+            <div id="hostPinDisplay" class="text-3xl sm:text-4xl font-black tracking-widest text-cyan-300 font-mono drop-shadow-[0_0_12px_rgba(34,211,238,0.45)]">
+              --- ---
+            </div>
+            <div class="text-[11px] font-bold text-slate-400 mt-0.5 mb-2.5">공유 PIN 번호 (상대방 자동연결 코드)</div>
 
-    <!-- [STEP 2 뷰] 파일 전송 전용 화면 -->
-    <div id="stepTransferView" class="hidden space-y-5 mb-5">
-      <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 border-emerald-500/40 bg-emerald-950/20">
-        <div class="flex items-center gap-2.5 flex-wrap">
-          <span class="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span>
-          <span class="text-sm sm:text-base font-extrabold text-white">
-            실시간 파일 공유 공간
-          </span>
-          <span id="connectedPeersBadge" class="px-2.5 py-0.5 rounded-lg bg-slate-900/90 border border-slate-700 text-xs font-mono text-cyan-300">
-            내 번호 ---- ↔ 상대 ----
-          </span>
-          <span id="speedModeBadge" class="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-xs font-bold text-cyan-300">
-            ⚡ 고속 파이프라인 모드
-          </span>
+            <!-- QR 코드 박스 -->
+            <div class="bg-white p-2.5 rounded-xl shadow-xl mb-2 inline-flex items-center justify-center">
+              <div id="qrcodeContainer" class="w-[116px] h-[116px] flex items-center justify-center"></div>
+            </div>
+            <div class="text-[10.5px] text-slate-400 mb-3">PC·아이폰·안드로이드 어디서든 스캔 즉시 연결됩니다</div>
+
+            <div class="w-full grid grid-cols-2 gap-1.5 mb-2">
+              <button type="button" onclick="copyInviteUrl()" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs font-extrabold text-cyan-300 transition">
+                🔗 초대 URL 복사
+              </button>
+              <button type="button" onclick="copyPinOnly()" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+                🔢 PIN 번호 복사
+              </button>
+            </div>
+
+            <div class="w-full grid grid-cols-2 gap-1.5">
+              <button type="button" onclick="startLocalScreenShare()" class="btn-primary py-2 rounded-xl text-xs font-extrabold">
+                🖥️ 내 화면 공유
+              </button>
+              <button type="button" onclick="startLocalCameraShare()" class="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-xs font-bold text-purple-300 transition">
+                📷 카메라 공유
+              </button>
+            </div>
+          </div>
+
+          <!-- [B] 수동 PIN 입력 접속 패널 -->
+          <div id="viewerControlPanel" class="hidden flex-col items-center text-center py-2">
+            <div class="text-xs font-extrabold text-cyan-300 mb-1">상대방의 6자리 PIN 번호 입력</div>
+            <p class="text-[11px] text-slate-400 mb-3">
+              초대 URL이나 QR로 접속하셨다면 번호 입력 없이 자동으로 연결됩니다.
+            </p>
+            <input
+              type="text"
+              id="viewerPinInput"
+              inputmode="numeric"
+              maxlength="7"
+              placeholder="예: 849210"
+              onkeydown="if(event.key==='Enter') connectToRemoteByPin(null, true);"
+              class="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-3 py-2.5 text-center text-xl font-black tracking-widest text-cyan-300 font-mono focus:outline-none mb-2.5"
+            />
+            <button type="button" onclick="connectToRemoteByPin(null, true)" class="btn-primary w-full py-2.5 rounded-xl text-xs sm:text-sm font-extrabold shadow-lg mb-2">
+              🚀 상대방과 즉시 연결하기
+            </button>
+            <button type="button" onclick="document.getElementById('boardImageInput').click()" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-300 transition">
+              🖼️ 캡처 사진 불러와 칠판처럼 공유하기
+            </button>
+          </div>
+
+          <!-- P2P 연결 상태 배지 -->
+          <div class="mt-3 pt-2.5 border-t border-slate-800/90 flex flex-col items-center">
+            <div id="p2pStatusPill" class="w-full py-1.5 px-3 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center gap-2">
+              <span id="p2pStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span id="p2pStatusText" class="text-xs font-extrabold text-slate-300 tracking-wide">P2P STANDBY (대기 중)</span>
+            </div>
+            <div id="streamModeHint" class="text-[10.5px] text-slate-500 mt-1">듀얼 엔진 (WebRTC + 라이브 프레임 백업)</div>
+          </div>
         </div>
+
+        <!-- 하단 카드: 간편 메시지 -->
+        <div class="glass-panel rounded-2xl p-3.5 flex-1 min-h-[200px] flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 shrink-0">
+            <span class="text-xs font-extrabold text-white">💬 간편 메시지</span>
+            <button type="button" onclick="clearQuickMessages()" class="text-[11px] text-slate-400 hover:text-rose-300 font-bold">지우기</button>
+          </div>
+
+          <div class="flex flex-wrap gap-1 mb-2 shrink-0">
+            <button type="button" onclick="sendQuickMessage('여기를 보세요!')" class="px-2 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-cyan-300 transition">
+              👆 여기를 보세요!
+            </button>
+            <button type="button" onclick="sendQuickMessage('동그라미 친 버튼을 클릭해주세요')" class="px-2 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-amber-300 transition">
+              ⭕ 이 버튼 클릭!
+            </button>
+            <button type="button" onclick="sendQuickMessage('잠시만 기다려주세요')" class="px-2 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-300 transition">
+              ✋ 잠시 대기!
+            </button>
+          </div>
+
+          <div id="chatMessagesBox" class="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs mb-2 max-h-[150px]">
+            <div class="px-2.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-400 text-[11px]">
+              연결 후 레이저로 위치를 가리키며 짧은 안내 메시지를 주고받을 수 있습니다.
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <input
+              type="text"
+              id="chatInputBox"
+              placeholder="메시지 전송..."
+              onkeydown="if(event.key==='Enter') sendInputChatMessage();"
+              class="flex-1 bg-slate-950 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none"
+            />
+            <button type="button" onclick="sendInputChatMessage()" class="px-3 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-extrabold shrink-0 transition">
+              전송
+            </button>
+          </div>
+        </div>
+
+      </aside>
+
+    </main>
+  </div>
+
+  <!-- ==================== QR·URL 초대 접속자 & 화면 공유 요청 스마트 모달 ==================== -->
+  <div id="inviteeShareModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="glass-panel rounded-3xl max-w-md w-full p-6 sm:p-7 border border-cyan-400/50 shadow-[0_0_50px_rgba(34,211,238,0.25)] text-center relative">
+      <!-- 상단 연결 상태 뱃지 -->
+      <div id="inviteeModalStatusBadge" class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-xs font-extrabold text-cyan-300 mb-4">
+        <span id="inviteeModalStatusDot" class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span id="inviteeModalStatusText">원격 안내방 연결 중...</span>
+      </div>
+
+      <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-pink-500/20 border border-cyan-400/40 flex items-center justify-center text-3xl shadow-inner">
+        🖥️
+      </div>
+
+      <h3 id="inviteeModalTitle" class="text-xl sm:text-2xl font-black text-white mb-2">
+        어떻게 연결할까요?
+      </h3>
+      <p id="inviteeModalDesc" class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-5">
+        내 화면을 상대방에게 보여주거나, 반대로 상대방(PC)의 화면을 내 기기에서 보며 레이저로 안내할 수 있습니다.
+      </p>
+
+      <!-- [데스크톱/안드로이드용 1순위 버튼]: 내 화면 공유하기 -->
+      <button
+        id="modalBtnShareDesktop"
+        type="button"
+        onclick="confirmInviteeScreenShare()"
+        class="btn-primary w-full py-4 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2 shadow-xl mb-2.5"
+      >
+        <span>🖥️</span>
+        <span>내 화면 공유하기 (전체화면·창·탭 선택)</span>
+      </button>
+
+      <!-- [아이폰 및 화면 수신자용 핵심 버튼]: 상대방(PC) 화면 보기 -->
+      <button
+        id="modalBtnViewRemote"
+        type="button"
+        onclick="confirmViewRemoteScreen()"
+        class="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-lg transition mb-2.5"
+      >
+        <span>👀</span>
+        <span id="modalBtnViewRemoteText">상대방(PC) 화면 보기 &amp; 레이저 제어하기</span>
+      </button>
+
+      <!-- 보조 버튼: 카메라 중계 / 사진 칠판 공유 -->
+      <div class="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onclick="disconnectAndReset()"
-          class="px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-bold text-rose-200 transition"
+          onclick="confirmInviteeCameraShare()"
+          class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-xs font-extrabold text-purple-300 transition"
         >
-          연결 끊기 (다른 기기 연결)
+          📷 내 카메라 비춰주기
+        </button>
+        <button
+          type="button"
+          onclick="closeInviteeModalAndUploadPhoto()"
+          class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition"
+        >
+          🖼️ 내 사진·캡처 공유
         </button>
       </div>
-
-      <!-- 메인 파일 선택 / 드롭 영역 -->
-      <section class="glass-panel rounded-2xl p-5 sm:p-6">
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-base sm:text-lg font-extrabold text-white">📁 사진·파일 바로 보내기 (양방향)</span>
-          <span class="text-xs text-cyan-300 font-semibold">다중 선택 · 초고속 스트리밍</span>
-        </div>
-
-        <div id="dropZone" class="drop-zone" onclick="triggerFileInput()">
-          <div class="text-4xl sm:text-5xl mb-3">🚀</div>
-          <p id="dropText" class="text-base sm:text-lg font-extrabold text-cyan-200 m-0">
-            여기를 터치하여 사진이나 파일을 선택하세요!
-          </p>
-          <p class="text-xs sm:text-sm text-slate-400 mt-1.5">
-            내가 보내든 상대방이 보내든 아래 목록에 즉시 나타납니다 (PC 드래그 앤 드롭 지원)
-          </p>
-          <input type="file" id="fileInput" multiple style="display:none" onchange="handleFileSelect(event)" />
-        </div>
-
-        <!-- 전송/수신 실시간 진행률 바 -->
-        <div id="progressWrap" class="hidden mt-5 bg-slate-900/90 border border-slate-800 rounded-xl p-4">
-          <div class="flex items-center justify-between text-xs font-bold mb-2">
-            <span id="progressFileName" class="text-slate-200 truncate max-w-[65%]">전송 준비 중...</span>
-            <span id="progressText" class="text-emerald-400 font-mono">0%</span>
-          </div>
-          <div class="progress-bar">
-            <div id="progressFill" class="progress-fill"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 주고받은 파일 내역 -->
-      <section class="glass-panel rounded-2xl p-5 sm:p-6">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm sm:text-base font-extrabold text-emerald-300">📥 주고받은 파일 목록</h3>
-          <span id="fileCountBadge" class="text-xs text-slate-400 font-mono">0개 파일</span>
-        </div>
-        <div id="emptyTransferHint" class="text-center py-6 text-xs sm:text-sm text-slate-500">
-          아직 주고받은 파일이 없습니다. 위 박스를 눌러 사진이나 파일을 보내보세요!
-        </div>
-        <div id="downloadList" class="space-y-2.5"></div>
-      </section>
     </div>
-
-    <!-- 하단 실시간 디버깅 패널 -->
-    <section class="glass-panel rounded-2xl p-4 bg-slate-950/85">
-      <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/80">
-        <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-          <span>🛠️</span>
-          <span>실시간 연결 상태 로그 (v6.0 · WebRTC 직통 터보 + 12배치 파이프라인)</span>
-        </span>
-        <div class="flex items-center gap-1.5">
-          <button
-            onclick="forceFreshReload()"
-            class="px-2.5 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-[11px] font-semibold text-cyan-300 transition"
-          >
-            새 번호 받기
-          </button>
-          <button
-            onclick="clearLog()"
-            class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-300 transition"
-          >
-            로그 지우기
-          </button>
-        </div>
-      </div>
-      <div id="debugLog" class="debug-log text-xs"></div>
-    </section>
   </div>
+
+  <!-- 송출자용 오프스크린 비디오 및 프레임 압축 캔버스 (백그라운드 탭 전환 시에도 프레임 전송 유지) -->
+  <video id="senderHiddenVideo" autoplay playsinline muted class="hidden"></video>
+  <canvas id="senderCaptureCanvas" class="hidden"></canvas>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <script>
     /**
-     * You-틸리티 v6.0 TURBO 엔진
-     * 1. 연결: 3중 WSS 브로커(443 포함)로 방화벽 없이 0.2초 만에 100% 연결
-     * 2. 초고속 직통 터보: 연결 즉시 백그라운드에서 WebRTC DataChannel(128KB Raw Binary) 자동 개통 -> 3MB 약 0.4초
-     * 3. 고속 배치 파이프라인: 방화벽으로 WebRTC가 막힌 경우에도 48KB x 12개 연속 파이프라인 전송 -> 기존 대비 10배 이상 가속
+     * [You-틸리티 10. 실시간 화면 공유 및 레이저 포인터 - 전 기기(PC/아이폰/안드로이드) 완벽 호환 엔진]
+     *
+     * 핵심 아키텍처:
+     * 1. 듀얼 스트리밍 (WebRTC MediaStream + DataChannel Live Frame Streamer):
+     *    - PC에서 화면을 공유하면 WebRTC 미디어 스트림(peer.call)과 동시에 데이터채널(dataConn)로도
+     *      최적화된 실시간 화면 프레임을 즉시 전송합니다.
+     *    - 아이폰(iOS Safari)에서 코덱 충돌(VP9/AV1), 자동재생 제한, 또는 LTE 방화벽 때문에 WebRTC 비디오가
+     *      안 뜨더라도, 데이터채널 프레임 엔진이 0.1초 만에 화면을 그려주므로 100% 어떤 상황에서도 화면이 보입니다.
+     * 2. 모든 연결 시나리오 대응:
+     *    - PC가 먼저 화면을 공유한 상태에서 아이폰이 QR/URL로 접속하면 모달 없이 즉시 PC 화면이 뜹니다.
+     *    - 아이폰이 먼저 접속해 [상대방(PC) 화면 보기]를 누르면, PC 화면에 자동으로 [내 화면 공유하기] 팝업이 뜹니다.
+     * 3. 양방향 연동 종료:
+     *    - 어느 한쪽에서 '■ 끝내기' 또는 브라우저 '공유 중지'를 누르면 양쪽 모두 즉시 초기 상태로 종료됩니다.
      */
-    const TOPIC_PREFIX = "youtility/v6/node/";
-    const GITHUB_FALLBACK_URL = "https://ddp-doryeonnim.github.io/you-tility/snapdrop-share.html";
+    const PEER_PREFIX = "youtility-screen-v2-";
+    let peer = null;
+    let myPinCode = "";
+    let currentRole = "host";
+    let dataConn = null;
+    let remotePeerId = "";
+    let currentMediaCall = null;
+    let localStream = null;
+    let isDemoActive = false;
+    let isTerminatingSession = false;
 
-    // 전송 파라미터
-    const TURBO_CHUNK_SIZE = 128 * 1024; // WebRTC 직통 시 128KB 원문 바이너리 전송
-    const MQTT_CHUNK_SIZE = 48 * 1024;   // 릴레이 시 48KB 분할
-    const MQTT_WINDOW_SIZE = 12;         // 12개(576KB) 연속 전송 후 1회 일괄 확인 (왕복 지연 1/12로 단축)
+    // 하이브리드 스트리밍 상태 제어 변수
+    let isReceivingRemoteStream = false;
+    let isNativeVideoPlaying = false;
+    let remoteConfirmedNativeVideo = false;
+    let fallbackSenderTimer = null;
+    let isEncodingFrame = false;
 
-    const BROKER_URLS = [
-      { name: "EMQX-Cloud", url: "wss://broker.emqx.io:8084/mqtt" },
-      { name: "HiveMQ-Cloud", url: "wss://broker.hivemq.com:8884/mqtt" },
-      { name: "Eclipse-443", url: "wss://mqtt.eclipseprojects.io:443/mqtt" }
-    ];
+    // 포인터 도구 및 드로잉 상태 ('laser' | 'pen' | 'circle')
+    let activeTool = "laser";
+    let isPointerDown = false;
+    let currentStrokePoints = [];
+    let circleDragStart = null;
+    let circleDragCurrent = null;
 
-    const RTC_ICE_CONFIG = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun.cloudflare.com:3478" },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        }
-      ]
-    };
+    // 화면 위에 그려진 도형 목록 (정규화 좌표 0.0 ~ 1.0)
+    let annotations = [];
+    let myLaserPos = null;
+    let remoteLaserPos = null;
+    let videoFitMode = "contain";
 
-    let clients = [];
-    let peerBrokerIdx = -1;
-    let isTunnelReady = false;
+    // 기기 환경 감지 (아이폰/아이패드 등 화면공유 API 미지원 여부 확인)
+    function canShareDesktopScreen() {
+      return !!(navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function");
+    }
 
-    let myPin = "";
-    let connectedPin = "";
-    let currentQrUrl = "";
-    let handshakeTimer = null;
-    let autoConnectDelayTimer = null;
-    let totalFilesHandled = 0;
-
-    // WebRTC 직통 터보 상태
-    let rtcPeer = null;
-    let rtcChannel = null;
-    let isTurboReady = false;
-
-    // 송신 제어 및 ACK 대기 상태
-    let isSending = false;
-    let pendingAckResolver = null;
-    let pendingAckKey = "";
-
-    // 수신 조립 상태
-    let incomingMeta = null;
-    let incomingChunks = [];
-    let receivedBytes = 0;
-    let transferStartTime = 0;
-    let completedTransferIds = new Set();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    let autoTargetPin = urlParams.get("pin");
-
-    function log(msg, type = "info") {
-      const box = document.getElementById("debugLog");
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
       const div = document.createElement("div");
-      if (type === "ok") div.className = "log-ok";
-      if (type === "warn") div.className = "log-warn";
-      if (type === "err") div.className = "log-err";
-      div.textContent = "[" + hh + ":" + mm + ":" + ss + "] " + msg;
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2900);
+    }
+
+    // =========================================================================
+    // 1. PeerJS 세션 초기화 (STUN + 무료 TURN 릴레이 탑재로 모바일 LTE/5G 투과율 극대화)
+    // =========================================================================
+    function generateSixDigitPin() {
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+
+    function initPeerSession() {
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+      }
+
+      myPinCode = generateSixDigitPin();
+      const formattedPin = `${myPinCode.slice(0, 3)} ${myPinCode.slice(3)}`;
+      document.getElementById("hostPinDisplay").textContent = formattedPin;
+      renderInviteQrCode();
+
+      const fullPeerId = PEER_PREFIX + myPinCode;
+      peer = new Peer(fullPeerId, {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:global.stun.twilio.com:3478" },
+            {
+              urls: "turn:openrelay.metered.ca:80",
+              username: "openrelayproject",
+              credential: "openrelayproject"
+            },
+            {
+              urls: "turn:openrelay.metered.ca:443",
+              username: "openrelayproject",
+              credential: "openrelayproject"
+            },
+            {
+              urls: "turn:openrelay.metered.ca:443?transport=tcp",
+              username: "openrelayproject",
+              credential: "openrelayproject"
+            }
+          ]
+        }
+      });
+
+      peer.on("open", () => {
+        updateP2pStatusUI("standby", "P2P READY (연결 대기 중)");
+        checkUrlAutoConnect();
+      });
+
+      peer.on("connection", (conn) => {
+        setupDataConnection(conn);
+      });
+
+      // 상대방으로부터 WebRTC 미디어 스트림(peer.call) 수신 시
+      peer.on("call", (call) => {
+        if (currentMediaCall && currentMediaCall !== call) {
+          try { currentMediaCall.close(); } catch (e) {}
+        }
+        currentMediaCall = call;
+        call.answer();
+
+        call.on("stream", (remoteStream) => {
+          closeInviteeModalOnly();
+          attachRemoteWebRtcStream(remoteStream);
+        });
+
+        call.on("close", () => {
+          if (!isTerminatingSession && !isReceivingRemoteStream) {
+            handleRemoteSessionEnd("상대방의 화면 공유가 종료되었습니다.");
+          }
+        });
+      });
+
+      peer.on("error", (err) => {
+        if (err && err.type === "unavailable-id") {
+          initPeerSession();
+        } else if (err && err.type === "peer-unavailable") {
+          showToast("입력하신 6자리 PIN 번호의 상대방을 찾을 수 없습니다.", "err");
+          updateP2pStatusUI("standby", "PIN 번호 재확인 필요");
+          closeInviteeModalOnly();
+        }
+      });
+    }
+
+    function buildInviteUrl() {
+      const base = window.location.origin + window.location.pathname;
+      return `${base}?room=${myPinCode}`;
+    }
+
+    function renderInviteQrCode() {
+      const box = document.getElementById("qrcodeContainer");
+      box.innerHTML = "";
+      if (typeof QRCode !== "undefined" && myPinCode) {
+        new QRCode(box, {
+          text: buildInviteUrl(),
+          width: 116,
+          height: 116,
+          colorDark: "#0f172a",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }
+
+    function checkUrlAutoConnect() {
+      const params = new URLSearchParams(window.location.search);
+      const roomPin = (params.get("room") || "").replace(/[^0-9]/g, "");
+      if (roomPin && roomPin.length === 6 && roomPin !== myPinCode) {
+        switchRoleTab("viewer");
+        document.getElementById("viewerPinInput").value = roomPin;
+        openInviteeShareModal(roomPin, false, "invitee");
+        setTimeout(() => {
+          connectToRemoteByPin(roomPin, false);
+        }, 180);
+      }
+    }
+
+    /**
+     * 스마트 모달 표시:
+     * - 접속 기기가 아이폰(화면 공유 미지원)인 경우 [👀 상대방(PC) 화면 보기] 버튼을 최상단 메인으로 배치합니다.
+     * - PC/안드로이드인 경우 [🖥️ 내 화면 공유하기]와 [👀 상대방 화면 보기]를 모두 직관적으로 제공합니다.
+     */
+    function openInviteeShareModal(pinCode, isConnected, mode = "invitee") {
+      // 이미 내가 화면을 공유 중이거나 상대방 화면을 수신 중이면 모달을 띄우지 않음
+      if (localStream || isReceivingRemoteStream) {
+        closeInviteeModalOnly();
+        return;
+      }
+
+      const modal = document.getElementById("inviteeShareModal");
+      const badge = document.getElementById("inviteeModalStatusBadge");
+      const dot = document.getElementById("inviteeModalStatusDot");
+      const text = document.getElementById("inviteeModalStatusText");
+      const titleEl = document.getElementById("inviteeModalTitle");
+      const descEl = document.getElementById("inviteeModalDesc");
+      const btnDesktopShare = document.getElementById("modalBtnShareDesktop");
+      const btnViewRemote = document.getElementById("modalBtnViewRemote");
+
+      if (isConnected) {
+        badge.className = "inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-extrabold text-emerald-300 mb-4";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+        text.textContent = "✅ 상대방과 실시간 연결 완료!";
+      } else {
+        badge.className = "inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-xs font-extrabold text-cyan-300 mb-4";
+        dot.className = "w-2 h-2 rounded-full bg-cyan-400 animate-ping";
+        text.textContent = `🔄 안내방(PIN: ${pinCode || "연결"}) 접속 중...`;
+      }
+
+      if (mode === "requested_by_remote") {
+        titleEl.textContent = "상대방이 내 화면 공유를 요청했습니다!";
+        descEl.innerHTML = "아래 <strong class='text-cyan-300'>[내 화면 공유하기]</strong> 버튼을 누르면 상대방 기기(아이폰·PC)에 내 화면이 즉시 표시됩니다.";
+      } else {
+        titleEl.textContent = "어떻게 연결할까요?";
+        descEl.innerHTML = "내 화면을 상대방에게 보여주거나, 상대방(PC) 화면을 내 기기에서 보며 레이저로 지시할 수 있습니다.";
+      }
+
+      // 아이폰 등 getDisplayMedia 미지원 기기에서는 [내 화면 공유하기] 대신 [상대방(PC) 화면 보기]를 최우선 강조
+      if (!canShareDesktopScreen()) {
+        btnDesktopShare.classList.add("hidden");
+        btnViewRemote.className = "btn-primary w-full py-4 px-4 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2 shadow-xl mb-2.5";
+      } else {
+        btnDesktopShare.classList.remove("hidden");
+        btnViewRemote.className = "w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-lg transition mb-2.5";
+      }
+
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeInviteeModalOnly() {
+      const modal = document.getElementById("inviteeShareModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    async function confirmInviteeScreenShare() {
+      closeInviteeModalOnly();
+      await startLocalScreenShare();
+    }
+
+    async function confirmInviteeCameraShare() {
+      closeInviteeModalOnly();
+      await startLocalCameraShare();
+    }
+
+    function closeInviteeModalAndUploadPhoto() {
+      closeInviteeModalOnly();
+      document.getElementById("boardImageInput").click();
+    }
+
+    // [아이폰/뷰어 핵심 동작] "상대방(PC) 화면 보기 & 레이저 제어하기" 클릭 시
+    function confirmViewRemoteScreen() {
+      closeInviteeModalOnly();
+      // iOS Safari의 <video> 재생 잠금을 사용자 터치 시점에 미리 해제!
+      forceUnlockVideoPlayback();
+
+      if (dataConn && dataConn.open) {
+        dataConn.send({ type: "request_remote_stream" });
+        showToast("상대방(PC)에게 화면 송출을 요청했습니다!", "ok");
+      } else {
+        showToast("상대방과 연결되는 즉시 화면이 표시됩니다.", "ok");
+      }
+
+      document.getElementById("emptyStageHeading").textContent = "👀 상대방(PC)의 화면 공유를 기다리고 있습니다...";
+      document.getElementById("emptyStageSubtext").innerHTML =
+        "상대방 PC에서 <strong class='text-cyan-300'>[내 화면 공유하기]</strong>를 누르면 이 화면에 즉시 PC 화면이 나타납니다.";
+      document.getElementById("requestRemoteShareBtn").classList.remove("hidden");
+      document.getElementById("requestRemoteShareBtn").classList.add("flex");
+    }
+
+    function requestRemoteToShareScreen() {
+      forceUnlockVideoPlayback();
+      if (dataConn && dataConn.open) {
+        dataConn.send({ type: "prompt_host_to_share" });
+        showToast("상대방 화면에 [화면 공유 요청] 팝업을 띄웠습니다!", "ok");
+      } else {
+        showToast("먼저 상대방과 연결해 주세요.", "err");
+      }
+    }
+
+    function switchRoleTab(role) {
+      currentRole = role;
+      const hostTab = document.getElementById("roleTabHost");
+      const viewerTab = document.getElementById("roleTabViewer");
+      const hostPanel = document.getElementById("hostControlPanel");
+      const viewerPanel = document.getElementById("viewerControlPanel");
+
+      if (role === "host") {
+        hostTab.className = "py-1.5 rounded-lg text-xs font-extrabold transition bg-rose-500/25 border border-rose-500/60 text-rose-200 shadow";
+        viewerTab.className = "py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+        hostPanel.classList.remove("hidden");
+        hostPanel.classList.add("flex");
+        viewerPanel.classList.add("hidden");
+        viewerPanel.classList.remove("flex");
+      } else {
+        viewerTab.className = "py-1.5 rounded-lg text-xs font-extrabold transition bg-cyan-500/25 border border-cyan-500/60 text-cyan-200 shadow";
+        hostTab.className = "py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+        viewerPanel.classList.remove("hidden");
+        viewerPanel.classList.add("flex");
+        hostPanel.classList.add("hidden");
+        hostPanel.classList.remove("flex");
+      }
+    }
+
+    // =========================================================================
+    // 2. P2P 데이터 채널 연결 & 듀얼 스트리밍(WebRTC + Live Frame) 제어
+    // =========================================================================
+    function connectToRemoteByPin(explicitPin, showModalAfter = false) {
+      const rawPin = explicitPin || document.getElementById("viewerPinInput").value || "";
+      const cleanPin = rawPin.replace(/[^0-9]/g, "");
+      if (cleanPin.length !== 6) {
+        showToast("상대방의 6자리 숫자 PIN 번호를 정확히 입력해 주세요.", "err");
+        return;
+      }
+      if (!peer || !peer.open) {
+        showToast("통신 엔진을 준비 중입니다. 1초 후 다시 눌러주세요.", "err");
+        return;
+      }
+
+      if (showModalAfter) {
+        openInviteeShareModal(cleanPin, false, "invitee");
+      }
+
+      updateP2pStatusUI("connecting", `PIN ${cleanPin} 연결 중...`);
+      const targetPeerId = PEER_PREFIX + cleanPin;
+      remotePeerId = targetPeerId;
+      const conn = peer.connect(targetPeerId, { reliable: true });
+      setupDataConnection(conn);
+    }
+
+    function setupDataConnection(conn) {
+      if (dataConn && dataConn !== conn) {
+        try { dataConn.close(); } catch (e) {}
+      }
+      dataConn = conn;
+      remotePeerId = conn.peer;
+      isTerminatingSession = false;
+      remoteConfirmedNativeVideo = false;
+
+      conn.on("open", () => {
+        updateP2pStatusUI("connected", "P2P CONNECTED ●");
+        document.getElementById("requestRemoteShareBtn").classList.remove("hidden");
+        document.getElementById("requestRemoteShareBtn").classList.add("flex");
+
+        // 초대 모달이 열려 있다면 '연결 완료!' 배지로 갱신
+        const modal = document.getElementById("inviteeShareModal");
+        if (!modal.classList.contains("hidden")) {
+          openInviteeShareModal("", true, "invitee");
+        }
+
+        // [핵심] 만약 내 쪽(예: PC)에서 이미 화면을 공유 중이라면 상대방(예: 아이폰)에게 즉시 스트림 + 프레임 전송!
+        if (localStream) {
+          pushLocalStreamToRemote();
+        } else {
+          // 내가 아직 공유 중이 아니면 상대방에게도 혹시 공유 중인 화면이 있는지 요청
+          conn.send({ type: "request_remote_stream" });
+          document.getElementById("stageStatusTitle").textContent =
+            "상대방과 연결됨! (화면 공유가 시작되면 이곳에 즉시 나타납니다)";
+        }
+
+        if (annotations.length > 0) {
+          conn.send({ type: "sync_annotations", annotations });
+        }
+      });
+
+      conn.on("data", (payload) => {
+        if (!payload || !payload.type) return;
+
+        switch (payload.type) {
+          case "laser":
+            remoteLaserPos = { x: payload.x, y: payload.y, updatedAt: performance.now() };
+            break;
+
+          case "add_annotation":
+            annotations.push(payload.item);
+            break;
+
+          case "clear_annotations":
+            annotations = [];
+            showToast("상대방이 화면의 펜·동그라미 표시를 지웠습니다.");
+            break;
+
+          case "sync_annotations":
+            annotations = payload.annotations || [];
+            break;
+
+          case "chat":
+            appendChatMessage("상대방", payload.text, false);
+            showToast(`💬 상대방: ${payload.text}`);
+            break;
+
+          case "board_image":
+            closeInviteeModalOnly();
+            loadRemoteBoardImage(payload.dataUrl);
+            break;
+
+          // 상대방이 이미 화면을 공유 중이거나 방금 시작했을 때 -> 모달 즉시 닫고 화면 뷰포트 활성화!
+          case "stream_started":
+            closeInviteeModalOnly();
+            prepareStageForIncomingStream(payload.width || 1280, payload.height || 720);
+            break;
+
+          // [듀얼 엔진 핵심] WebRTC 비디오가 아이폰에서 재생되기 전이거나 막혔을 때 실시간 프레임을 캔버스에 즉시 렌더링!
+          case "live_frame":
+            closeInviteeModalOnly();
+            if (!isNativeVideoPlaying) {
+              renderIncomingLiveFrame(payload.dataUrl, payload.w, payload.h);
+            }
+            break;
+
+          // 수신측에서 네이티브 WebRTC 비디오 재생이 성공했음을 알려오면 프레임 백업 전송 중지(대역폭 절약)
+          case "native_video_ok":
+            remoteConfirmedNativeVideo = true;
+            break;
+
+          // 상대방(아이폰 등)이 내 화면을 보겠다고 요청했을 때
+          case "request_remote_stream":
+            if (localStream) {
+              pushLocalStreamToRemote();
+            }
+            break;
+
+          // 상대방이 [상대방 화면 공유 요청하기] 버튼을 눌렀을 때 내 화면에 원클릭 공유 모달 표시
+          case "prompt_host_to_share":
+            if (localStream) {
+              pushLocalStreamToRemote();
+            } else if (canShareDesktopScreen()) {
+              openInviteeShareModal("", true, "requested_by_remote");
+              showToast("상대방이 내 화면 공유를 요청했습니다! [내 화면 공유하기]를 눌러주세요.", "ok");
+            }
+            break;
+
+          // 양방향 연동 종료
+          case "session_end":
+            handleRemoteSessionEnd(payload.reason || "상대방이 화면 공유 및 연결을 종료했습니다.");
+            break;
+        }
+      });
+
+      conn.on("close", () => {
+        if (!isTerminatingSession) {
+          handleRemoteSessionEnd("상대방과의 연결이 종료되어 초기 화면으로 돌아갑니다.");
+        }
+      });
+    }
+
+    /**
+     * 내 로컬 화면 스트림(localStream)을 상대방에게 WebRTC MediaCall + DataChannel 실시간 프레임 백업으로 동시 송출
+     */
+    function pushLocalStreamToRemote() {
+      if (!localStream) return;
+      remoteConfirmedNativeVideo = false;
+
+      const videoTrack = localStream.getVideoTracks()[0];
+      const settings = videoTrack && videoTrack.getSettings ? videoTrack.getSettings() : {};
+      const w = settings.width || 1280;
+      const h = settings.height || 720;
+
+      if (dataConn && dataConn.open) {
+        dataConn.send({ type: "stream_started", width: w, height: h });
+      }
+
+      const targetPeer = (dataConn && dataConn.peer) ? dataConn.peer : remotePeerId;
+      if (targetPeer && peer) {
+        try {
+          if (currentMediaCall) {
+            try { currentMediaCall.close(); } catch (e) {}
+          }
+          currentMediaCall = peer.call(targetPeer, localStream);
+        } catch (e) {}
+      }
+
+      // 아이폰/방화벽 환경でも 100% 화면이 즉시 뜨도록 하이브리드 프레임 전송기 가동
+      startFallbackFrameSender();
+    }
+
+    /**
+     * [하이브리드 프레임 송출기]
+     * - 백그라운드 탭에서도 멈추지 않도록 setInterval과 오프스크린 비디오를 사용합니다.
+     * - 수신측(아이폰/PC)에서 WebRTC 네이티브 비디오가 정상 재생되면(remoteConfirmedNativeVideo = true)
+     *   자동으로 대기 모드로 전환하여 네트워크 부하를 줄이고, 네이티브 비디오가 막힌 환경에서는
+     *   초당 10~12프레임의 부드러운 실시간 화면을 끝까지 책임지고 송출합니다.
+     */
+    function startFallbackFrameSender() {
+      stopFallbackFrameSender();
+
+      const hiddenVid = document.getElementById("senderHiddenVideo");
+      const capCanvas = document.getElementById("senderCaptureCanvas");
+      const capCtx = capCanvas.getContext("2d");
+
+      if (hiddenVid.srcObject !== localStream) {
+        hiddenVid.srcObject = localStream;
+        hiddenVid.play().catch(() => {});
+      }
+
+      fallbackSenderTimer = setInterval(() => {
+        if (!localStream || !dataConn || !dataConn.open) return;
+        // 상대방이 네이티브 WebRTC 비디오 재생 성공 신호를 보냈다면 백업 프레임 전송 생략
+        if (remoteConfirmedNativeVideo) return;
+        if (isEncodingFrame) return;
+
+        // 데이터 채널 버퍼가 밀려 있으면 레이저 포인터 반응성을 위해 현재 프레임 건너뜀
+        if (dataConn.dataChannel && dataConn.dataChannel.bufferedAmount > 220 * 1024) {
+          return;
+        }
+
+        const srcVid = hiddenVid.videoWidth > 0 ? hiddenVid : document.getElementById("sharedScreenVideo");
+        if (!srcVid || srcVid.videoWidth === 0) return;
+
+        isEncodingFrame = true;
+        try {
+          // 아이폰/모바일에서도 선명하고 빠르게 전송되도록 최대 긴 변 1280px로 리사이즈
+          const maxDim = 1280;
+          let targetW = srcVid.videoWidth;
+          let targetH = srcVid.videoHeight;
+          if (targetW > maxDim) {
+            targetH = Math.round((targetH * maxDim) / targetW);
+            targetW = maxDim;
+          }
+
+          if (capCanvas.width !== targetW || capCanvas.height !== targetH) {
+            capCanvas.width = targetW;
+            capCanvas.height = targetH;
+          }
+
+          capCtx.drawImage(srcVid, 0, 0, targetW, targetH);
+          const dataUrl = capCanvas.toDataURL("image/jpeg", 0.62);
+
+          dataConn.send({
+            type: "live_frame",
+            dataUrl,
+            w: targetW,
+            h: targetH
+          });
+        } catch (e) {
+        } finally {
+          isEncodingFrame = false;
+        }
+      }, 95);
+    }
+
+    function stopFallbackFrameSender() {
+      if (fallbackSenderTimer) {
+        clearInterval(fallbackSenderTimer);
+        fallbackSenderTimer = null;
+      }
+      isEncodingFrame = false;
+      const hiddenVid = document.getElementById("senderHiddenVideo");
+      if (hiddenVid) hiddenVid.srcObject = null;
+    }
+
+    // 수신측: 스트림 시작 신호를 받았을 때 스테이지 즉시 오픈
+    function prepareStageForIncomingStream(w, h) {
+      isReceivingRemoteStream = true;
+      isDemoActive = false;
+
+      document.getElementById("emptyStageGuide").classList.add("hidden");
+      document.getElementById("mediaViewportWrap").classList.remove("hidden");
+      document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+      document.getElementById("stageStatusTitle").textContent = "상대방 실시간 공유 화면 (레이저·펜으로 위치를 지시하세요)";
+      document.getElementById("stageLiveDot").className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+
+      const resBadge = document.getElementById("stageResolutionBadge");
+      resBadge.textContent = `${w}×${h} LIVE`;
+      resBadge.classList.remove("hidden");
+      resizeLaserOverlayCanvas();
+    }
+
+    // 수신측: WebRTC 네이티브 스트림 연결 처리 (iOS Safari 자동재생 감지 포함)
+    function attachRemoteWebRtcStream(remoteStream) {
+      isReceivingRemoteStream = true;
+      isDemoActive = false;
+
+      const emptyGuide = document.getElementById("emptyStageGuide");
+      const viewportWrap = document.getElementById("mediaViewportWrap");
+      const videoEl = document.getElementById("sharedScreenVideo");
+      const demoCanvas = document.getElementById("demoScreenCanvas");
+
+      emptyGuide.classList.add("hidden");
+      viewportWrap.classList.remove("hidden");
+      document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+
+      videoEl.srcObject = remoteStream;
+      videoEl.muted = true;
+      videoEl.setAttribute("playsinline", "true");
+      videoEl.setAttribute("webkit-playsinline", "true");
+
+      const confirmNativePlaying = () => {
+        if (videoEl.videoWidth > 0 && !videoEl.paused) {
+          isNativeVideoPlaying = true;
+          demoCanvas.classList.add("hidden");
+          videoEl.classList.remove("hidden");
+          document.getElementById("iosForcePlayBanner").classList.add("hidden");
+          document.getElementById("iosForcePlayBanner").classList.remove("flex");
+
+          const resBadge = document.getElementById("stageResolutionBadge");
+          resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight} HD`;
+          resBadge.classList.remove("hidden");
+          document.getElementById("streamModeHint").textContent = "WebRTC HD 다이렉트 스트리밍 중";
+          resizeLaserOverlayCanvas();
+
+          if (dataConn && dataConn.open) {
+            dataConn.send({ type: "native_video_ok" });
+          }
+        }
+      };
+
+      videoEl.onloadedmetadata = () => {
+        videoEl.play().then(confirmNativePlaying).catch(() => {
+          // iOS Safari에서 자동재생이 보류된 경우: 백업 캔버스가 이미 화면을 보여주며, 상단에 터치 활성화 배너도 제공
+          if (!isNativeVideoPlaying) {
+            document.getElementById("iosForcePlayBanner").classList.remove("hidden");
+            document.getElementById("iosForcePlayBanner").classList.add("flex");
+          }
+        });
+      };
+
+      videoEl.onplaying = confirmNativePlaying;
+      videoEl.play().then(confirmNativePlaying).catch(() => {});
+    }
+
+    // 수신측: 데이터채널 실시간 백업 프레임 렌더링 (아이폰에서 PC 화면이 100% 즉시 보이게 하는 핵심 함수)
+    const incomingFrameImg = new Image();
+    let isDrawingIncomingFrame = false;
+
+    function renderIncomingLiveFrame(dataUrl, w, h) {
+      if (isNativeVideoPlaying || isDrawingIncomingFrame) return;
+      isDrawingIncomingFrame = true;
+
+      incomingFrameImg.onload = () => {
+        isDrawingIncomingFrame = false;
+        if (isNativeVideoPlaying) return;
+
+        isReceivingRemoteStream = true;
+        const emptyGuide = document.getElementById("emptyStageGuide");
+        const viewportWrap = document.getElementById("mediaViewportWrap");
+        const videoEl = document.getElementById("sharedScreenVideo");
+        const demoCanvas = document.getElementById("demoScreenCanvas");
+
+        emptyGuide.classList.add("hidden");
+        viewportWrap.classList.remove("hidden");
+        videoEl.classList.add("hidden");
+        demoCanvas.classList.remove("hidden");
+        document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+
+        const targetW = w || incomingFrameImg.naturalWidth || 1280;
+        const targetH = h || incomingFrameImg.naturalHeight || 720;
+
+        if (demoCanvas.width !== targetW || demoCanvas.height !== targetH) {
+          demoCanvas.width = targetW;
+          demoCanvas.height = targetH;
+          resizeLaserOverlayCanvas();
+        }
+
+        const ctx = demoCanvas.getContext("2d");
+        ctx.drawImage(incomingFrameImg, 0, 0, targetW, targetH);
+
+        document.getElementById("stageStatusTitle").textContent = "상대방 실시간 공유 화면 (레이저·펜으로 위치를 지시하세요)";
+        document.getElementById("stageLiveDot").className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+        const resBadge = document.getElementById("stageResolutionBadge");
+        resBadge.textContent = `${targetW}×${targetH} LIVE`;
+        resBadge.classList.remove("hidden");
+        document.getElementById("streamModeHint").textContent = "모바일 호환 라이브 스트리밍 중";
+      };
+
+      incomingFrameImg.onerror = () => {
+        isDrawingIncomingFrame = false;
+      };
+
+      incomingFrameImg.src = dataUrl;
+    }
+
+    // 사용자가 화면(레이저 캔버스 등)을 터치할 때 iOS <video> 재생 잠금을 자동으로 해제
+    function forceUnlockVideoPlayback() {
+      const videoEl = document.getElementById("sharedScreenVideo");
+      if (videoEl && videoEl.srcObject && videoEl.paused) {
+        videoEl.muted = true;
+        videoEl.play().then(() => {
+          if (videoEl.videoWidth > 0) {
+            isNativeVideoPlaying = true;
+            document.getElementById("demoScreenCanvas").classList.add("hidden");
+            videoEl.classList.remove("hidden");
+            document.getElementById("iosForcePlayBanner").classList.add("hidden");
+            document.getElementById("iosForcePlayBanner").classList.remove("flex");
+            if (dataConn && dataConn.open) {
+              dataConn.send({ type: "native_video_ok" });
+            }
+            resizeLaserOverlayCanvas();
+          }
+        }).catch(() => {});
+      }
+    }
+
+    function updateP2pStatusUI(state, text) {
+      const pill = document.getElementById("p2pStatusPill");
+      const dot = document.getElementById("p2pStatusDot");
+      const label = document.getElementById("p2pStatusText");
+      const stageDot = document.getElementById("stageLiveDot");
+
+      label.textContent = text;
+      if (state === "connected") {
+        pill.className = "w-full py-1.5 px-3 rounded-full bg-emerald-950/90 border border-emerald-500/60 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.25)]";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+        label.className = "text-xs font-extrabold text-emerald-300 tracking-wide";
+        stageDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+      } else if (state === "connecting") {
+        pill.className = "w-full py-1.5 px-3 rounded-full bg-cyan-950/90 border border-cyan-500/50 flex items-center justify-center gap-2";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse";
+        label.className = "text-xs font-extrabold text-cyan-300 tracking-wide";
+        stageDot.className = "w-2.5 h-2.5 rounded-full bg-cyan-400";
+      } else {
+        pill.className = "w-full py-1.5 px-3 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center gap-2";
+        dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+        label.className = "text-xs font-extrabold text-slate-300 tracking-wide";
+        stageDot.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+      }
+    }
+
+    // =========================================================================
+    // 3. 내 화면 공유(PC/안드로이드) & 카메라 중계(아이폰/모바일) & 사진 칠판
+    // =========================================================================
+    async function startLocalScreenShare() {
+      if (!canShareDesktopScreen()) {
+        showToast("아이폰(iOS)은 애플 정책상 화면 송출이 제한됩니다. PC 화면을 보시려면 PC에서 [내 화면 공유]를 눌러주세요!", "err");
+        return;
+      }
+
+      try {
+        stopCurrentMediaTracks();
+        // 아이폰 하드웨어 디코더와 100% 호환되도록 1920x1080 / 30fps 상한 설정
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            cursor: "always",
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 },
+            frameRate: { ideal: 30, max: 30 }
+          },
+          audio: false
+        });
+
+        localStream = stream;
+        isDemoActive = false;
+        isReceivingRemoteStream = false;
+        closeInviteeModalOnly();
+        attachLocalStreamToStage(stream, "내 화면 실시간 공유 중 (상대방이 레이저로 위치를 안내할 수 있습니다)");
+
+        // 브라우저 자체 '공유 중지' 바 클릭 시 양쪽 즉시 종료 동기화
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            if (!isTerminatingSession) {
+              stopAllSharingAndDisconnect(true, "화면 공유가 중지되어 양쪽 연결을 함께 종료했습니다.");
+            }
+          };
+        }
+
+        // 이미 연결된 상대방(아이폰/PC)이 있으면 즉시 듀얼 엔진으로 송출!
+        if ((dataConn && dataConn.open) || remotePeerId) {
+          pushLocalStreamToRemote();
+          showToast("내 화면이 상대방 기기(아이폰·PC)에 실시간으로 표시됩니다!", "ok");
+        } else {
+          showToast("화면 공유가 시작되었습니다! 이제 QR코드나 초대 URL로 상대방이 접속하면 즉시 내 화면이 뜹니다.", "ok");
+        }
+      } catch (err) {
+        if (err && err.name === "NotAllowedError") {
+          showToast("화면 공유 선택을 취소하셨습니다.");
+        } else {
+          showToast("화면 공유를 시작할 수 없습니다.", "err");
+        }
+      }
+    }
+
+    async function startLocalCameraShare() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast("카메라에 접근할 수 없는 환경입니다.", "err");
+        return;
+      }
+
+      try {
+        stopCurrentMediaTracks();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
+          audio: false
+        });
+
+        localStream = stream;
+        isDemoActive = false;
+        isReceivingRemoteStream = false;
+        closeInviteeModalOnly();
+        attachLocalStreamToStage(stream, "실시간 카메라 중계 중 (모바일/아이폰 호환)");
+
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.onended = () => {
+            if (!isTerminatingSession) {
+              stopAllSharingAndDisconnect(true, "카메라 공유가 중지되어 양쪽 연결을 함께 종료했습니다.");
+            }
+          };
+        }
+
+        if ((dataConn && dataConn.open) || remotePeerId) {
+          pushLocalStreamToRemote();
+        }
+        showToast("카메라 중계가 시작되었습니다! 화면 위에서 레이저와 펜을 사용할 수 있습니다.", "ok");
+      } catch (err) {
+        showToast("카메라 권한을 허용해 주세요.", "err");
+      }
+    }
+
+    function attachLocalStreamToStage(stream, titleText) {
+      const emptyGuide = document.getElementById("emptyStageGuide");
+      const viewportWrap = document.getElementById("mediaViewportWrap");
+      const videoEl = document.getElementById("sharedScreenVideo");
+      const demoCanvas = document.getElementById("demoScreenCanvas");
+
+      emptyGuide.classList.add("hidden");
+      viewportWrap.classList.remove("hidden");
+      demoCanvas.classList.add("hidden");
+      videoEl.classList.remove("hidden");
+      document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+
+      videoEl.srcObject = stream;
+      videoEl.muted = true;
+      videoEl.play().catch(() => {});
+
+      document.getElementById("stageStatusTitle").textContent = titleText;
+      document.getElementById("stageLiveDot").className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+
+      videoEl.onloadedmetadata = () => {
+        const resBadge = document.getElementById("stageResolutionBadge");
+        resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight}`;
+        resBadge.classList.remove("hidden");
+        resizeLaserOverlayCanvas();
+      };
+    }
+
+    // 캡처 이미지 칠판 공유 (아이폰에서 찍은 캡처 화면을 PC로 보내 레이저로 설명할 때 매우 유용)
+    function handleBoardImageUpload(files) {
+      if (!files || !files[0]) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // 대용량 스마트폰 사진도 즉시 전송되도록 1280px 이하로 경량화
+          const maxDim = 1280;
+          let w = img.naturalWidth || 1280;
+          let h = img.naturalHeight || 720;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const tmpCanvas = document.createElement("canvas");
+          tmpCanvas.width = w;
+          tmpCanvas.height = h;
+          tmpCanvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const compressedDataUrl = tmpCanvas.toDataURL("image/jpeg", 0.82);
+
+          loadRemoteBoardImage(compressedDataUrl);
+          if (dataConn && dataConn.open) {
+            dataConn.send({ type: "board_image", dataUrl: compressedDataUrl });
+          }
+          showToast("사진을 양쪽 화면에 띄웠습니다! 레이저와 동그라미로 설명해 보세요.", "ok");
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(files[0]);
+    }
+
+    function loadRemoteBoardImage(dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        stopCurrentMediaTracks();
+        isDemoActive = true;
+        isNativeVideoPlaying = false;
+
+        const emptyGuide = document.getElementById("emptyStageGuide");
+        const viewportWrap = document.getElementById("mediaViewportWrap");
+        const videoEl = document.getElementById("sharedScreenVideo");
+        const demoCanvas = document.getElementById("demoScreenCanvas");
+
+        emptyGuide.classList.add("hidden");
+        viewportWrap.classList.remove("hidden");
+        videoEl.classList.add("hidden");
+        demoCanvas.classList.remove("hidden");
+        document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+
+        demoCanvas.width = img.naturalWidth || 1280;
+        demoCanvas.height = img.naturalHeight || 720;
+        const ctx = demoCanvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        document.getElementById("stageStatusTitle").textContent = "공유 이미지 칠판 모드";
+        const resBadge = document.getElementById("stageResolutionBadge");
+        resBadge.textContent = `${demoCanvas.width}×${demoCanvas.height}`;
+        resBadge.classList.remove("hidden");
+        resizeLaserOverlayCanvas();
+      };
+      img.src = dataUrl;
+    }
+
+    // 데모 모드
+    function startSampleDemoMode() {
+      stopCurrentMediaTracks();
+      closeInviteeModalOnly();
+      isDemoActive = true;
+      isNativeVideoPlaying = false;
+      annotations = [];
+
+      const emptyGuide = document.getElementById("emptyStageGuide");
+      const viewportWrap = document.getElementById("mediaViewportWrap");
+      const videoEl = document.getElementById("sharedScreenVideo");
+      const demoCanvas = document.getElementById("demoScreenCanvas");
+
+      emptyGuide.classList.add("hidden");
+      viewportWrap.classList.remove("hidden");
+      videoEl.classList.add("hidden");
+      demoCanvas.classList.remove("hidden");
+      document.getElementById("fitModeToggleBtn").classList.remove("hidden");
+
+      demoCanvas.width = 1280;
+      demoCanvas.height = 720;
+      renderDemoDesktopGraphic(demoCanvas);
+
+      annotations.push({
+        type: "circle",
+        color: "#facc15",
+        cx: 0.545,
+        cy: 0.595,
+        rx: 0.065,
+        ry: 0.085
+      });
+
+      document.getElementById("stageStatusTitle").textContent = "데모 화면 실행 중 (마우스를 움직여 레이저·펜·전체화면을 테스트하세요)";
+      const resBadge = document.getElementById("stageResolutionBadge");
+      resBadge.textContent = "1280×720 DEMO";
+      resBadge.classList.remove("hidden");
+      updateP2pStatusUI("connected", "DEMO CONNECTED ●");
+
+      resizeLaserOverlayCanvas();
+      showToast("🧪 데모 화면이 켜졌습니다! 화면 위를 드래그하거나 '⛶ 전체화면 보기'를 눌러보세요.", "ok");
+    }
+
+    function renderDemoDesktopGraphic(canvas) {
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;
+      const H = canvas.height;
+
+      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+      bgGrad.addColorStop(0, "#0f172a");
+      bgGrad.addColorStop(1, "#1e293b");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "#1e293b";
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(140, 70, 1000, 560, 14);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.roundRect(140, 70, 1000, 46, [14, 14, 0, 0]);
+      ctx.fill();
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.font = "800 16px Pretendard, sans-serif";
+      ctx.fillText("🖥️ You-틸리티 원격 안내 테스트 창 (관리자: DDP 도련님)", 168, 99);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(142, 116, 210, 512);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "700 14px Pretendard, sans-serif";
+      ["📂 대시보드 프로젝트", "📂 보안 설정 파일", "📂 클라우드 백업", "📂 시스템 환경설정", "📂 네트워크 진단"].forEach((item, i) => {
+        ctx.fillText(item, 166, 160 + i * 42);
+      });
+
+      ctx.fillStyle = "#090d16";
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(430, 220, 540, 280, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "900 22px Pretendard, sans-serif";
+      ctx.fillText("환경설정 변경 사항을 적용하시겠습니까?", 470, 278);
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "600 15px Pretendard, sans-serif";
+      ctx.fillText("• 아래 [확인] 버튼 위에 노란색 동그라미 또는 빨간 레이저를 찍어", 470, 325);
+      ctx.fillText("  상대방에게 클릭할 위치를 정확히 알려줄 수 있습니다.", 470, 352);
+
+      ctx.fillStyle = "#334155";
+      ctx.beginPath();
+      ctx.roundRect(530, 400, 120, 48, 10);
+      ctx.fill();
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "800 16px Pretendard, sans-serif";
+      ctx.fillText("취소", 574, 430);
+
+      ctx.fillStyle = "#0284c7";
+      ctx.beginPath();
+      ctx.roundRect(675, 400, 140, 48, 10);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText("확인 (클릭)", 705, 430);
+    }
+
+    // =========================================================================
+    // 4. 전체화면 보기 (Fullscreen API + iOS Safari 폴백 + 비율 전환)
+    // =========================================================================
+    async function toggleStageFullscreen() {
+      const stageEl = document.getElementById("stageFullscreenTarget");
+      const isNativeFs = document.fullscreenElement === stageEl || document.webkitFullscreenElement === stageEl;
+      const isPseudoFs = stageEl.classList.contains("pseudo-fullscreen");
+
+      if (isNativeFs || isPseudoFs) {
+        if (isNativeFs) {
+          if (document.exitFullscreen) await document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+        stageEl.classList.remove("pseudo-fullscreen");
+        updateFullscreenButtonsUI(false);
+        setTimeout(resizeLaserOverlayCanvas, 100);
+        return;
+      }
+
+      try {
+        if (stageEl.requestFullscreen) {
+          await stageEl.requestFullscreen();
+          updateFullscreenButtonsUI(true);
+          return;
+        } else if (stageEl.webkitRequestFullscreen) {
+          stageEl.webkitRequestFullscreen();
+          updateFullscreenButtonsUI(true);
+          return;
+        }
+      } catch (e) {}
+
+      stageEl.classList.add("pseudo-fullscreen");
+      updateFullscreenButtonsUI(true);
+      setTimeout(resizeLaserOverlayCanvas, 100);
+      showToast("꽉 찬 전체화면 모드로 전환되었습니다. 종료하려면 다시 버튼을 누르세요.", "ok");
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+      const stageEl = document.getElementById("stageFullscreenTarget");
+      const active = document.fullscreenElement === stageEl;
+      updateFullscreenButtonsUI(active);
+      setTimeout(resizeLaserOverlayCanvas, 80);
+    });
+
+    function updateFullscreenButtonsUI(isFull) {
+      document.getElementById("fullscreenBtnIcon").textContent = isFull ? "✕" : "⛶";
+      document.getElementById("fullscreenBtnText").textContent = isFull ? "전체화면 종료" : "전체화면 보기";
+      document.getElementById("dockFullscreenIcon").textContent = isFull ? "✕" : "⛶";
+      document.getElementById("dockFullscreenText").textContent = isFull ? "화면복귀" : "전체화면";
+    }
+
+    function toggleVideoFitMode() {
+      const videoEl = document.getElementById("sharedScreenVideo");
+      const demoCanvas = document.getElementById("demoScreenCanvas");
+      const btn = document.getElementById("fitModeToggleBtn");
+
+      if (videoFitMode === "contain") {
+        videoFitMode = "cover";
+        videoEl.classList.remove("object-contain");
+        videoEl.classList.add("object-cover");
+        demoCanvas.classList.remove("object-contain");
+        demoCanvas.classList.add("object-cover");
+        btn.textContent = "🖥️ 화면꽉채움";
+      } else {
+        videoFitMode = "contain";
+        videoEl.classList.remove("object-cover");
+        videoEl.classList.add("object-contain");
+        demoCanvas.classList.remove("object-cover");
+        demoCanvas.classList.add("object-contain");
+        btn.textContent = "📐 비율맞춤";
+      }
+      resizeLaserOverlayCanvas();
+    }
+
+    // =========================================================================
+    // 5. 양방향 레이저 포인터 · 형광펜 · 동그라미 렌더링 및 1:1 정밀 좌표 변환
+    // =========================================================================
+    function selectPointerTool(tool) {
+      activeTool = tool;
+      const bLaser = document.getElementById("toolBtnLaser");
+      const bPen = document.getElementById("toolBtnPen");
+      const bCircle = document.getElementById("toolBtnCircle");
+
+      bLaser.className = "tool-btn" + (tool === "laser" ? " active-laser" : "");
+      bPen.className = "tool-btn" + (tool === "pen" ? " active-cyan" : "");
+      bCircle.className = "tool-btn" + (tool === "circle" ? " active-amber" : "");
+    }
+
+    function clearAllAnnotations(broadcast = true) {
+      annotations = [];
+      if (broadcast && dataConn && dataConn.open) {
+        dataConn.send({ type: "clear_annotations" });
+      }
+      showToast("화면 위의 펜·동그라미 표시를 모두 지웠습니다.");
+    }
+
+    function resizeLaserOverlayCanvas() {
+      const overlay = document.getElementById("laserOverlayCanvas");
+      const wrap = document.getElementById("mediaViewportWrap");
+      if (!overlay || wrap.classList.contains("hidden")) return;
+
+      const rect = wrap.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      overlay.width = Math.max(1, Math.round(rect.width * dpr));
+      overlay.height = Math.max(1, Math.round(rect.height * dpr));
+    }
+
+    function getRenderedMediaBox() {
+      const overlay = document.getElementById("laserOverlayCanvas");
+      const rect = overlay.getBoundingClientRect();
+      const W = rect.width || 1;
+      const H = rect.height || 1;
+
+      const videoEl = document.getElementById("sharedScreenVideo");
+      const demoCanvas = document.getElementById("demoScreenCanvas");
+
+      let mediaW = 16;
+      let mediaH = 9;
+      if (!videoEl.classList.contains("hidden") && videoEl.videoWidth > 0) {
+        mediaW = videoEl.videoWidth;
+        mediaH = videoEl.videoHeight;
+      } else if (!demoCanvas.classList.contains("hidden") && demoCanvas.width > 0) {
+        mediaW = demoCanvas.width;
+        mediaH = demoCanvas.height;
+      }
+
+      if (videoFitMode === "cover") {
+        return { x: 0, y: 0, w: W, h: H };
+      }
+
+      const containerRatio = W / H;
+      const mediaRatio = mediaW / mediaH;
+      let drawW = W;
+      let drawH = H;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (containerRatio > mediaRatio) {
+        drawH = H;
+        drawW = H * mediaRatio;
+        offsetX = (W - drawW) / 2;
+      } else {
+        drawW = W;
+        drawH = W / mediaRatio;
+        offsetY = (H - drawH) / 2;
+      }
+
+      return { x: offsetX, y: offsetY, w: drawW, h: drawH };
+    }
+
+    function clientToNormalizedCoords(clientX, clientY) {
+      const overlay = document.getElementById("laserOverlayCanvas");
+      const rect = overlay.getBoundingClientRect();
+      const box = getRenderedMediaBox();
+      const relX = (clientX - rect.left - box.x) / Math.max(1, box.w);
+      const relY = (clientY - rect.top - box.y) / Math.max(1, box.h);
+      return {
+        x: Math.max(0, Math.min(1, relX)),
+        y: Math.max(0, Math.min(1, relY))
+      };
+    }
+
+    const laserCanvas = document.getElementById("laserOverlayCanvas");
+
+    laserCanvas.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      // 아이폰 사용자가 화면을 터치할 때 보류된 WebRTC 비디오가 있다면 즉시 재생 잠금 해제
+      forceUnlockVideoPlayback();
+
+      const pt = clientToNormalizedCoords(e.clientX, e.clientY);
+      isPointerDown = true;
+      try { laserCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+
+      myLaserPos = { x: pt.x, y: pt.y, updatedAt: performance.now() };
+      sendLaserCoord(pt.x, pt.y);
+
+      if (activeTool === "pen") {
+        currentStrokePoints = [pt];
+      } else if (activeTool === "circle") {
+        circleDragStart = pt;
+        circleDragCurrent = pt;
+      }
+    });
+
+    laserCanvas.addEventListener("pointermove", (e) => {
+      e.preventDefault();
+      const pt = clientToNormalizedCoords(e.clientX, e.clientY);
+      myLaserPos = { x: pt.x, y: pt.y, updatedAt: performance.now() };
+      sendLaserCoord(pt.x, pt.y);
+
+      if (!isPointerDown) return;
+
+      if (activeTool === "pen") {
+        currentStrokePoints.push(pt);
+      } else if (activeTool === "circle") {
+        circleDragCurrent = pt;
+      }
+    });
+
+    function finishLaserPointerUp() {
+      if (!isPointerDown) return;
+      isPointerDown = false;
+
+      if (activeTool === "pen" && currentStrokePoints.length > 1) {
+        const item = {
+          type: "pen",
+          color: "#22d3ee",
+          points: currentStrokePoints.slice()
+        };
+        annotations.push(item);
+        if (dataConn && dataConn.open) {
+          dataConn.send({ type: "add_annotation", item });
+        }
+        currentStrokePoints = [];
+      } else if (activeTool === "circle" && circleDragStart) {
+        const endPt = circleDragCurrent || circleDragStart;
+        const dx = Math.abs(endPt.x - circleDragStart.x);
+        const dy = Math.abs(endPt.y - circleDragStart.y);
+        const item = {
+          type: "circle",
+          color: "#facc15",
+          cx: dx < 0.015 && dy < 0.015 ? circleDragStart.x : (circleDragStart.x + endPt.x) / 2,
+          cy: dx < 0.015 && dy < 0.015 ? circleDragStart.y : (circleDragStart.y + endPt.y) / 2,
+          rx: dx < 0.015 ? 0.048 : Math.max(0.02, dx / 2),
+          ry: dy < 0.015 ? 0.068 : Math.max(0.02, dy / 2)
+        };
+        annotations.push(item);
+        if (dataConn && dataConn.open) {
+          dataConn.send({ type: "add_annotation", item });
+        }
+        circleDragStart = null;
+        circleDragCurrent = null;
+      }
+    }
+
+    laserCanvas.addEventListener("pointerup", finishLaserPointerUp);
+    laserCanvas.addEventListener("pointercancel", finishLaserPointerUp);
+
+    let lastLaserSentTime = 0;
+    function sendLaserCoord(x, y) {
+      if (!dataConn || !dataConn.open) return;
+      const now = performance.now();
+      if (now - lastLaserSentTime < 25) return;
+      lastLaserSentTime = now;
+      dataConn.send({ type: "laser", x, y });
+    }
+
+    function renderOverlayAnimationLoop() {
+      const overlay = document.getElementById("laserOverlayCanvas");
+      const wrap = document.getElementById("mediaViewportWrap");
+      if (overlay && !wrap.classList.contains("hidden")) {
+        const ctx = overlay.getContext("2d");
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const W = overlay.width / dpr;
+        const H = overlay.height / dpr;
+
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+
+        const box = getRenderedMediaBox();
+
+        annotations.forEach((ann) => {
+          drawSingleAnnotation(ctx, box, ann);
+        });
+
+        if (isPointerDown && activeTool === "pen" && currentStrokePoints.length > 1) {
+          drawSingleAnnotation(ctx, box, {
+            type: "pen",
+            color: "#22d3ee",
+            points: currentStrokePoints
+          });
+        }
+
+        if (isPointerDown && activeTool === "circle" && circleDragStart && circleDragCurrent) {
+          const dx = Math.abs(circleDragCurrent.x - circleDragStart.x);
+          const dy = Math.abs(circleDragCurrent.y - circleDragStart.y);
+          drawSingleAnnotation(ctx, box, {
+            type: "circle",
+            color: "#facc15",
+            cx: (circleDragStart.x + circleDragCurrent.x) / 2,
+            cy: (circleDragStart.y + circleDragCurrent.y) / 2,
+            rx: Math.max(0.02, dx / 2),
+            ry: Math.max(0.02, dy / 2)
+          });
+        }
+
+        const now = performance.now();
+        if (myLaserPos && now - myLaserPos.updatedAt < 1800) {
+          drawGlowingLaserDot(ctx, box.x + myLaserPos.x * box.w, box.y + myLaserPos.y * box.h, "#ff1e42");
+        }
+        if (remoteLaserPos && now - remoteLaserPos.updatedAt < 2200) {
+          drawGlowingLaserDot(ctx, box.x + remoteLaserPos.x * box.w, box.y + remoteLaserPos.y * box.h, "#ff1e42");
+        }
+
+        ctx.restore();
+      }
+      requestAnimationFrame(renderOverlayAnimationLoop);
+    }
+
+    function drawSingleAnnotation(ctx, box, ann) {
+      ctx.save();
+      if (ann.type === "pen" && ann.points && ann.points.length > 1) {
+        ctx.strokeStyle = ann.color || "#22d3ee";
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.shadowColor = ann.color || "#22d3ee";
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        ann.points.forEach((p, idx) => {
+          const px = box.x + p.x * box.w;
+          const py = box.y + p.y * box.h;
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+      } else if (ann.type === "circle") {
+        const cx = box.x + ann.cx * box.w;
+        const cy = box.y + ann.cy * box.h;
+        const rx = Math.max(14, ann.rx * box.w);
+        const ry = Math.max(14, ann.ry * box.h);
+
+        ctx.strokeStyle = ann.color || "#facc15";
+        ctx.lineWidth = 4.5;
+        ctx.shadowColor = "rgba(250, 204, 21, 0.7)";
+        ctx.shadowBlur = 14;
+
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, -0.08, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath();
+        ctx.ellipse(cx + 2, cy - 1, rx * 1.07, ry * 1.05, 0.06, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawGlowingLaserDot(ctx, x, y, color) {
+      ctx.save();
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, 28);
+      grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+      grad.addColorStop(0.22, color);
+      grad.addColorStop(0.55, "rgba(244, 63, 94, 0.42)");
+      grad.addColorStop(1, "rgba(244, 63, 94, 0)");
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // =========================================================================
+    // 6. 간편 메시지 · 링크 복사 · 양방향 연동 종료 유틸리티
+    // =========================================================================
+    function sendQuickMessage(msgText) {
+      appendChatMessage("나", msgText, true);
+      if (dataConn && dataConn.open) {
+        dataConn.send({ type: "chat", text: msgText });
+      }
+    }
+
+    function sendInputChatMessage() {
+      const input = document.getElementById("chatInputBox");
+      const text = (input.value || "").trim();
+      if (!text) return;
+      input.value = "";
+      sendQuickMessage(text);
+    }
+
+    function appendChatMessage(sender, text, isMe) {
+      const box = document.getElementById("chatMessagesBox");
+      const div = document.createElement("div");
+      div.className = isMe
+        ? "px-2.5 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-100 text-xs font-bold"
+        : "px-2.5 py-1.5 rounded-lg bg-slate-800/95 border border-amber-500/40 text-amber-200 text-xs font-bold";
+      div.textContent = `${sender}: ${text}`;
       box.appendChild(div);
       box.scrollTop = box.scrollHeight;
     }
 
-    function clearLog() {
-      document.getElementById("debugLog").innerHTML = "";
+    function clearQuickMessages() {
+      document.getElementById("chatMessagesBox").innerHTML = "";
     }
 
-    function getCleanBaseUrl() {
-      if (window.location.protocol === "file:" || window.location.origin === "null" || !window.location.origin) {
-        return GITHUB_FALLBACK_URL;
-      }
-      return window.location.origin + window.location.pathname;
-    }
-
-    function forceFreshReload() {
-      window.location.href = getCleanBaseUrl() + "?v=" + Date.now();
-    }
-
-    function payloadToString(payload) {
-      if (typeof payload === "string") return payload;
-      if (typeof TextDecoder !== "undefined") {
-        try { return new TextDecoder("utf-8").decode(payload); } catch (e) {}
-      }
-      let out = "";
-      const bytes = new Uint8Array(payload);
-      for (let i = 0; i < bytes.length; i++) {
-        out += String.fromCharCode(bytes[i]);
-      }
-      try { return decodeURIComponent(escape(out)); } catch (e) { return out; }
-    }
-
-    function bufferToBase64(buf) {
-      let binary = "";
-      const bytes = new Uint8Array(buf);
-      const len = bytes.byteLength;
-      const step = 0x8000;
-      for (let i = 0; i < len; i += step) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
-      }
-      return btoa(binary);
-    }
-
-    function base64ToUint8Array(base64) {
-      const binary = atob(base64);
-      const len = binary.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes;
-    }
-
-    function readBlobAsArrayBuffer(blobSlice) {
-      if (typeof blobSlice.arrayBuffer === "function") {
-        return blobSlice.arrayBuffer();
-      }
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(blobSlice);
+    function copyInviteUrl() {
+      const url = buildInviteUrl();
+      navigator.clipboard.writeText(url).then(() => {
+        showToast("초대 URL이 복사되었습니다! 상대방에게 보내면 즉시 연결됩니다.", "ok");
       });
     }
 
-    function getInviteUrl(pin) {
-      return getCleanBaseUrl() + "?pin=" + pin + "&t=" + Date.now();
-    }
-
-    function renderQRCode(pin) {
-      currentQrUrl = getInviteUrl(pin);
-      const qrBox = document.getElementById("qrcode");
-      qrBox.innerHTML = "";
-      new QRCode(qrBox, {
-        text: currentQrUrl,
-        width: 132,
-        height: 132,
-        colorDark: "#0f172a",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
+    function copyPinOnly() {
+      navigator.clipboard.writeText(myPinCode).then(() => {
+        showToast(`PIN 번호(${myPinCode})가 복사되었습니다!`, "ok");
       });
     }
 
-    function copyInviteLink() {
-      if (!myPin) return;
-      const url = currentQrUrl || getInviteUrl(myPin);
-      const txt = document.getElementById("copyLinkText");
-
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-          txt.textContent = "QR 링크 복사 완료!";
-          setTimeout(() => { txt.textContent = "초대 링크 복사하기"; }, 2000);
-        }).catch(() => fallbackCopy(url, txt));
-      } else {
-        fallbackCopy(url, txt);
+    function stopCurrentMediaTracks() {
+      stopFallbackFrameSender();
+      if (localStream) {
+        localStream.getTracks().forEach((t) => {
+          t.onended = null;
+          t.stop();
+        });
+        localStream = null;
       }
+      const videoEl = document.getElementById("sharedScreenVideo");
+      if (videoEl) videoEl.srcObject = null;
     }
 
-    function fallbackCopy(text, labelEl) {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand("copy");
-        labelEl.textContent = "QR 링크 복사 완료!";
-        setTimeout(() => { labelEl.textContent = "초대 링크 복사하기"; }, 2000);
-      } catch (e) {}
-      document.body.removeChild(ta);
+    function resetScreenWorkspace(notify = true) {
+      stopCurrentMediaTracks();
+      isDemoActive = false;
+      isReceivingRemoteStream = false;
+      isNativeVideoPlaying = false;
+      remoteConfirmedNativeVideo = false;
+      annotations = [];
+      myLaserPos = null;
+      remoteLaserPos = null;
+
+      const stageEl = document.getElementById("stageFullscreenTarget");
+      if (document.fullscreenElement === stageEl && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      stageEl.classList.remove("pseudo-fullscreen");
+      updateFullscreenButtonsUI(false);
+
+      document.getElementById("iosForcePlayBanner").classList.add("hidden");
+      document.getElementById("iosForcePlayBanner").classList.remove("flex");
+      document.getElementById("emptyStageGuide").classList.remove("hidden");
+      document.getElementById("mediaViewportWrap").classList.add("hidden");
+      document.getElementById("stageResolutionBadge").classList.add("hidden");
+      document.getElementById("fitModeToggleBtn").classList.add("hidden");
+      document.getElementById("stageStatusTitle").textContent = "화면 대기 중 (초대 링크나 QR을 상대방에게 보내세요)";
+      document.getElementById("emptyStageHeading").textContent = "초대 링크·QR로 연결하면 PC·스마트폰 화면이 실시간 공유됩니다";
+      document.getElementById("emptyStageSubtext").innerHTML =
+        "• <strong class='text-cyan-300'>상대방 화면을 보려면:</strong> 우측 <strong class='text-cyan-300'>🔗 초대 URL 복사</strong>나 <strong class='text-cyan-300'>QR코드</strong>를 상대방에게 보내세요.<br />• <strong class='text-emerald-300'>내 PC 화면을 아이폰·상대방에게 보여주려면:</strong> 아래 <strong class='text-emerald-300'>[내 PC 화면 공유 시작]</strong>을 누른 뒤 QR/URL을 보내세요.";
+      document.getElementById("stageLiveDot").className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+      document.getElementById("streamModeHint").textContent = "듀얼 엔진 (WebRTC + 라이브 프레임 백업)";
+
+      selectPointerTool("laser");
+      if (notify) showToast("화면과 펜 표시가 초기 상태로 리셋되었습니다.");
     }
 
-    // 1. 3중 클라우드 터널 초기화
-    function initTunnels() {
-      myPin = String(Math.floor(1000 + Math.random() * 9000));
-      document.getElementById("myCode").textContent = myPin;
-      renderQRCode(myPin);
+    function stopAllSharingAndDisconnect(notifyRemote = true, customReason = "") {
+      if (isTerminatingSession) return;
+      isTerminatingSession = true;
 
-      if (autoTargetPin && /^\d{4}$/.test(autoTargetPin)) {
-        document.getElementById("autoConnectBanner").classList.remove("hidden");
-        document.getElementById("targetCode").value = autoTargetPin;
-      }
+      closeInviteeModalOnly();
+      stopFallbackFrameSender();
 
-      log("다중 보안 터널 개통 중... (내 번호: " + myPin + ")");
-      const myTopic = TOPIC_PREFIX + myPin;
-
-      BROKER_URLS.forEach((broker, idx) => {
-        const clientId = "yt6_" + myPin + "_" + idx + "_" + Math.random().toString(16).slice(2, 8);
-        let client = null;
+      if (notifyRemote && dataConn && dataConn.open) {
         try {
-          client = mqtt.connect(broker.url, {
-            clientId: clientId,
-            clean: true,
-            protocolVersion: 4,
-            connectTimeout: 6000,
-            reconnectPeriod: 2500,
-            keepalive: 25
+          dataConn.send({
+            type: "session_end",
+            reason: customReason || "상대방이 [끝내기]를 눌러 화면 공유 세션이 함께 종료되었습니다."
           });
-        } catch (err) {
-          clients.push(null);
-          return;
+        } catch (e) {}
+      }
+
+      setTimeout(() => {
+        if (currentMediaCall) {
+          try { currentMediaCall.close(); } catch (e) {}
+          currentMediaCall = null;
+        }
+        if (dataConn) {
+          try { dataConn.close(); } catch (e) {}
+          dataConn = null;
+        }
+        remotePeerId = "";
+        document.getElementById("requestRemoteShareBtn").classList.add("hidden");
+        document.getElementById("requestRemoteShareBtn").classList.remove("flex");
+
+        if (window.location.search.includes("room=")) {
+          history.replaceState(null, "", window.location.pathname);
         }
 
-        client.on("connect", () => {
-          client.subscribe(myTopic, { qos: 0 }, (err) => {
-            if (!err) {
-              onTunnelReady(broker.name, idx);
-            }
+        switchRoleTab("host");
+        resetScreenWorkspace(false);
+        initPeerSession();
+        isTerminatingSession = false;
+        showToast(customReason || "화면 공유 및 상대방과의 연결을 모두 종료했습니다.", "ok");
+      }, 90);
+    }
+
+    function handleRemoteSessionEnd(reasonText) {
+      if (isTerminatingSession) return;
+      isTerminatingSession = true;
+
+      closeInviteeModalOnly();
+      stopFallbackFrameSender();
+
+      if (currentMediaCall) {
+        try { currentMediaCall.close(); } catch (e) {}
+        currentMediaCall = null;
+      }
+      if (dataConn) {
+        try { dataConn.close(); } catch (e) {}
+        dataConn = null;
+      }
+      remotePeerId = "";
+      document.getElementById("requestRemoteShareBtn").classList.add("hidden");
+      document.getElementById("requestRemoteShareBtn").classList.remove("flex");
+
+      if (window.location.search.includes("room=")) {
+        history.replaceState(null, "", window.location.pathname);
+      }
+
+      switchRoleTab("host");
+      resetScreenWorkspace(false);
+      initPeerSession();
+      isTerminatingSession = false;
+      showToast(`🔌 ${reasonText}`, "err");
+    }
+
+    window.addEventListener("beforeunload", () => {
+      if (dataConn && dataConn.open) {
+        try {
+          dataConn.send({
+            type: "session_end",
+            reason: "상대방이 브라우저 창을 닫아 연결이 종료되었습니다."
           });
-        });
-
-        client.on("message", (topic, payload) => {
-          try {
-            const rawStr = payloadToString(payload);
-            const data = JSON.parse(rawStr);
-            handleIncomingPacket(data, idx);
-          } catch (e) {}
-        });
-
-        client.on("error", () => {});
-        clients.push(client);
-      });
-    }
-
-    function onTunnelReady(brokerName, idx) {
-      if (!isTunnelReady) {
-        isTunnelReady = true;
-        const btn = document.getElementById("connectBtn");
-        btn.disabled = false;
-        btn.textContent = "연결하기";
-
-        document.getElementById("headerDot").className = "w-2 h-2 rounded-full bg-cyan-400";
-        document.getElementById("headerStatus").textContent = "대기중 (" + myPin + ")";
-        log("⚡ 메인 터널 개통 완료! [" + brokerName + "] (내 번호: " + myPin + ")", "ok");
-
-        if (autoTargetPin && /^\d{4}$/.test(autoTargetPin) && autoTargetPin !== myPin) {
-          const target = autoTargetPin;
-          autoTargetPin = null;
-          log("📷 QR 번호[" + target + "] 자동 인식! 즉시 연결합니다...", "warn");
-          try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
-          clearTimeout(autoConnectDelayTimer);
-          autoConnectDelayTimer = setTimeout(() => { connectPeer(target); }, 250);
-        }
-      } else {
-        log("⚡ 다중 터널[" + brokerName + "] 추가 연결됨", "ok");
-      }
-    }
-
-    function sendPacket(targetPin, payloadObj, broadcastAll = false) {
-      const targetTopic = TOPIC_PREFIX + targetPin;
-      const jsonStr = JSON.stringify(payloadObj);
-
-      if (!broadcastAll && peerBrokerIdx !== -1 && clients[peerBrokerIdx] && clients[peerBrokerIdx].connected) {
-        clients[peerBrokerIdx].publish(targetTopic, jsonStr, { qos: 0 });
-        return;
-      }
-
-      clients.forEach((c) => {
-        if (c && c.connected) {
-          try { c.publish(targetTopic, jsonStr, { qos: 0 }); } catch (e) {}
-        }
-      });
-    }
-
-    function resetConnectButton() {
-      const btn = document.getElementById("connectBtn");
-      btn.disabled = false;
-      btn.textContent = "연결하기";
-    }
-
-    // 2. 상대방 4자리 번호로 연결 요청
-    function connectPeer(forcedPin) {
-      const rawInput = forcedPin || document.getElementById("targetCode").value;
-      const targetPin = String(rawInput).replace(/[^0-9]/g, "").trim();
-
-      if (targetPin.length !== 4) {
-        alert("상대방 4자리 숫자를 정확히 입력해 주세요!");
-        return;
-      }
-      if (targetPin === myPin) {
-        alert("내 번호 말고 상대방 기기의 번호를 입력해 주세요!");
-        return;
-      }
-
-      const btn = document.getElementById("connectBtn");
-      btn.disabled = true;
-      btn.textContent = "연결 중...";
-      log("상대방(" + targetPin + ") 기기 호출 중...");
-
-      let attempts = 0;
-      clearInterval(handshakeTimer);
-      sendPacket(targetPin, { cmd: "HELLO", from: myPin }, true);
-
-      handshakeTimer = setInterval(() => {
-        if (connectedPin) {
-          clearInterval(handshakeTimer);
-          return;
-        }
-        attempts++;
-        if (attempts >= 12) {
-          clearInterval(handshakeTimer);
-          document.getElementById("autoConnectBanner").classList.add("hidden");
-          resetConnectButton();
-          log("연결 응답 없음: 상대 기기(" + targetPin + ") 화면이 켜져 있는지 확인해 주세요.", "err");
-          return;
-        }
-        sendPacket(targetPin, { cmd: "HELLO", from: myPin }, true);
-      }, 650);
-    }
-
-    document.getElementById("targetCode").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !document.getElementById("connectBtn").disabled) {
-        connectPeer();
+        } catch (e) {}
       }
     });
 
-    // =========================================================
-    // [초고속 WebRTC P2P 직통 터보 업그레이드 엔진]
-    // 이미 연결된 MQTT 터널을 시그널링으로 삼아 백그라운드에서 직통 채널을 개통합니다.
-    // =========================================================
-    function initWebRTCTurbo(remotePin, isOfferer) {
-      if (typeof RTCPeerConnection === "undefined") return;
-      closeWebRTCTurbo();
+    window.addEventListener("resize", resizeLaserOverlayCanvas);
 
-      try {
-        rtcPeer = new RTCPeerConnection(RTC_ICE_CONFIG);
-
-        rtcPeer.onicecandidate = (event) => {
-          if (event.candidate && connectedPin === remotePin) {
-            sendPacket(remotePin, {
-              cmd: "RTC_CAND",
-              from: myPin,
-              cand: event.candidate
-            }, false);
-          }
-        };
-
-        if (isOfferer) {
-          const dc = rtcPeer.createDataChannel("youtility_turbo", { ordered: true });
-          setupTurboDataChannel(dc);
-          rtcPeer.createOffer().then((offer) => {
-            return rtcPeer.setLocalDescription(offer);
-          }).then(() => {
-            sendPacket(remotePin, {
-              cmd: "RTC_OFFER",
-              from: myPin,
-              sdp: rtcPeer.localDescription
-            }, true);
-          }).catch(() => {});
-        } else {
-          rtcPeer.ondatachannel = (event) => {
-            setupTurboDataChannel(event.channel);
-          };
-        }
-      } catch (e) {}
-    }
-
-    function setupTurboDataChannel(dc) {
-      rtcChannel = dc;
-      rtcChannel.binaryType = "arraybuffer";
-
-      rtcChannel.onopen = () => {
-        isTurboReady = true;
-        const badge = document.getElementById("speedModeBadge");
-        badge.textContent = "🚀 P2P 직통 터보 가동됨";
-        badge.className = "px-2.5 py-0.5 rounded-lg bg-emerald-500/25 border border-emerald-400/50 text-xs font-extrabold text-emerald-300";
-        log("🚀 초고속 P2P 직통 터보 채널 개통 완료! (광속 전송 모드)", "ok");
-      };
-
-      rtcChannel.onclose = () => {
-        isTurboReady = false;
-      };
-
-      rtcChannel.onmessage = (event) => {
-        handleTurboMessage(event.data);
-      };
-    }
-
-    function closeWebRTCTurbo() {
-      isTurboReady = false;
-      if (rtcChannel) {
-        try { rtcChannel.close(); } catch (e) {}
-        rtcChannel = null;
-      }
-      if (rtcPeer) {
-        try { rtcPeer.close(); } catch (e) {}
-        rtcPeer = null;
-      }
-    }
-
-    // WebRTC 직통 터보 수신 처리 (Base64 변환 없이 순수 ArrayBuffer 고속 조립)
-    function handleTurboMessage(rawData) {
-      if (typeof rawData === "string") {
-        let msg = null;
-        try { msg = JSON.parse(rawData); } catch (e) { return; }
-
-        if (msg.cmd === "TURBO_META") {
-          incomingMeta = msg;
-          incomingChunks = [];
-          receivedBytes = 0;
-          transferStartTime = Date.now();
-          log("📥 [터보] 파일 수신 시작: " + msg.name + " (" + formatBytes(msg.size) + ")", "warn");
-          updateProgress("📥 [터보] 받는 중: " + msg.name, 0, "0%");
-        }
-        else if (msg.cmd === "TURBO_END" && incomingMeta && incomingMeta.id === msg.id) {
-          if (!completedTransferIds.has(msg.id)) {
-            completedTransferIds.add(msg.id);
-            const elapsed = Math.max(0.1, (Date.now() - transferStartTime) / 1000).toFixed(1);
-            log("🎉 [터보] 수신 완료: " + incomingMeta.name + " (" + elapsed + "초 소요)", "ok");
-
-            const blob = new Blob(incomingChunks, { type: incomingMeta.mime });
-            const url = URL.createObjectURL(blob);
-            addReceivedItem(incomingMeta.name, incomingMeta.size, url, incomingMeta.mime, blob);
-          }
-          sendPacket(connectedPin, { cmd: "FILE_ACK", from: myPin, id: msg.id, seq: 999999 }, false);
-          incomingMeta = null;
-          incomingChunks = [];
-        }
-      } else if (rawData instanceof ArrayBuffer && incomingMeta) {
-        incomingChunks.push(new Uint8Array(rawData));
-        receivedBytes += rawData.byteLength;
-        const percent = Math.min(100, Math.round((receivedBytes / Math.max(1, incomingMeta.size)) * 100));
-        updateProgress("📥 [터보] 받는 중: " + incomingMeta.name, percent, percent + "%");
-      }
-    }
-
-    // 3. MQTT 패킷 수신 처리 (핸드셰이크 + WebRTC 시그널링 + 배치 파이프라인 수신)
-    function handleIncomingPacket(data, brokerIdx) {
-      if (!data || !data.cmd || !data.from) return;
-      const fromPin = String(data.from);
-
-      if (brokerIdx !== undefined && clients[brokerIdx] && clients[brokerIdx].connected) {
-        peerBrokerIdx = brokerIdx;
-      }
-
-      if (data.cmd === "HELLO") {
-        clearInterval(handshakeTimer);
-        sendPacket(fromPin, { cmd: "HELLO_ACK", from: myPin }, true);
-        if (connectedPin !== fromPin) {
-          connectedPin = fromPin;
-          log("🎉 [" + fromPin + "]번 기기와 연결 완료! 파일 전송 화면으로 전환합니다.", "ok");
-          switchToTransferView(fromPin);
-          initWebRTCTurbo(fromPin, false);
-        }
-      }
-      else if (data.cmd === "HELLO_ACK") {
-        clearInterval(handshakeTimer);
-        if (connectedPin !== fromPin) {
-          connectedPin = fromPin;
-          sendPacket(fromPin, { cmd: "HELLO_ACK", from: myPin }, true);
-          log("🎉 [" + fromPin + "]번 기기와 연결 완료! 파일 전송 화면으로 전환합니다.", "ok");
-          switchToTransferView(fromPin);
-          // 호출한 기기가 충돌 없이 WebRTC Offer 생성 시작
-          initWebRTCTurbo(fromPin, true);
-        }
-      }
-      else if (data.cmd === "RTC_OFFER" && rtcPeer) {
-        rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp)).then(() => {
-          return rtcPeer.createAnswer();
-        }).then((answer) => {
-          return rtcPeer.setLocalDescription(answer);
-        }).then(() => {
-          sendPacket(fromPin, { cmd: "RTC_ANSWER", from: myPin, sdp: rtcPeer.localDescription }, true);
-        }).catch(() => {});
-      }
-      else if (data.cmd === "RTC_ANSWER" && rtcPeer) {
-        rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp)).catch(() => {});
-      }
-      else if (data.cmd === "RTC_CAND" && rtcPeer && data.cand) {
-        rtcPeer.addIceCandidate(new RTCIceCandidate(data.cand)).catch(() => {});
-      }
-      else if (data.cmd === "BYE") {
-        if (connectedPin === fromPin) {
-          log("상대방(" + fromPin + ")이 연결을 종료했습니다.", "warn");
-          switchToConnectView();
-        }
-      }
-      // [파이프라인 수신 1] 메타데이터
-      else if (data.cmd === "FILE_META") {
-        if (!completedTransferIds.has(data.id) && (!incomingMeta || incomingMeta.id !== data.id)) {
-          incomingMeta = data;
-          incomingChunks = new Array(data.totalChunks);
-          receivedBytes = 0;
-          transferStartTime = Date.now();
-          log("📥 파일 수신 시작: " + data.name + " (" + formatBytes(data.size) + ")", "warn");
-          updateProgress("📥 받는 중: " + data.name, 0, "0%");
-        }
-        sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: -1 }, false);
-      }
-      // [파이프라인 수신 2] 연속 청크 수신 (매 조각 ACK 생략 -> 속도 극대화)
-      else if (data.cmd === "FILE_CHUNK") {
-        if (incomingMeta && incomingMeta.id === data.id && !incomingChunks[data.seq]) {
-          const bytes = base64ToUint8Array(data.chunk);
-          incomingChunks[data.seq] = bytes;
-          receivedBytes += bytes.byteLength;
-
-          const percent = Math.min(100, Math.round((receivedBytes / Math.max(1, incomingMeta.size)) * 100));
-          updateProgress("📥 받는 중: " + incomingMeta.name, percent, percent + "%");
-        }
-      }
-      // [파이프라인 수신 3] 12개 배치 단위 일괄 점검 및 누락 번호 회신
-      else if (data.cmd === "WINDOW_CHECK") {
-        if (incomingMeta && incomingMeta.id === data.id) {
-          const missing = [];
-          for (let i = data.startSeq; i <= data.endSeq; i++) {
-            if (!incomingChunks[i]) missing.push(i);
-          }
-          sendPacket(fromPin, {
-            cmd: "WINDOW_ACK",
-            from: myPin,
-            id: data.id,
-            endSeq: data.endSeq,
-            missing: missing
-          }, false);
-        }
-      }
-      // [파이프라인 수신 4] 전송 완료 및 결합
-      else if (data.cmd === "FILE_END") {
-        sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: 999999 }, false);
-        if (incomingMeta && incomingMeta.id === data.id && !completedTransferIds.has(data.id)) {
-          completedTransferIds.add(data.id);
-          const elapsed = Math.max(0.1, (Date.now() - transferStartTime) / 1000).toFixed(1);
-          log("🎉 수신 완료: " + incomingMeta.name + " (" + elapsed + "초 소요)", "ok");
-
-          const blob = new Blob(incomingChunks, { type: incomingMeta.mime });
-          const url = URL.createObjectURL(blob);
-          addReceivedItem(incomingMeta.name, incomingMeta.size, url, incomingMeta.mime, blob);
-          incomingMeta = null;
-          incomingChunks = [];
-        }
-      }
-      // 송신 측 단일 제어 ACK 수신
-      else if (data.cmd === "FILE_ACK") {
-        const ackKey = data.id + ":" + data.seq;
-        if (pendingAckResolver && pendingAckKey === ackKey) {
-          const resolve = pendingAckResolver;
-          pendingAckResolver = null;
-          pendingAckKey = "";
-          resolve();
-        }
-      }
-      // 송신 측 배치 윈도우 ACK 수신
-      else if (data.cmd === "WINDOW_ACK") {
-        const winKey = data.id + ":win:" + data.endSeq;
-        if (pendingAckResolver && pendingAckKey === winKey) {
-          const resolve = pendingAckResolver;
-          pendingAckResolver = null;
-          pendingAckKey = "";
-          resolve(data.missing || []);
-        }
-      }
-    }
-
-    function sendControlWithAck(targetPin, packetObj, expectedId, expectedSeq) {
-      return new Promise((resolve) => {
-        let retryTimer = null;
-        const targetKey = expectedId + ":" + expectedSeq;
-        pendingAckKey = targetKey;
-
-        pendingAckResolver = () => {
-          clearTimeout(retryTimer);
-          resolve();
-        };
-
-        const attempt = () => {
-          if (!connectedPin) {
-            clearTimeout(retryTimer);
-            resolve();
-            return;
-          }
-          sendPacket(targetPin, packetObj, false);
-          retryTimer = setTimeout(() => {
-            if (pendingAckKey === targetKey) attempt();
-          }, 900);
-        };
-        attempt();
-      });
-    }
-
-    function checkWindowWithAck(targetPin, transferId, startSeq, endSeq) {
-      return new Promise((resolve) => {
-        let retryTimer = null;
-        const targetKey = transferId + ":win:" + endSeq;
-        pendingAckKey = targetKey;
-
-        pendingAckResolver = (missingList) => {
-          clearTimeout(retryTimer);
-          resolve(missingList);
-        };
-
-        const attempt = () => {
-          if (!connectedPin) {
-            clearTimeout(retryTimer);
-            resolve([]);
-            return;
-          }
-          sendPacket(targetPin, {
-            cmd: "WINDOW_CHECK",
-            from: myPin,
-            id: transferId,
-            startSeq: startSeq,
-            endSeq: endSeq
-          }, false);
-          retryTimer = setTimeout(() => {
-            if (pendingAckKey === targetKey) attempt();
-          }, 900);
-        };
-        attempt();
-      });
-    }
-
-    function switchToTransferView(remotePin) {
-      document.getElementById("autoConnectBanner").classList.add("hidden");
-      document.getElementById("stepConnectView").classList.add("hidden");
-      document.getElementById("stepTransferView").classList.remove("hidden");
-
-      document.getElementById("connectedPeersBadge").textContent = "내 번호 " + myPin + " ↔ 상대 " + remotePin;
-      document.getElementById("headerDot").className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]";
-      document.getElementById("headerStatus").textContent = remotePin + "번과 연결됨";
-    }
-
-    function switchToConnectView() {
-      connectedPin = "";
-      isSending = false;
-      pendingAckResolver = null;
-      closeWebRTCTurbo();
-
-      const badge = document.getElementById("speedModeBadge");
-      badge.textContent = "⚡ 고속 파이프라인 모드";
-      badge.className = "px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-xs font-bold text-cyan-300";
-
-      document.getElementById("stepTransferView").classList.add("hidden");
-      document.getElementById("stepConnectView").classList.remove("hidden");
-      document.getElementById("autoConnectBanner").classList.add("hidden");
-
-      document.getElementById("headerDot").className = "w-2 h-2 rounded-full bg-cyan-400";
-      document.getElementById("headerStatus").textContent = "대기중 (" + myPin + ")";
-      resetConnectButton();
-    }
-
-    function disconnectAndReset() {
-      if (connectedPin) {
-        sendPacket(connectedPin, { cmd: "BYE", from: myPin }, true);
-      }
-      switchToConnectView();
-    }
-
-    // 4. 파일 선택 및 초고속 전송 (WebRTC 터보 우선 -> 12배치 파이프라인 자동 폴백)
-    function triggerFileInput() {
-      if (!connectedPin) return;
-      document.getElementById("fileInput").click();
-    }
-
-    const dropZoneEl = document.getElementById("dropZone");
-    dropZoneEl.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      if (connectedPin) dropZoneEl.classList.add("drag-over");
+    window.addEventListener("DOMContentLoaded", () => {
+      resetScreenWorkspace(false);
+      initPeerSession();
+      requestAnimationFrame(renderOverlayAnimationLoop);
     });
-    dropZoneEl.addEventListener("dragleave", () => {
-      dropZoneEl.classList.remove("drag-over");
-    });
-    dropZoneEl.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      dropZoneEl.classList.remove("drag-over");
-      if (!connectedPin || isSending) return;
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        for (let i = 0; i < e.dataTransfer.files.length; i++) {
-          await sendFileObject(e.dataTransfer.files[i]);
-        }
-      }
-    });
-
-    async function handleFileSelect(event) {
-      const files = event.target.files;
-      if (!files || !files.length || !connectedPin || isSending) return;
-      for (let i = 0; i < files.length; i++) {
-        await sendFileObject(files[i]);
-      }
-      event.target.value = "";
-    }
-
-    async function sendFileObject(file) {
-      if (!connectedPin) return;
-      isSending = true;
-      const startTime = Date.now();
-      const target = connectedPin;
-      const transferId = Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-
-      // [경로 A] WebRTC P2P 직통 터보가 열려 있는 경우 (128KB Raw ArrayBuffer 초고속 스트리밍)
-      if (isTurboReady && rtcChannel && rtcChannel.readyState === "open") {
-        log("🚀 [터보] 직통 고속 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
-        updateProgress("🚀 [터보] 보내는 중: " + file.name, 0, "0%");
-
-        rtcChannel.send(JSON.stringify({
-          cmd: "TURBO_META",
-          id: transferId,
-          name: file.name,
-          size: file.size,
-          mime: file.type || "application/octet-stream"
-        }));
-
-        let offset = 0;
-        while (offset < file.size && connectedPin && isTurboReady) {
-          // 버퍼가 1MB 이상 차면 비워질 때까지 짧게 대기 (메모리 보호 + 최고 속도 유지)
-          if (rtcChannel.bufferedAmount > 1024 * 1024) {
-            await new Promise((r) => setTimeout(r, 8));
-            continue;
-          }
-          const slice = file.slice(offset, offset + TURBO_CHUNK_SIZE);
-          const buffer = await readBlobAsArrayBuffer(slice);
-          rtcChannel.send(buffer);
-
-          offset += buffer.byteLength;
-          const percent = Math.min(100, Math.round((offset / Math.max(1, file.size)) * 100));
-          updateProgress("🚀 [터보] 보내는 중: " + file.name, percent, percent + "%");
-        }
-
-        if (connectedPin) {
-          rtcChannel.send(JSON.stringify({ cmd: "TURBO_END", id: transferId }));
-          await sendControlWithAck(target, { cmd: "PING_END", from: myPin }, transferId, 999999);
-          const elapsed = Math.max(0.1, (Date.now() - startTime) / 1000).toFixed(1);
-          log("✅ [터보] 전송 완료: " + file.name + " (" + elapsed + "초 소요)", "ok");
-          addSentItem(file.name, file.size);
-        }
-        isSending = false;
-        return;
-      }
-
-      // [경로 B] 방화벽 환경: 12연속 배치 파이프라인 전송 (매 조각 대기 없이 12개씩 연속 발사)
-      const totalChunks = Math.max(1, Math.ceil(file.size / MQTT_CHUNK_SIZE));
-      log("📤 [고속 파이프라인] 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
-      updateProgress("📤 보내는 중: " + file.name, 0, "0%");
-
-      await sendControlWithAck(target, {
-        cmd: "FILE_META",
-        from: myPin,
-        id: transferId,
-        name: file.name,
-        size: file.size,
-        mime: file.type || "application/octet-stream",
-        totalChunks: totalChunks
-      }, transferId, -1);
-
-      for (let winStart = 0; winStart < totalChunks && connectedPin; winStart += MQTT_WINDOW_SIZE) {
-        const winEnd = Math.min(totalChunks - 1, winStart + MQTT_WINDOW_SIZE - 1);
-        const windowCache = {};
-
-        // 윈도우 내 청크들을 ACK 대기 없이 연속 발송
-        for (let seq = winStart; seq <= winEnd && connectedPin; seq++) {
-          const offset = seq * MQTT_CHUNK_SIZE;
-          const slice = file.slice(offset, offset + MQTT_CHUNK_SIZE);
-          const buffer = await readBlobAsArrayBuffer(slice);
-          const b64Chunk = bufferToBase64(buffer);
-          windowCache[seq] = b64Chunk;
-
-          sendPacket(target, {
-            cmd: "FILE_CHUNK",
-            from: myPin,
-            id: transferId,
-            seq: seq,
-            chunk: b64Chunk
-          }, false);
-
-          const percent = Math.min(100, Math.round(((seq + 1) / totalChunks) * 100));
-          updateProgress("📤 보내는 중: " + file.name, percent, percent + "%");
-          await new Promise((r) => setTimeout(r, 8));
-        }
-
-        // 윈도우(12개) 전송 직후 1회만 누락 여부 확인 및 누락분 즉시 보충
-        while (connectedPin) {
-          const missing = await checkWindowWithAck(target, transferId, winStart, winEnd);
-          if (!missing || missing.length === 0) break;
-          for (let m = 0; m < missing.length; m++) {
-            const mSeq = missing[m];
-            sendPacket(target, {
-              cmd: "FILE_CHUNK",
-              from: myPin,
-              id: transferId,
-              seq: mSeq,
-              chunk: windowCache[mSeq]
-            }, false);
-            await new Promise((r) => setTimeout(r, 10));
-          }
-        }
-      }
-
-      if (connectedPin) {
-        await sendControlWithAck(target, {
-          cmd: "FILE_END",
-          from: myPin,
-          id: transferId
-        }, transferId, 999999);
-
-        const elapsed = Math.max(0.1, (Date.now() - startTime) / 1000).toFixed(1);
-        log("✅ 전송 완료: " + file.name + " (" + elapsed + "초 소요)", "ok");
-        addSentItem(file.name, file.size);
-      }
-      isSending = false;
-    }
-
-    function updateProgress(fileNameLabel, percent, percentText) {
-      const wrap = document.getElementById("progressWrap");
-      const nameEl = document.getElementById("progressFileName");
-      const fill = document.getElementById("progressFill");
-      const text = document.getElementById("progressText");
-
-      wrap.classList.remove("hidden");
-      nameEl.textContent = fileNameLabel;
-      fill.style.width = percent + "%";
-      text.textContent = percentText;
-    }
-
-    function updateFileCount() {
-      totalFilesHandled++;
-      document.getElementById("emptyTransferHint").classList.add("hidden");
-      document.getElementById("fileCountBadge").textContent = totalFilesHandled + "개 파일";
-    }
-
-    function addReceivedItem(name, size, url, mime, blob) {
-      updateFileCount();
-      const list = document.getElementById("downloadList");
-      const isImage = mime && mime.indexOf("image/") === 0;
-      const thumbHtml = isImage
-        ? '<img src="' + url + '" class="w-11 h-11 rounded-lg object-cover border border-emerald-500/40 shrink-0" alt="미리보기" />'
-        : '<div class="w-11 h-11 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">📥</div>';
-
-      const div = document.createElement("div");
-      div.className = "flex items-center justify-between gap-3 bg-emerald-950/35 border border-emerald-500/40 p-3 rounded-xl";
-
-      const shareBtnId = "share_" + Math.random().toString(36).slice(2, 9);
-      const canMobileShare = typeof navigator.canShare === "function";
-
-      div.innerHTML =
-        '<div class="flex items-center gap-3 min-w-0">' +
-          thumbHtml +
-          '<div class="min-w-0">' +
-            '<div class="text-xs sm:text-sm font-bold text-white truncate">' + name + '</div>' +
-            '<div class="text-[11px] text-emerald-300 font-mono">수신 완료 · ' + formatBytes(size) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="flex items-center gap-1.5 shrink-0">' +
-          (canMobileShare
-            ? '<button id="' + shareBtnId + '" type="button" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition">공유/사진첩</button>'
-            : '') +
-          '<a href="' + url + '" download="' + name + '" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md hover:brightness-110 transition">저장하기</a>' +
-        '</div>';
-
-      list.prepend(div);
-
-      if (canMobileShare) {
-        const shareBtn = document.getElementById(shareBtnId);
-        if (shareBtn) {
-          shareBtn.addEventListener("click", async () => {
-            try {
-              const fileObj = new File([blob], name, { type: mime || "application/octet-stream" });
-              if (navigator.canShare({ files: [fileObj] })) {
-                await navigator.share({ files: [fileObj], title: name });
-              }
-            } catch (e) {}
-          });
-        }
-      }
-    }
-
-    function addSentItem(name, size) {
-      updateFileCount();
-      const list = document.getElementById("downloadList");
-      const div = document.createElement("div");
-      div.className = "flex items-center justify-between gap-3 bg-slate-900/80 border border-slate-700/80 p-3 rounded-xl";
-      div.innerHTML =
-        '<div class="flex items-center gap-3 min-w-0">' +
-          '<div class="w-11 h-11 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-lg shrink-0">📤</div>' +
-          '<div class="min-w-0">' +
-            '<div class="text-xs sm:text-sm font-bold text-slate-200 truncate">' + name + '</div>' +
-            '<div class="text-[11px] text-cyan-300 font-mono">전송 완료 · ' + formatBytes(size) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<span class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-cyan-300 font-bold text-xs border border-slate-700">보냄 ✓</span>';
-      list.prepend(div);
-    }
-
-    function formatBytes(bytes) {
-      if (bytes === 0) return "0 B";
-      const k = 1024;
-      const sizes = ["B", "KB", "MB", "GB"];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-    }
-
-    window.onload = initTunnels;
   </script>
 </body>
 </html>
