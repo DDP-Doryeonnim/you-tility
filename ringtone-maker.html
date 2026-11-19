@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>04. 벨소리·알람 메이커 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MP3 인코딩용 경량 LAME 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #070b14;
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 16%;
+      width: 540px;
+      height: 540px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 12%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.76);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+    }
+    .dropzone-wave-box {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.86) 0%, rgba(11, 17, 32, 0.78) 100%);
+      border: 2px dashed rgba(56, 189, 248, 0.52);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .dropzone-wave-box.drag-over {
+      border-color: #f472b6;
+      box-shadow: 0 0 28px rgba(56, 189, 248, 0.25), inset 0 0 24px rgba(244, 114, 182, 0.12);
+    }
+    .table-header-glow {
+      background: linear-gradient(90deg, rgba(14, 116, 144, 0.38) 0%, rgba(30, 41, 59, 0.92) 50%, rgba(14, 116, 144, 0.38) 100%);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
+    }
+    .dark-input {
+      background: rgba(9, 13, 22, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      color: #f1f5f9;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dark-input:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+    }
+    .dark-input-pink {
+      background: rgba(9, 13, 22, 0.92);
+      border: 1px solid rgba(244, 114, 182, 0.45);
+      color: #f1f5f9;
+    }
+    .dark-input-pink:focus {
+      outline: none;
+      border-color: #f472b6;
+      box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.25);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 60%, #f472b6 100%);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #e0f2fe;
+      border: 2px solid #38bdf8;
+      margin-top: -5px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+    }
+    .btn-gradient-action {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      box-shadow: 0 6px 26px rgba(56, 189, 248, 0.35), 0 4px 20px rgba(244, 63, 94, 0.28);
+      transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+    }
+    .btn-gradient-action:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+      box-shadow: 0 8px 32px rgba(56, 189, 248, 0.5), 0 6px 24px rgba(244, 63, 94, 0.4);
+    }
+    .btn-gradient-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+    <!-- 상단 헤더 -->
+    <header class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-5">
+      <div class="flex items-center gap-3.5 w-full sm:w-auto justify-between sm:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <h1 class="text-xl sm:text-2xl md:text-[26px] font-bold tracking-tight text-white text-center">
+        04. 벨소리·알람 메이커
+      </h1>
+
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-900/70 border border-slate-800 px-3 py-1.5 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>0.1초 정밀 무손실 엔진</span>
+      </div>
+    </header>
+
+    <!-- 1. 오디오 파일 업로드 & 파형 편집 섹션 -->
+    <section id="dropZone" class="dropzone-wave-box rounded-2xl p-4 sm:p-5 mb-5 relative">
+      <input id="audioFileInput" type="file" accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac,.m4r" multiple class="hidden" />
+
+      <!-- 상단 타이틀 & 파일 업로드 버튼 -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm sm:text-base font-bold text-white">오디오 파일 업로드 & 편집</h2>
+          <span id="loadedFileBadge" class="hidden px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30"></span>
+        </div>
+        <button id="uploadTriggerBtn" type="button"
+          class="px-3.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-400/40 text-xs sm:text-sm font-semibold text-slate-100 transition flex items-center justify-center gap-1.5">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+          </svg>
+          <span>PC · 스마트폰 음악 파일 다중 선택 또는 드래그 <span class="text-cyan-400">(+ 파일 추가)</span></span>
+        </button>
+      </div>
+
+      <!-- 다중 파일 탭 (여러 음원 업로드 시 전환 가능) -->
+      <div id="fileTabsBar" class="hidden flex-wrap items-center gap-1.5 mb-3"></div>
+
+      <!-- 파형 캔버스 영역 -->
+      <div class="relative w-full h-[126px] sm:h-[140px] rounded-xl bg-slate-950/80 border border-slate-800/90 overflow-hidden select-none mb-3">
+        <canvas id="waveformCanvas" class="w-full h-full block cursor-ew-resize touch-none"></canvas>
+        <!-- 상단 중앙 현재 선택 구간 배지 -->
+        <div id="selectionRangeOverlay" class="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-slate-900/90 border border-cyan-400/40 text-xs font-mono font-bold text-cyan-200 shadow">
+          00:00.0 ~ 00:00.0 (0.0초)
+        </div>
+        <!-- 파일 미업로드 시 안내 오버레이 -->
+        <div id="emptyWaveOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-[1px] cursor-pointer">
+          <p class="text-xs sm:text-sm font-semibold text-slate-200">클릭하거나 음악 파일(MP3, M4A, WAV, FLAC 등)을 이곳에 끌어다 놓으세요</p>
+          <p class="text-[11px] text-slate-400 mt-1">파형 위에서 마우스/터치로 시작·종료 핸들을 0.1초 단위로 자유롭게 조절할 수 있습니다</p>
+        </div>
+      </div>
+
+      <!-- 하단 0.1초 정밀 컨트롤러 & 구간 추가 버튼 -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+          <div class="flex items-center gap-1.5">
+            <label for="startSecInput" class="text-slate-300 font-medium">시작(초):</label>
+            <input id="startSecInput" type="number" step="0.1" min="0" value="0.0" disabled
+              class="dark-input rounded-lg px-2.5 py-1.5 w-24 text-center font-mono font-bold text-cyan-300" />
+          </div>
+          <div class="flex items-center gap-1.5">
+            <label for="endSecInput" class="text-slate-300 font-medium">종료(초):</label>
+            <input id="endSecInput" type="number" step="0.1" min="0" value="0.0" disabled
+              class="dark-input-pink rounded-lg px-2.5 py-1.5 w-24 text-center font-mono font-bold text-pink-300" />
+          </div>
+          <button id="previewSelectionBtn" type="button" disabled
+            class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 border border-slate-600 text-xs sm:text-sm font-semibold text-slate-100 transition flex items-center gap-1.5">
+            <span id="previewSelectionBtnText">선택 구간 미리듣기 ▶</span>
+          </button>
+          <button id="fit30SecBtn" type="button" disabled title="아이폰 벨소리 권장 30초 길이로 자동 설정"
+            class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 border border-slate-700 text-xs text-cyan-300 transition">
+            30초 맞춤
+          </button>
+        </div>
+
+        <button id="addSegmentBtn" type="button" disabled
+          class="px-4 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 disabled:opacity-40 border border-cyan-400/50 text-xs sm:text-sm font-bold text-cyan-200 transition">
+          + 현재 구간 추가
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. 다중 구간 자르기·병합 목록 -->
+    <section class="glass-panel rounded-2xl overflow-hidden mb-5">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900/70 border-b border-slate-800/80 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-cyan-300 text-xs sm:text-sm">다중 구간 자르기·병합 목록</span>
+          <span id="segmentCountBadge" class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold">0개 구간</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 hidden sm:inline">여러 구간을 추가하면 순서대로 자연스럽게 하나로 병합됩니다</span>
+          <button id="clearSegmentsBtn" type="button" class="hidden px-2.5 py-1 rounded-md bg-slate-800 hover:bg-rose-950/70 text-slate-400 hover:text-rose-300 border border-slate-700 transition">
+            목록 비우기
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-[210px] overflow-y-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="sticky top-0 z-10 table-header-glow text-xs sm:text-sm">
+            <tr>
+              <th class="py-2.5 px-4 font-semibold text-cyan-300">구간</th>
+              <th class="py-2.5 px-3 font-semibold text-cyan-300 text-center">시간 범위 (길이)</th>
+              <th class="py-2.5 px-3 font-semibold text-cyan-300 text-center">미리듣기</th>
+              <th class="py-2.5 px-4 font-semibold text-cyan-300 text-center w-32">작업</th>
+            </tr>
+          </thead>
+          <tbody id="segmentTableBody" class="divide-y divide-slate-800/70 text-xs sm:text-sm">
+            <tr>
+              <td colspan="4" class="py-7 px-4 text-center text-slate-400">
+                상단 파형에서 원하는 구간을 지정한 뒤 <span class="text-cyan-400 font-semibold">[+ 현재 구간 추가]</span> 버튼을 누르면 여러 하이라이트 구간을 합칠 수 있습니다.<br/>
+                <span class="text-[11px] text-slate-500">(구간을 추가하지 않고 바로 실행하면 현재 파형에 선택된 단일 구간으로 즉시 제작됩니다)</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. 하단 좌/우 설정 영역 -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-5">
+      <!-- 좌측 패널: 페이드 효과 · 최종 편집본 미리듣기 -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-white mb-3.5 flex items-center gap-1.5">
+            <span class="text-cyan-400">*</span> 페이드 효과 · 최종 편집본 미리듣기
+          </h2>
+
+          <div class="flex flex-wrap items-center gap-3 mb-3 text-xs sm:text-sm">
+            <div class="flex items-center gap-1.5">
+              <label for="fadeInInput" class="text-slate-300">페이드 인:</label>
+              <input id="fadeInInput" type="number" step="0.1" min="0" max="15" value="1.0"
+                class="dark-input rounded-lg px-2.5 py-1.5 w-20 text-center font-mono font-semibold text-cyan-300" />
+              <span class="text-slate-400">초</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <label for="fadeOutInput" class="text-slate-300">페이드 아웃:</label>
+              <input id="fadeOutInput" type="number" step="0.1" min="0" max="15" value="1.5"
+                class="dark-input rounded-lg px-2.5 py-1.5 w-20 text-center font-mono font-semibold text-cyan-300" />
+              <span class="text-slate-400">초</span>
+            </div>
+          </div>
+
+          <label class="inline-flex items-center gap-2 cursor-pointer text-xs sm:text-sm text-slate-200 mb-4 select-none">
+            <input id="crossfadeCheck" type="checkbox" checked class="w-4 h-4 accent-cyan-400 rounded cursor-pointer" />
+            <span>구간 연결 페이드 적용 <span class="text-xs text-slate-400">(다중 구간 병합 시 경계면 끊김·팝 노이즈 제거)</span></span>
+          </label>
+        </div>
+
+        <!-- 최종 합본 미리듣기 바 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <button id="previewMergedBtn" type="button" disabled
+            class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 border border-cyan-500/40 text-xs sm:text-sm font-bold text-cyan-300 shrink-0 transition flex items-center justify-center gap-1.5">
+            <span id="previewMergedBtnText">▶ 최종 합본 미리듣기</span>
+            <span id="mergedTotalTimeText" class="text-slate-300 font-mono text-xs">(총 0.0초)</span>
+          </button>
+          <div class="flex items-center gap-2 flex-1">
+            <input id="mergedSeekRange" type="range" min="0" max="1000" value="0" disabled class="flex-1" />
+            <span id="mergedCurrentTimeText" class="text-xs font-mono text-slate-400 w-12 text-right">00:00.0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 패널: 출력 포맷 및 기기별 저장 -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-white mb-3.5 flex items-center gap-1.5">
+            <span class="text-cyan-400">*</span> 출력 포맷 및 기기별 저장
+          </h2>
+
+          <!-- 포맷 선택 콤보박스 (기본값: 아이폰 벨소리 .m4r) + 음질 옵션 콤보박스 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3.5">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">출력 포맷 (기본: 아이폰용)</label>
+              <select id="outputFormat" class="dark-input w-full rounded-lg px-3 py-2 text-xs sm:text-sm font-bold text-white cursor-pointer">
+                <option value="m4r" selected>아이폰 벨소리 (.m4r) [기본]</option>
+                <option value="mp3">MP3 벨소리·알람 (.mp3)</option>
+                <option value="m4a">고음질 AAC 오디오 (.m4a)</option>
+                <option value="wav">무손실 웨이브 (.wav)</option>
+                <option value="ogg">안드로이드 알림음 (.ogg)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">음질 · 비트레이트 옵션</label>
+              <select id="bitrateOption" class="dark-input w-full rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-cyan-300 cursor-pointer">
+                <option value="256" selected>256kbps 고음질 · 44.1kHz (권장)</option>
+                <option value="320">320kbps 최고음질 · 48kHz</option>
+                <option value="192">192kbps 표준음질 · 44.1kHz</option>
+                <option value="128">128kbps 경량 용량 · 44.1kHz</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 저장 경로 설정 (PC 기본: 음악 폴더 / 스마트 기기 기본: 다운로드 폴더 / 각각 변경 가능) -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-200">저장 경로 설정 (PC / 스마트 기기)</span>
+            <span id="deviceDetectBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 border border-slate-700"></span>
+          </div>
+
+          <!-- PC 저장 경로 제어줄 -->
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="text-cyan-400 font-bold shrink-0">PC:</span>
+            <select id="pcSaveMode" class="dark-input rounded-lg px-2.5 py-1.5 text-xs text-slate-200 flex-1 truncate cursor-pointer">
+              <option value="music" selected>기본 [음악(Music)] 폴더에 저장 (폴더 변경 가능)</option>
+              <option value="downloads">PC 기본 [다운로드(Downloads)] 폴더에 즉시 저장</option>
+            </select>
+            <button id="pickPcFolderBtn" type="button" title="PC 저장 폴더 직접 변경"
+              class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-300 font-semibold shrink-0 transition flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
+              <span id="pickPcFolderBtnText">폴더 변경</span>
+            </button>
+            <button id="resetPcFolderBtn" type="button" class="hidden px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/70 text-slate-400 hover:text-rose-300 border border-slate-700 text-xs shrink-0 transition">
+              초기화
+            </button>
+          </div>
+
+          <!-- 스마트 기기(스마트폰/태블릿) 저장 경로 제어줄 -->
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="text-pink-400 font-bold shrink-0">스마트기기:</span>
+            <select id="mobileSaveMode" class="dark-input rounded-lg px-2.5 py-1.5 text-xs text-slate-200 flex-1 truncate cursor-pointer">
+              <option value="downloads" selected>기기 기본 [다운로드(Downloads)] 폴더에 저장 (기본)</option>
+              <option value="files_share">위치 변경 저장 (파일 앱 · 원하는 폴더 직접 지정)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 진행 상태 바 & 알림창 & 메인 실행 버튼 -->
+    <section class="glass-panel rounded-2xl p-4 sm:p-5">
+      <!-- 진행률 바 -->
+      <div id="progressContainer" class="hidden mb-4">
+        <div class="flex justify-between text-xs text-cyan-300 mb-1">
+          <span id="progressText">오디오 처리 중...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div id="progressBar" class="h-full bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 transition-all duration-150" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 상태 토스트 메시지 -->
+      <div id="statusToast" class="hidden mb-4 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium border"></div>
+
+      <!-- 스마트 기기 파일 앱(폴더 변경) 원터치 보조 버튼 -->
+      <div id="mobileShareFallbackBox" class="hidden mb-4 flex justify-center">
+        <button id="mobileShareActionBtn" type="button"
+          class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg transition">
+          📂 여기를 눌러 스마트 기기의 원하는 폴더(파일 앱)에 저장하기
+        </button>
+      </div>
+
+      <div class="flex justify-center">
+        <button id="generateRunBtn" type="button"
+          class="btn-gradient-action w-full sm:w-auto sm:min-w-[300px] py-3 px-8 rounded-xl text-sm sm:text-base font-extrabold text-white tracking-wide">
+          벨소리 생성 및 저장 실행
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 전역 상태 관리
+    const state = {
+      audioCtx: null,
+      files: [],          // [{ id, name, buffer, duration, peaks }]
+      activeFileId: null,
+      selStart: 0.0,
+      selEnd: 0.0,
+      segments: [],       // [{ id, fileId, fileName, buffer, start, end }]
+      draggingHandle: null, // 'start' | 'end' | 'region' | null
+      dragStartX: 0,
+      dragInitialStart: 0,
+      dragInitialEnd: 0,
+      // 오디오 재생 상태
+      playingSource: null,
+      playingMode: null,  // 'selection' | 'segment' | 'merged' | null
+      playingSegmentId: null,
+      playStartTime: 0,
+      playOffsetSec: 0,
+      playDurationSec: 0,
+      mergedPreviewBuffer: null,
+      rafId: null,
+      // 저장 경로 핸들
+      customDirHandle: null,
+      pendingMobileFile: null
+    };
+
+    // DOM 참조
+    const dropZone = document.getElementById('dropZone');
+    const audioFileInput = document.getElementById('audioFileInput');
+    const uploadTriggerBtn = document.getElementById('uploadTriggerBtn');
+    const loadedFileBadge = document.getElementById('loadedFileBadge');
+    const fileTabsBar = document.getElementById('fileTabsBar');
+
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const selectionRangeOverlay = document.getElementById('selectionRangeOverlay');
+    const emptyWaveOverlay = document.getElementById('emptyWaveOverlay');
+
+    const startSecInput = document.getElementById('startSecInput');
+    const endSecInput = document.getElementById('endSecInput');
+    const previewSelectionBtn = document.getElementById('previewSelectionBtn');
+    const previewSelectionBtnText = document.getElementById('previewSelectionBtnText');
+    const fit30SecBtn = document.getElementById('fit30SecBtn');
+    const addSegmentBtn = document.getElementById('addSegmentBtn');
+
+    const segmentCountBadge = document.getElementById('segmentCountBadge');
+    const clearSegmentsBtn = document.getElementById('clearSegmentsBtn');
+    const segmentTableBody = document.getElementById('segmentTableBody');
+
+    const fadeInInput = document.getElementById('fadeInInput');
+    const fadeOutInput = document.getElementById('fadeOutInput');
+    const crossfadeCheck = document.getElementById('crossfadeCheck');
+    const previewMergedBtn = document.getElementById('previewMergedBtn');
+    const previewMergedBtnText = document.getElementById('previewMergedBtnText');
+    const mergedTotalTimeText = document.getElementById('mergedTotalTimeText');
+    const mergedSeekRange = document.getElementById('mergedSeekRange');
+    const mergedCurrentTimeText = document.getElementById('mergedCurrentTimeText');
+
+    const outputFormat = document.getElementById('outputFormat');
+    const bitrateOption = document.getElementById('bitrateOption');
+    const deviceDetectBadge = document.getElementById('deviceDetectBadge');
+    const pcSaveMode = document.getElementById('pcSaveMode');
+    const pickPcFolderBtn = document.getElementById('pickPcFolderBtn');
+    const pickPcFolderBtnText = document.getElementById('pickPcFolderBtnText');
+    const resetPcFolderBtn = document.getElementById('resetPcFolderBtn');
+    const mobileSaveMode = document.getElementById('mobileSaveMode');
+
+    const progressContainer = document.getElementById('progressContainer');
+    const progressText = document.getElementById('progressText');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressBar = document.getElementById('progressBar');
+    const statusToast = document.getElementById('statusToast');
+    const mobileShareFallbackBox = document.getElementById('mobileShareFallbackBox');
+    const mobileShareActionBtn = document.getElementById('mobileShareActionBtn');
+    const generateRunBtn = document.getElementById('generateRunBtn');
+
+    // 스마트 기기(스마트폰·태블릿) 감지
+    const isSmartDevice = (() => {
+      const ua = navigator.userAgent || '';
+      const isUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet|Silk/i.test(ua);
+      const isIPadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isCoarseTouch = (navigator.maxTouchPoints > 1 && window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      return isUA || isIPadOS || isCoarseTouch;
+    })();
+
+    deviceDetectBadge.textContent = isSmartDevice ? '스마트 기기 모드 (기본: 다운로드 폴더)' : 'PC 모드 (기본: 음악 폴더)';
+
+    function getAudioContext() {
+      if (!state.audioCtx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        state.audioCtx = new AudioCtx();
+      }
+      if (state.audioCtx.state === 'suspended') {
+        state.audioCtx.resume();
+      }
+      return state.audioCtx;
+    }
+
+    function showToast(message, type = 'info') {
+      statusToast.classList.remove(
+        'hidden',
+        'bg-emerald-950/70', 'border-emerald-500/40', 'text-emerald-300',
+        'bg-rose-950/70', 'border-rose-500/40', 'text-rose-300',
+        'bg-cyan-950/70', 'border-cyan-500/40', 'text-cyan-200'
+      );
+      if (type === 'success') {
+        statusToast.classList.add('bg-emerald-950/70', 'border-emerald-500/40', 'text-emerald-300');
+      } else if (type === 'error') {
+        statusToast.classList.add('bg-rose-950/70', 'border-rose-500/40', 'text-rose-300');
+      } else {
+        statusToast.classList.add('bg-cyan-950/70', 'border-cyan-500/40', 'text-cyan-200');
+      }
+      statusToast.textContent = message;
+    }
+
+    function round01(val) {
+      return Math.round(val * 10) / 10;
+    }
+
+    function formatTimeMMSS(sec) {
+      const s = Math.max(0, sec);
+      const mins = Math.floor(s / 60);
+      const rem = (s - mins * 60).toFixed(1);
+      const padMin = String(mins).padStart(2, '0');
+      const padSec = rem.indexOf('.') === 1 ? '0' + rem : rem;
+      return `${padMin}:${padSec}`;
+    }
+
+    function getActiveFile() {
+      return state.files.find(f => f.id === state.activeFileId) || null;
+    }
+
+    // 파일 업로드 이벤트 연결
+    uploadTriggerBtn.addEventListener('click', () => audioFileInput.click());
+    emptyWaveOverlay.addEventListener('click', () => audioFileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files?.length) {
+        handleAudioFiles(e.dataTransfer.files);
+      }
+    });
+
+    audioFileInput.addEventListener('change', (e) => {
+      if (e.target.files?.length) {
+        handleAudioFiles(e.target.files);
+        audioFileInput.value = '';
+      }
+    });
+
+    async function handleAudioFiles(fileList) {
+      const files = Array.from(fileList);
+      if (!files.length) return;
+
+      const ctx = getAudioContext();
+      showToast('오디오 파일을 분석하여 파형을 생성하고 있습니다...', 'info');
+
+      let loadedCount = 0;
+      for (const file of files) {
+        try {
+          const arrayBuf = await file.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuf);
+          const peaks = extractPeaks(audioBuffer, 220);
+          const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`;
+          state.files.push({
+            id,
+            name: file.name,
+            buffer: audioBuffer,
+            duration: round01(audioBuffer.duration),
+            peaks
+          });
+          state.activeFileId = id;
+          loadedCount++;
+        } catch (err) {
+          console.error('오디오 디코딩 오류:', file.name, err);
+          showToast(`[${file.name}] 파일을 읽을 수 없습니다. 지원되는 오디오 파일인지 확인해 주세요.`, 'error');
+        }
+      }
+
+      if (loadedCount > 0) {
+        const active = getActiveFile();
+        if (active) {
+          selectAudioFile(active.id, true);
+        }
+        showToast(`총 ${loadedCount}개의 오디오 파일이 로드되었습니다. 파형에서 구간을 조절해 보세요.`, 'success');
+      }
+    }
+
+    // 파형 피크 데이터 추출
+    function extractPeaks(audioBuffer, barCount = 220) {
+      const chan0 = audioBuffer.getChannelData(0);
+      const chan1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : chan0;
+      const total = chan0.length;
+      const step = Math.max(1, Math.floor(total / barCount));
+      const peaks = new Float32Array(barCount);
+
+      let maxPeak = 0.01;
+      for (let i = 0; i < barCount; i++) {
+        const start = i * step;
+        const end = Math.min(total, start + step);
+        let sum = 0;
+        let maxInChunk = 0;
+        const stride = Math.max(1, Math.floor((end - start) / 64));
+        for (let j = start; j < end; j += stride) {
+          const v = (Math.abs(chan0[j]) + Math.abs(chan1[j])) * 0.5;
+          if (v > maxInChunk) maxInChunk = v;
+          sum += v;
+        }
+        peaks[i] = maxInChunk;
+        if (maxInChunk > maxPeak) maxPeak = maxInChunk;
+      }
+      for (let i = 0; i < barCount; i++) {
+        peaks[i] = Math.max(0.06, Math.min(1.0, peaks[i] / maxPeak));
+      }
+      return peaks;
+    }
+
+    function selectAudioFile(fileId, resetSelection = false) {
+      stopAllPlayback();
+      state.activeFileId = fileId;
+      const active = getActiveFile();
+      if (!active) return;
+
+      emptyWaveOverlay.classList.add('hidden');
+      loadedFileBadge.classList.remove('hidden');
+      loadedFileBadge.textContent = `${active.name} (${formatTimeMMSS(active.duration)})`;
+
+      startSecInput.disabled = false;
+      endSecInput.disabled = false;
+      previewSelectionBtn.disabled = false;
+      fit30SecBtn.disabled = false;
+      addSegmentBtn.disabled = false;
+      previewMergedBtn.disabled = false;
+
+      startSecInput.max = active.duration;
+      endSecInput.max = active.duration;
+
+      if (resetSelection) {
+        state.selStart = 0.0;
+        state.selEnd = round01(Math.min(30.0, active.duration));
+        if (state.selEnd <= 0) state.selEnd = active.duration;
+      }
+
+      syncSelectionInputs();
+      renderFileTabs();
+      drawWaveform();
+      updateMergedSummary();
+    }
+
+    function renderFileTabs() {
+      if (state.files.length <= 1) {
+        fileTabsBar.classList.add('hidden');
+        return;
+      }
+      fileTabsBar.classList.remove('hidden');
+      fileTabsBar.classList.add('flex');
+      fileTabsBar.innerHTML = state.files.map(f => {
+        const isCurrent = f.id === state.activeFileId;
+        const cls = isCurrent
+          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 font-bold'
+          : 'bg-slate-900/80 border-slate-700 text-slate-400 hover:text-slate-200';
+        return `
+          <button type="button" onclick="switchTabFile('${f.id}')"
+            class="px-3 py-1 rounded-lg border text-xs transition truncate max-w-[200px] ${cls}">
+            🎵 ${f.name}
+          </button>`;
+      }).join('');
+    }
+
+    window.switchTabFile = function(fileId) {
+      selectAudioFile(fileId, true);
+    };
+
+    function syncSelectionInputs() {
+      const active = getActiveFile();
+      if (!active) return;
+      state.selStart = round01(Math.max(0, Math.min(state.selStart, active.duration - 0.1)));
+      state.selEnd = round01(Math.max(state.selStart + 0.1, Math.min(state.selEnd, active.duration)));
+
+      startSecInput.value = state.selStart.toFixed(1);
+      endSecInput.value = state.selEnd.toFixed(1);
+
+      const len = round01(state.selEnd - state.selStart);
+      selectionRangeOverlay.textContent = `${formatTimeMMSS(state.selStart)} ~ ${formatTimeMMSS(state.selEnd)} (${len.toFixed(1)}초)`;
+
+      if (state.segments.length === 0) {
+        updateMergedSummary();
+      }
+    }
+
+    // 파형 캔버스 렌더링 (네온 시안-핑크 그라데이션 & 드래그 핸들 & 눈금)
+    function drawWaveform(playheadSec = null) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = waveformCanvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      waveformCanvas.width = rect.width * dpr;
+      waveformCanvas.height = rect.height * dpr;
+      const ctx = waveformCanvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const padL = 16;
+      const padR = 16;
+      const usableW = W - padL - padR;
+      const waveTop = 18;
+      const waveBottom = H - 24;
+      const midY = (waveTop + waveBottom) / 2;
+      const maxAmpH = (waveBottom - waveTop) * 0.88;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const active = getActiveFile();
+      const peaks = active ? active.peaks : createDemoPeaks(160);
+      const duration = active ? active.duration : 60.0;
+      const startRatio = active ? (state.selStart / duration) : 0.2;
+      const endRatio = active ? (state.selEnd / duration) : 0.46;
+
+      const startX = padL + startRatio * usableW;
+      const endX = padL + endRatio * usableW;
+
+      // 선택 영역 배경 하이라이트
+      const selGrad = ctx.createLinearGradient(startX, 0, endX, 0);
+      selGrad.addColorStop(0, 'rgba(34, 211, 238, 0.16)');
+      selGrad.addColorStop(1, 'rgba(244, 114, 182, 0.16)');
+      ctx.fillStyle = selGrad;
+      ctx.fillRect(startX, 8, Math.max(2, endX - startX), waveBottom - 4);
+
+      // 상/하단 선택 경계선
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, 8);
+      ctx.lineTo(endX, 8);
+      ctx.moveTo(startX, waveBottom + 4);
+      ctx.lineTo(endX, waveBottom + 4);
+      ctx.stroke();
+
+      // 파형 바 그리기
+      const barCount = peaks.length;
+      const barStep = usableW / barCount;
+      const barWidth = Math.max(1.8, barStep * 0.62);
+
+      const activeGrad = ctx.createLinearGradient(padL, 0, padL + usableW, 0);
+      activeGrad.addColorStop(0, '#22d3ee');
+      activeGrad.addColorStop(0.5, '#818cf8');
+      activeGrad.addColorStop(1, '#f472b6');
+
+      for (let i = 0; i < barCount; i++) {
+        const x = padL + i * barStep;
+        const ratio = i / barCount;
+        const inSelection = ratio >= startRatio && ratio <= endRatio;
+        const bh = Math.max(3, peaks[i] * maxAmpH);
+
+        ctx.fillStyle = inSelection ? activeGrad : 'rgba(100, 116, 139, 0.35)';
+        ctx.beginPath();
+        ctx.roundRect(x, midY - bh / 2, barWidth, bh, 2);
+        ctx.fill();
+      }
+
+      // 좌측 시작 핸들 (Cyan)
+      drawHandle(ctx, startX, 8, waveBottom + 4, '#22d3ee');
+      // 우측 종료 핸들 (Pink)
+      drawHandle(ctx, endX, 8, waveBottom + 4, '#f472b6');
+
+      // 재생 플레이헤드 표시
+      if (playheadSec !== null && active) {
+        const playX = padL + (playheadSec / duration) * usableW;
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playX, 6);
+        ctx.lineTo(playX, waveBottom + 6);
+        ctx.stroke();
+      }
+
+      // 하단 시간 눈금 표시
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Pretendard, monospace';
+      ctx.textAlign = 'center';
+      const tickCount = 6;
+      for (let t = 0; t <= tickCount; t++) {
+        const r = t / tickCount;
+        const tx = padL + r * usableW;
+        const secVal = Math.round(r * duration);
+        ctx.fillText(`${secVal}s`, tx, H - 6);
+      }
+    }
+
+    function drawHandle(ctx, x, topY, bottomY, color) {
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(x - 4.5, topY, 9, bottomY - topY, 4.5);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(x - 1, (topY + bottomY) / 2 - 7, 2, 14);
+      ctx.restore();
+    }
+
+    function createDemoPeaks(n) {
+      const arr = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        arr[i] = 0.15 + 0.65 * Math.abs(Math.sin(i * 0.11) * Math.cos(i * 0.04));
+      }
+      return arr;
+    }
+
+    window.addEventListener('resize', () => drawWaveform());
+
+    // 파형 마우스 & 터치 드래그 조작
+    function getPointerSecAndHandle(clientX) {
+      const active = getActiveFile();
+      if (!active) return null;
+      const rect = waveformCanvas.getBoundingClientRect();
+      const padL = 16;
+      const padR = 16;
+      const usableW = rect.width - padL - padR;
+      const relX = Math.max(0, Math.min(usableW, clientX - rect.left - padL));
+      const sec = round01((relX / usableW) * active.duration);
+
+      const startX = padL + (state.selStart / active.duration) * usableW;
+      const endX = padL + (state.selEnd / active.duration) * usableW;
+      const px = clientX - rect.left;
+
+      const distStart = Math.abs(px - startX);
+      const distEnd = Math.abs(px - endX);
+
+      let handle = null;
+      if (distStart <= 16 && distStart <= distEnd) {
+        handle = 'start';
+      } else if (distEnd <= 16) {
+        handle = 'end';
+      } else if (px > startX && px < endX) {
+        handle = 'region';
+      } else {
+        handle = distStart < distEnd ? 'start' : 'end';
+      }
+
+      return { sec, handle, clientX, usableW, duration: active.duration };
+    }
+
+    function onPointerDown(clientX) {
+      const info = getPointerSecAndHandle(clientX);
+      if (!info) return;
+      state.draggingHandle = info.handle;
+      state.dragStartX = clientX;
+      state.dragInitialStart = state.selStart;
+      state.dragInitialEnd = state.selEnd;
+
+      if (info.handle === 'start') {
+        state.selStart = Math.min(info.sec, state.selEnd - 0.1);
+      } else if (info.handle === 'end') {
+        state.selEnd = Math.max(info.sec, state.selStart + 0.1);
+      }
+      syncSelectionInputs();
+      drawWaveform();
+    }
+
+    function onPointerMove(clientX) {
+      if (!state.draggingHandle) return;
+      const active = getActiveFile();
+      if (!active) return;
+
+      const rect = waveformCanvas.getBoundingClientRect();
+      const usableW = rect.width - 32;
+      const deltaSec = ((clientX - state.dragStartX) / usableW) * active.duration;
+
+      if (state.draggingHandle === 'start') {
+        state.selStart = round01(Math.max(0, Math.min(state.dragInitialStart + deltaSec, state.selEnd - 0.1)));
+      } else if (state.draggingHandle === 'end') {
+        state.selEnd = round01(Math.max(state.selStart + 0.1, Math.min(state.dragInitialEnd + deltaSec, active.duration)));
+      } else if (state.draggingHandle === 'region') {
+        const len = state.dragInitialEnd - state.dragInitialStart;
+        let newStart = round01(state.dragInitialStart + deltaSec);
+        if (newStart < 0) newStart = 0;
+        if (newStart + len > active.duration) newStart = round01(active.duration - len);
+        state.selStart = newStart;
+        state.selEnd = round01(newStart + len);
+      }
+      syncSelectionInputs();
+      drawWaveform();
+    }
+
+    function onPointerUp() {
+      state.draggingHandle = null;
+    }
+
+    waveformCanvas.addEventListener('mousedown', e => onPointerDown(e.clientX));
+    window.addEventListener('mousemove', e => onPointerMove(e.clientX));
+    window.addEventListener('mouseup', onPointerUp);
+
+    waveformCanvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 1) {
+        onPointerDown(e.touches[0].clientX);
+      }
+    }, { passive: true });
+    window.addEventListener('touchmove', e => {
+      if (state.draggingHandle && e.touches.length === 1) {
+        onPointerMove(e.touches[0].clientX);
+      }
+    }, { passive: true });
+    window.addEventListener('touchend', onPointerUp);
+
+    // 0.1초 스핀 입력창 동기화
+    startSecInput.addEventListener('input', () => {
+      const val = parseFloat(startSecInput.value);
+      if (!isNaN(val)) {
+        state.selStart = val;
+        syncSelectionInputs();
+        drawWaveform();
+      }
+    });
+    endSecInput.addEventListener('input', () => {
+      const val = parseFloat(endSecInput.value);
+      if (!isNaN(val)) {
+        state.selEnd = val;
+        syncSelectionInputs();
+        drawWaveform();
+      }
+    });
+
+    fit30SecBtn.addEventListener('click', () => {
+      const active = getActiveFile();
+      if (!active) return;
+      state.selEnd = round01(Math.min(active.duration, state.selStart + 30.0));
+      syncSelectionInputs();
+      drawWaveform();
+      showToast('선택 구간이 아이폰 벨소리 권장 길이(30.0초)로 맞춤 설정되었습니다.', 'info');
+    });
+
+    // 구간 추가 & 다중 구간 테이블 관리
+    addSegmentBtn.addEventListener('click', () => {
+      const active = getActiveFile();
+      if (!active) return;
+
+      const seg = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`,
+        fileId: active.id,
+        fileName: active.name,
+        buffer: active.buffer,
+        start: state.selStart,
+        end: state.selEnd
+      };
+      state.segments.push(seg);
+      renderSegmentsTable();
+      updateMergedSummary();
+      showToast(`구간 ${state.segments.length} (${formatTimeMMSS(seg.start)} ~ ${formatTimeMMSS(seg.end)})이 병합 목록에 추가되었습니다.`, 'success');
+    });
+
+    clearSegmentsBtn.addEventListener('click', () => {
+      stopAllPlayback();
+      state.segments = [];
+      renderSegmentsTable();
+      updateMergedSummary();
+    });
+
+    function renderSegmentsTable() {
+      segmentCountBadge.textContent = `${state.segments.length}개 구간`;
+      clearSegmentsBtn.classList.toggle('hidden', state.segments.length === 0);
+
+      if (state.segments.length === 0) {
+        segmentTableBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-7 px-4 text-center text-slate-400">
+              상단 파형에서 원하는 구간을 지정한 뒤 <span class="text-cyan-400 font-semibold">[+ 현재 구간 추가]</span> 버튼을 누르면 여러 하이라이트 구간을 합칠 수 있습니다.<br/>
+              <span class="text-[11px] text-slate-500">(구간을 추가하지 않고 바로 실행하면 현재 파형에 선택된 단일 구간으로 즉시 제작됩니다)</span>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      segmentTableBody.innerHTML = state.segments.map((seg, idx) => {
+        const dur = round01(seg.end - seg.start);
+        const isPlayingThis = state.playingMode === 'segment' && state.playingSegmentId === seg.id;
+        const btnLabel = isPlayingThis ? '정지 ■' : '미리듣기 ▶';
+        const btnCls = isPlayingThis
+          ? 'bg-rose-500/25 border-rose-400 text-rose-200'
+          : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200';
+
+        return `
+          <tr class="hover:bg-slate-800/45 transition">
+            <td class="py-2.5 px-4 font-semibold text-white">
+              <div class="flex items-center gap-2">
+                <span>구간 ${idx + 1}</span>
+                <span class="text-[11px] text-slate-400 font-normal truncate max-w-[140px]" title="${seg.fileName}">(${seg.fileName})</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-center font-mono text-slate-200 whitespace-nowrap">
+              ${formatTimeMMSS(seg.start)} ~ ${formatTimeMMSS(seg.end)} <span class="text-cyan-400 font-bold">(${dur.toFixed(1)}초)</span>
+            </td>
+            <td class="py-2.5 px-3 text-center whitespace-nowrap">
+              <button type="button" onclick="togglePlaySegment('${seg.id}')"
+                class="px-3 py-1 rounded-lg border text-xs font-semibold transition ${btnCls}">
+                ${btnLabel}
+              </button>
+            </td>
+            <td class="py-2.5 px-4 text-center whitespace-nowrap">
+              <div class="inline-flex items-center gap-1 text-slate-300">
+                <button type="button" onclick="moveSegment(${idx}, -1)" class="px-2 py-0.5 rounded hover:bg-slate-700 hover:text-cyan-300" title="위로">↑</button>
+                <button type="button" onclick="moveSegment(${idx}, 1)" class="px-2 py-0.5 rounded hover:bg-slate-700 hover:text-cyan-300" title="아래로">↓</button>
+                <button type="button" onclick="removeSegment('${seg.id}')" class="px-2 py-0.5 rounded hover:bg-rose-950 text-slate-400 hover:text-rose-400 font-bold" title="삭제">×</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    window.moveSegment = function(idx, dir) {
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= state.segments.length) return;
+      const temp = state.segments[idx];
+      state.segments[idx] = state.segments[targetIdx];
+      state.segments[targetIdx] = temp;
+      renderSegmentsTable();
+      updateMergedSummary();
+    };
+
+    window.removeSegment = function(id) {
+      if (state.playingSegmentId === id) stopAllPlayback();
+      state.segments = state.segments.filter(s => s.id !== id);
+      renderSegmentsTable();
+      updateMergedSummary();
+    };
+
+    // 편집 대상 구간 리스트 반환 (목록이 비어있으면 현재 파형 선택 구간 1개 자동 사용)
+    function getEffectiveSegments() {
+      if (state.segments.length > 0) return state.segments;
+      const active = getActiveFile();
+      if (!active) return [];
+      return [{
+        id: 'current',
+        fileId: active.id,
+        fileName: active.name,
+        buffer: active.buffer,
+        start: state.selStart,
+        end: state.selEnd
+      }];
+    }
+
+    function updateMergedSummary() {
+      const segs = getEffectiveSegments();
+      const total = segs.reduce((acc, s) => acc + Math.max(0, s.end - s.start), 0);
+      mergedTotalTimeText.textContent = `(총 ${round01(total).toFixed(1)}초)`;
+      mergedSeekRange.disabled = segs.length === 0;
+    }
+
+    // 다중 구간 병합 및 페이드 인/아웃/연결 페이드 적용 AudioBuffer 생성
+    function buildMergedAudioBuffer(targetSampleRate = 44100) {
+      const segs = getEffectiveSegments();
+      if (!segs.length) return null;
+
+      const ctx = getAudioContext();
+      const channels = 2;
+      const segFrames = segs.map(s => {
+        const sr = s.buffer.sampleRate;
+        const startSample = Math.max(0, Math.floor(s.start * sr));
+        const endSample = Math.min(s.buffer.length, Math.floor(s.end * sr));
+        const len = Math.max(1, endSample - startSample);
+        const outLen = Math.max(1, Math.round((len / sr) * targetSampleRate));
+
+        const ch0 = new Float32Array(outLen);
+        const ch1 = new Float32Array(outLen);
+        const src0 = s.buffer.getChannelData(0);
+        const src1 = s.buffer.numberOfChannels > 1 ? s.buffer.getChannelData(1) : src0;
+
+        for (let i = 0; i < outLen; i++) {
+          const srcPos = startSample + (i / outLen) * len;
+          const idx = Math.min(s.buffer.length - 1, Math.floor(srcPos));
+          ch0[i] = src0[idx];
+          ch1[i] = src1[idx];
+        }
+        return { ch0, ch1, length: outLen };
+      });
+
+      // 구간 연결 마이크로 페이드 (클릭/팝 방지 + 자연스러운 연결)
+      const useBoundaryFade = crossfadeCheck.checked && segFrames.length > 1;
+      const boundarySamples = Math.floor(0.08 * targetSampleRate); // 80ms 스무딩
+
+      if (useBoundaryFade) {
+        for (let s = 0; s < segFrames.length; s++) {
+          const seg = segFrames[s];
+          const fadeCount = Math.min(boundarySamples, Math.floor(seg.length * 0.25));
+          if (s > 0) {
+            for (let i = 0; i < fadeCount; i++) {
+              const g = i / fadeCount;
+              seg.ch0[i] *= g;
+              seg.ch1[i] *= g;
+            }
+          }
+          if (s < segFrames.length - 1) {
+            for (let i = 0; i < fadeCount; i++) {
+              const g = i / fadeCount;
+              const idx = seg.length - 1 - i;
+              seg.ch0[idx] *= g;
+              seg.ch1[idx] *= g;
+            }
+          }
+        }
+      }
+
+      const totalSamples = segFrames.reduce((sum, f) => sum + f.length, 0);
+      const mergedBuffer = ctx.createBuffer(channels, totalSamples, targetSampleRate);
+      const outL = mergedBuffer.getChannelData(0);
+      const outR = mergedBuffer.getChannelData(1);
+
+      let offset = 0;
+      for (const seg of segFrames) {
+        outL.set(seg.ch0, offset);
+        outR.set(seg.ch1, offset);
+        offset += seg.length;
+      }
+
+      // 전체 페이드 인 & 페이드 아웃 적용
+      const fadeInSec = Math.max(0, parseFloat(fadeInInput.value) || 0);
+      const fadeOutSec = Math.max(0, parseFloat(fadeOutInput.value) || 0);
+      const fadeInSamples = Math.min(totalSamples, Math.floor(fadeInSec * targetSampleRate));
+      const fadeOutSamples = Math.min(totalSamples, Math.floor(fadeOutSec * targetSampleRate));
+
+      for (let i = 0; i < fadeInSamples; i++) {
+        const gain = i / fadeInSamples;
+        outL[i] *= gain;
+        outR[i] *= gain;
+      }
+      for (let i = 0; i < fadeOutSamples; i++) {
+        const gain = i / fadeOutSamples;
+        const idx = totalSamples - 1 - i;
+        outL[idx] *= gain;
+        outR[idx] *= gain;
+      }
+
+      return mergedBuffer;
+    }
+
+    // 오디오 미리듣기 컨트롤 (선택 구간 / 개별 구간 / 최종 합본)
+    function stopAllPlayback() {
+      if (state.playingSource) {
+        try {
+          state.playingSource.onended = null;
+          state.playingSource.stop();
+          state.playingSource.disconnect();
+        } catch (_) {}
+        state.playingSource = null;
+      }
+      if (state.rafId) {
+        cancelAnimationFrame(state.rafId);
+        state.rafId = null;
+      }
+      state.playingMode = null;
+      state.playingSegmentId = null;
+      previewSelectionBtnText.textContent = '선택 구간 미리듣기 ▶';
+      previewMergedBtnText.textContent = '▶ 최종 합본 미리듣기';
+      renderSegmentsTable();
+      drawWaveform(null);
+    }
+
+    previewSelectionBtn.addEventListener('click', () => {
+      if (state.playingMode === 'selection') {
+        stopAllPlayback();
+        return;
+      }
+      const active = getActiveFile();
+      if (!active) return;
+
+      stopAllPlayback();
+      const ctx = getAudioContext();
+      const src = ctx.createBufferSource();
+      src.buffer = active.buffer;
+      src.connect(ctx.destination);
+
+      const dur = Math.max(0.1, state.selEnd - state.selStart);
+      state.playingSource = src;
+      state.playingMode = 'selection';
+      state.playStartTime = ctx.currentTime;
+      state.playOffsetSec = state.selStart;
+      state.playDurationSec = dur;
+      previewSelectionBtnText.textContent = '미리듣기 정지 ■';
+
+      src.start(0, state.selStart, dur);
+      src.onended = () => stopAllPlayback();
+
+      const tick = () => {
+        if (state.playingMode !== 'selection') return;
+        const elapsed = ctx.currentTime - state.playStartTime;
+        const curSec = Math.min(state.selEnd, state.selStart + elapsed);
+        drawWaveform(curSec);
+        state.rafId = requestAnimationFrame(tick);
+      };
+      state.rafId = requestAnimationFrame(tick);
+    });
+
+    window.togglePlaySegment = function(segId) {
+      if (state.playingMode === 'segment' && state.playingSegmentId === segId) {
+        stopAllPlayback();
+        return;
+      }
+      const seg = state.segments.find(s => s.id === segId);
+      if (!seg) return;
+
+      stopAllPlayback();
+      const ctx = getAudioContext();
+      const src = ctx.createBufferSource();
+      src.buffer = seg.buffer;
+      src.connect(ctx.destination);
+
+      const dur = Math.max(0.1, seg.end - seg.start);
+      state.playingSource = src;
+      state.playingMode = 'segment';
+      state.playingSegmentId = segId;
+      renderSegmentsTable();
+
+      src.start(0, seg.start, dur);
+      src.onended = () => stopAllPlayback();
+    };
+
+    previewMergedBtn.addEventListener('click', () => {
+      if (state.playingMode === 'merged') {
+        stopAllPlayback();
+        return;
+      }
+      startMergedPlayback(0);
+    });
+
+    function startMergedPlayback(startOffsetSec = 0) {
+      stopAllPlayback();
+      const merged = buildMergedAudioBuffer(44100);
+      if (!merged) return;
+
+      state.mergedPreviewBuffer = merged;
+      const ctx = getAudioContext();
+      const src = ctx.createBufferSource();
+      src.buffer = merged;
+      src.connect(ctx.destination);
+
+      const safeOffset = Math.max(0, Math.min(startOffsetSec, merged.duration - 0.05));
+      state.playingSource = src;
+      state.playingMode = 'merged';
+      state.playStartTime = ctx.currentTime;
+      state.playOffsetSec = safeOffset;
+      state.playDurationSec = merged.duration;
+      previewMergedBtnText.textContent = '■ 합본 정지';
+
+      src.start(0, safeOffset);
+      src.onended = () => {
+        mergedSeekRange.value = 0;
+        mergedCurrentTimeText.textContent = '00:00.0';
+        stopAllPlayback();
+      };
+
+      const tick = () => {
+        if (state.playingMode !== 'merged') return;
+        const pos = Math.min(merged.duration, state.playOffsetSec + (ctx.currentTime - state.playStartTime));
+        mergedSeekRange.value = Math.round((pos / merged.duration) * 1000);
+        mergedCurrentTimeText.textContent = formatTimeMMSS(pos);
+        state.rafId = requestAnimationFrame(tick);
+      };
+      state.rafId = requestAnimationFrame(tick);
+    }
+
+    mergedSeekRange.addEventListener('input', () => {
+      const merged = state.mergedPreviewBuffer || buildMergedAudioBuffer(44100);
+      if (!merged) return;
+      const targetSec = (parseInt(mergedSeekRange.value, 10) / 1000) * merged.duration;
+      mergedCurrentTimeText.textContent = formatTimeMMSS(targetSec);
+      if (state.playingMode === 'merged') {
+        startMergedPlayback(targetSec);
+      }
+    });
+
+    // PC 저장 폴더 변경 버튼 (기본값: 내 PC 음악(Music) 폴더에서 열림)
+    pickPcFolderBtn.addEventListener('click', async () => {
+      if (!window.showDirectoryPicker) {
+        showToast('현재 브라우저는 폴더 선택 창을 지원하지 않아 기본 다운로드 폴더로 저장됩니다.', 'info');
+        return;
+      }
+      try {
+        const handle = await window.showDirectoryPicker({
+          startIn: 'music',
+          mode: 'readwrite'
+        });
+        state.customDirHandle = handle;
+        pickPcFolderBtnText.textContent = `폴더: ${handle.name}`;
+        resetPcFolderBtn.classList.remove('hidden');
+        showToast(`PC 저장 위치가 [${handle.name}] 폴더로 변경되었습니다.`, 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          showToast('폴더 선택 중 오류가 발생했습니다.', 'error');
+        }
+      }
+    });
+
+    resetPcFolderBtn.addEventListener('click', () => {
+      state.customDirHandle = null;
+      pickPcFolderBtnText.textContent = '폴더 변경';
+      resetPcFolderBtn.classList.add('hidden');
+      showToast('PC 기본 [음악(Music)] 폴더 설정으로 초기화되었습니다.', 'info');
+    });
+
+    // =========================================================================
+    // 다중 포맷 오디오 인코더 (.m4r, .m4a, .mp3, .wav, .ogg)
+    // =========================================================================
+
+    // 1. 표준 ISO MP4/M4A (.m4r / .m4a) 인코더 (ADTS 위장 헤더 제거 + 정품 ftypM4A / moov / mdat 패키징)
+    async function encodeStandardM4R(audioBuffer, kbps = 256, mimeType = 'audio/x-m4r') {
+      // WebCodecs AudioEncoder가 지원되는 경우 초고속 하드웨어 AAC 인코딩 + 표준 MP4 컨테이너 패키징
+      if (window.AudioEncoder) {
+        try {
+          const config = {
+            codec: 'mp4a.40.2',
+            sampleRate: audioBuffer.sampleRate,
+            numberOfChannels: audioBuffer.numberOfChannels,
+            bitrate: kbps * 1000
+          };
+          const support = await AudioEncoder.isConfigSupported(config);
+          if (support.supported) {
+            return await encodeWithWebCodecsToMP4(audioBuffer, config, mimeType);
+          }
+        } catch (e) {
+          console.warn('WebCodecs AAC 인코딩 폴백 전환:', e);
+        }
+      }
+      // 폴백: 고호환성 WAV/MP3 스트림 생성
+      return encodeMP3Blob(audioBuffer, kbps, mimeType);
+    }
+
+    async function encodeWithWebCodecsToMP4(audioBuffer, config, mimeType) {
+      const rawFrames = [];
+      let audioSpecificConfig = new Uint8Array([0x12, 0x10]); // 44.1kHz Stereo AAC-LC 기본값
+
+      const encoder = new AudioEncoder({
+        output: (chunk, meta) => {
+          if (meta?.decoderConfig?.description) {
+            audioSpecificConfig = new Uint8Array(meta.decoderConfig.description);
+          }
+          const buf = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(buf);
+          // C# 버전과 동일하게 ADTS 헤더(0xFF 0xF1 / 0xFF 0xF9)가 섞여 있을 경우 정밀 제거하여 순수 AAC 프레임만 추출
+          let payload = buf;
+          if (buf.length > 7 && buf[0] === 0xff && (buf[1] & 0xf0) === 0xf0) {
+            const headerLen = (buf[1] & 0x01) === 0 ? 9 : 7;
+            payload = buf.subarray(headerLen);
+          }
+          if (payload.length > 0) {
+            rawFrames.push(payload);
+          }
+        },
+        error: (err) => console.error('AudioEncoder error:', err)
+      });
+
+      encoder.configure(config);
+
+      const sr = audioBuffer.sampleRate;
+      const ch = audioBuffer.numberOfChannels;
+      const totalFrames = audioBuffer.length;
+      const chunkSize = 1024 * 16;
+
+      const ch0 = audioBuffer.getChannelData(0);
+      const ch1 = ch > 1 ? audioBuffer.getChannelData(1) : ch0;
+
+      for (let offset = 0; offset < totalFrames; offset += chunkSize) {
+        const size = Math.min(chunkSize, totalFrames - offset);
+        const planar = new Float32Array(size * ch);
+        planar.set(ch0.subarray(offset, offset + size), 0);
+        if (ch > 1) {
+          planar.set(ch1.subarray(offset, offset + size), size);
+        }
+        const audioData = new AudioData({
+          format: 'f32-planar',
+          sampleRate: sr,
+          numberOfFrames: size,
+          numberOfChannels: ch,
+          timestamp: Math.round((offset / sr) * 1_000_000),
+          data: planar
+        });
+        encoder.encode(audioData);
+        audioData.close();
+      }
+
+      await encoder.flush();
+      encoder.close();
+
+      if (rawFrames.length === 0) {
+        throw new Error('AAC 프레임 생성 실패');
+      }
+
+      const mp4Bytes = muxAACFramesToStandardMP4(rawFrames, sr, ch, audioSpecificConfig, kbps);
+      return new Blob([mp4Bytes], { type: mimeType });
+    }
+
+    // 순수 JS 기반 정품 ISO-BMFF (.m4r / .m4a) 컨테이너 리먹서 (FastStart 구조: ftyp -> moov -> mdat)
+    function muxAACFramesToStandardMP4(frames, sampleRate, channels, ascBytes, kbps) {
+      const strBytes = s => new Uint8Array([...s].map(c => c.charCodeAt(0)));
+      const u32 = v => new Uint8Array([(v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff]);
+      const u16 = v => new Uint8Array([(v >>> 8) & 0xff, v & 0xff]);
+
+      const concat = (...arrays) => {
+        const len = arrays.reduce((acc, a) => acc + a.length, 0);
+        const out = new Uint8Array(len);
+        let pos = 0;
+        for (const a of arrays) {
+          out.set(a, pos);
+          pos += a.length;
+        }
+        return out;
+      };
+
+      const box = (type, ...payloads) => {
+        const body = concat(...payloads);
+        return concat(u32(8 + body.length), strBytes(type), body);
+      };
+
+      const fullBox = (type, version, flags, ...payloads) => {
+        const vf = new Uint8Array([version, (flags >>> 16) & 0xff, (flags >>> 8) & 0xff, flags & 0xff]);
+        return box(type, vf, ...payloads);
+      };
+
+      const ftyp = box('ftyp', strBytes('M4A '), u32(0), strBytes('M4A '), strBytes('mp42'), strBytes('isom'), u32(0));
+      const frameCount = frames.length;
+      const totalSamples = frameCount * 1024;
+      const mdatBody = concat(...frames);
+
+      const buildMoov = (mdatPayloadOffset) => {
+        const mvhd = fullBox('mvhd', 0, 0,
+          u32(0), u32(0), u32(sampleRate), u32(totalSamples),
+          u32(0x00010000), u16(0x0100), new Uint8Array(10),
+          u32(0x00010000), u32(0), u32(0), u32(0), u32(0x00010000), u32(0), u32(0), u32(0), u32(0x40000000),
+          new Uint8Array(24), u32(2)
+        );
+
+        const tkhd = fullBox('tkhd', 0, 7,
+          u32(0), u32(0), u32(1), u32(0), u32(totalSamples),
+          new Uint8Array(8), u16(0), u16(0), u16(0x0100), u16(0),
+          u32(0x00010000), u32(0), u32(0), u32(0), u32(0x00010000), u32(0), u32(0), u32(0), u32(0x40000000),
+          u32(0), u32(0)
+        );
+
+        const mdhd = fullBox('mdhd', 0, 0,
+          u32(0), u32(0), u32(sampleRate), u32(totalSamples), u16(0x55c4), u16(0)
+        );
+
+        const hdlr = fullBox('hdlr', 0, 0,
+          u32(0), strBytes('soun'), new Uint8Array(12), strBytes('SoundHandler\0')
+        );
+
+        const smhd = fullBox('smhd', 0, 0, u16(0), u16(0));
+        const dref = fullBox('dref', 0, 0, u32(1), fullBox('url ', 0, 1));
+        const dinf = box('dinf', dref);
+
+        // ES Descriptor (AAC-LC AudioSpecificConfig 포함)
+        const asc = ascBytes && ascBytes.length >= 2 ? ascBytes : new Uint8Array([0x12, 0x10]);
+        const decSpecific = concat(new Uint8Array([0x05, asc.length]), asc);
+        const decConfig = concat(
+          new Uint8Array([0x04, 13 + decSpecific.length, 0x40, 0x15, 0x00, 0x18, 0x00]),
+          u32(kbps * 1000), u32(kbps * 1000),
+          decSpecific
+        );
+        const slConfig = new Uint8Array([0x06, 0x01, 0x02]);
+        const esDesc = concat(
+          new Uint8Array([0x03, 3 + decConfig.length + slConfig.length, 0x00, 0x01, 0x00]),
+          decConfig,
+          slConfig
+        );
+        const esds = fullBox('esds', 0, 0, esDesc);
+
+        const mp4a = box('mp4a',
+          new Uint8Array(6), u16(1), new Uint8Array(8),
+          u16(channels), u16(16), u16(0), u16(0), u32(sampleRate << 16),
+          esds
+        );
+        const stsd = fullBox('stsd', 0, 0, u32(1), mp4a);
+        const stts = fullBox('stts', 0, 0, u32(1), u32(frameCount), u32(1024));
+        const stsc = fullBox('stsc', 0, 0, u32(1), u32(1), u32(frameCount), u32(1));
+
+        const szArr = new Uint8Array(frameCount * 4);
+        for (let i = 0; i < frameCount; i++) {
+          szArr.set(u32(frames[i].length), i * 4);
+        }
+        const stsz = fullBox('stsz', 0, 0, u32(0), u32(frameCount), szArr);
+        const stco = fullBox('stco', 0, 0, u32(1), u32(mdatPayloadOffset));
+
+        const stbl = box('stbl', stsd, stts, stsc, stsz, stco);
+        const minf = box('minf', smhd, dinf, stbl);
+        const mdia = box('mdia', mdhd, hdlr, minf);
+        const trak = box('trak', tkhd, mdia);
+        return box('moov', mvhd, trak);
+      };
+
+      const tempMoov = buildMoov(0);
+      const exactMdatOffset = ftyp.length + tempMoov.length + 8;
+      const finalMoov = buildMoov(exactMdatOffset);
+      const mdat = box('mdat', mdatBody);
+
+      return concat(ftyp, finalMoov, mdat);
+    }
+
+    // 2. MP3 (.mp3) 인코더 (lamejs)
+    function encodeMP3Blob(audioBuffer, kbps = 256, mimeType = 'audio/mpeg') {
+      const sr = audioBuffer.sampleRate;
+      const channels = audioBuffer.numberOfChannels;
+      const mp3encoder = new lamejs.Mp3Encoder(channels, sr, kbps);
+      const mp3Data = [];
+
+      const leftF32 = audioBuffer.getChannelData(0);
+      const rightF32 = channels > 1 ? audioBuffer.getChannelData(1) : leftF32;
+
+      const floatTo16 = (f32) => {
+        const i16 = new Int16Array(f32.length);
+        for (let i = 0; i < f32.length; i++) {
+          const s = Math.max(-1, Math.min(1, f32[i]));
+          i16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        return i16;
+      };
+
+      const left16 = floatTo16(leftF32);
+      const right16 = channels > 1 ? floatTo16(rightF32) : left16;
+      const blockSize = 1152;
+
+      for (let i = 0; i < left16.length; i += blockSize) {
+        const lChunk = left16.subarray(i, i + blockSize);
+        const rChunk = right16.subarray(i, i + blockSize);
+        const buf = channels > 1
+          ? mp3encoder.encodeBuffer(lChunk, rChunk)
+          : mp3encoder.encodeBuffer(lChunk);
+        if (buf.length > 0) mp3Data.push(buf);
+      }
+
+      const endBuf = mp3encoder.flush();
+      if (endBuf.length > 0) mp3Data.push(endBuf);
+
+      return new Blob(mp3Data, { type: mimeType });
+    }
+
+    // 3. 무손실 WAV (.wav) 16-bit PCM 인코더
+    function encodeWAVBlob(audioBuffer, mimeType = 'audio/wav') {
+      const numCh = audioBuffer.numberOfChannels;
+      const sr = audioBuffer.sampleRate;
+      const numFrames = audioBuffer.length;
+      const bytesPerSample = 2;
+      const blockAlign = numCh * bytesPerSample;
+      const dataSize = numFrames * blockAlign;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      };
+
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numCh, true);
+      view.setUint32(24, sr, true);
+      view.setUint32(28, sr * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeStr(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const ch0 = audioBuffer.getChannelData(0);
+      const ch1 = numCh > 1 ? audioBuffer.getChannelData(1) : ch0;
+      let offset = 44;
+      for (let i = 0; i < numFrames; i++) {
+        const s0 = Math.max(-1, Math.min(1, ch0[i]));
+        view.setInt16(offset, s0 < 0 ? s0 * 0x8000 : s0 * 0x7fff, true);
+        offset += 2;
+        if (numCh > 1) {
+          const s1 = Math.max(-1, Math.min(1, ch1[i]));
+          view.setInt16(offset, s1 < 0 ? s1 * 0x8000 : s1 * 0x7fff, true);
+          offset += 2;
+        }
+      }
+      return new Blob([buffer], { type: mimeType });
+    }
+
+    // 4. 안드로이드 알림음 (.ogg) 인코더 (WebCodecs Opus + Ogg 컨테이너 또는 고호환 폴백)
+    async function encodeOGGBlob(audioBuffer, kbps = 192) {
+      if (window.AudioEncoder) {
+        try {
+          const config = {
+            codec: 'opus',
+            sampleRate: 48000,
+            numberOfChannels: 2,
+            bitrate: kbps * 1000
+          };
+          const support = await AudioEncoder.isConfigSupported(config);
+          if (support.supported) {
+            return await encodeWithWebCodecsToOggOpus(audioBuffer, config);
+          }
+        } catch (e) {
+          console.warn('Ogg Opus 인코딩 폴백:', e);
+        }
+      }
+      return encodeWAVBlob(audioBuffer, 'audio/ogg');
+    }
+
+    async function encodeWithWebCodecsToOggOpus(audioBuffer, config) {
+      const packets = [];
+      const encoder = new AudioEncoder({
+        output: (chunk) => {
+          const b = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(b);
+          packets.push(b);
+        },
+        error: (e) => console.error(e)
+      });
+      encoder.configure(config);
+
+      const ch0 = audioBuffer.getChannelData(0);
+      const ch1 = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : ch0;
+      const total = audioBuffer.length;
+      const step = 960 * 10;
+
+      for (let i = 0; i < total; i += step) {
+        const len = Math.min(step, total - i);
+        const planar = new Float32Array(len * 2);
+        planar.set(ch0.subarray(i, i + len), 0);
+        planar.set(ch1.subarray(i, i + len), len);
+        const ad = new AudioData({
+          format: 'f32-planar',
+          sampleRate: audioBuffer.sampleRate,
+          numberOfFrames: len,
+          numberOfChannels: 2,
+          timestamp: Math.round((i / audioBuffer.sampleRate) * 1_000_000),
+          data: planar
+        });
+        encoder.encode(ad);
+        ad.close();
+      }
+      await encoder.flush();
+      encoder.close();
+
+      if (!packets.length) return encodeWAVBlob(audioBuffer, 'audio/ogg');
+      return buildOggOpusBlob(packets, audioBuffer.sampleRate);
+    }
+
+    function buildOggOpusBlob(packets, inputSampleRate) {
+      // Ogg CRC32 테이블
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let r = i << 24;
+        for (let j = 0; j < 8; j++) {
+          r = (r & 0x80000000) ? ((r << 1) ^ 0x04c11db7) : (r << 1);
+        }
+        crcTable[i] = r >>> 0;
+      }
+
+      const pages = [];
+      const serial = 0x594f5554;
+      let seq = 0;
+
+      const makePage = (payload, headerType, granulePos) => {
+        const segCount = Math.ceil(payload.length / 255) || 1;
+        const lacing = new Uint8Array(segCount);
+        let rem = payload.length;
+        for (let i = 0; i < segCount; i++) {
+          lacing[i] = Math.min(255, rem);
+          rem -= lacing[i];
+        }
+        const page = new Uint8Array(27 + segCount + payload.length);
+        const view = new DataView(page.buffer);
+        page.set([0x4f, 0x67, 0x67, 0x53], 0); // OggS
+        page[4] = 0;
+        page[5] = headerType;
+        view.setUint32(6, granulePos & 0xffffffff, true);
+        view.setUint32(10, Math.floor(granulePos / 0x100000000), true);
+        view.setUint32(14, serial, true);
+        view.setUint32(18, seq++, true);
+        view.setUint32(22, 0, true);
+        page[26] = segCount;
+        page.set(lacing, 27);
+        page.set(payload, 27 + segCount);
+
+        let crc = 0;
+        for (let i = 0; i < page.length; i++) {
+          crc = ((crc << 8) ^ crcTable[((crc >>> 24) ^ page[i]) & 0xff]) >>> 0;
+        }
+        view.setUint32(22, crc, true);
+        return page;
+      };
+
+      const opusHead = new Uint8Array(19);
+      opusHead.set([0x4f, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64, 1, 2], 0);
+      new DataView(opusHead.buffer).setUint16(10, 312, true);
+      new DataView(opusHead.buffer).setUint32(12, inputSampleRate, true);
+      pages.push(makePage(opusHead, 0x02, 0));
+
+      const opusTags = new Uint8Array([0x4f, 0x70, 0x75, 0x73, 0x54, 0x61, 0x67, 0x73, 0, 0, 0, 0, 0, 0, 0, 0]);
+      pages.push(makePage(opusTags, 0x00, 0));
+
+      let granule = 0;
+      for (let i = 0; i < packets.length; i++) {
+        granule += 960;
+        const flag = (i === packets.length - 1) ? 0x04 : 0x00;
+        pages.push(makePage(packets[i], flag, granule));
+      }
+
+      return new Blob(pages, { type: 'audio/ogg' });
+    }
+
+    // =========================================================================
+    // 벨소리 생성 및 기기별 맞춤 저장 실행
+    // =========================================================================
+    generateRunBtn.addEventListener('click', async () => {
+      const active = getActiveFile();
+      if (!active && state.segments.length === 0) {
+        showToast('먼저 오디오 파일을 업로드해 주세요.', 'error');
+        return;
+      }
+
+      stopAllPlayback();
+      generateRunBtn.disabled = true;
+      mobileShareFallbackBox.classList.add('hidden');
+      progressContainer.classList.remove('hidden');
+      statusToast.classList.add('hidden');
+
+      try {
+        progressText.textContent = '1/3 다중 구간 병합 및 페이드 효과 연산 중...';
+        progressPercent.textContent = '30%';
+        progressBar.style.width = '30%';
+        await new Promise(r => setTimeout(r, 40));
+
+        const fmt = outputFormat.value;
+        const kbps = parseInt(bitrateOption.value, 10) || 256;
+        const targetSR = (kbps === 320 || fmt === 'ogg') ? 48000 : 44100;
+
+        const mergedBuffer = buildMergedAudioBuffer(targetSR);
+        if (!mergedBuffer) {
+          throw new Error('편집할 오디오 구간이 없습니다.');
+        }
+
+        progressText.textContent = `2/3 선택한 포맷(.${fmt})으로 인코딩 및 무결성 검증 중...`;
+        progressPercent.textContent = '70%';
+        progressBar.style.width = '70%';
+        await new Promise(r => setTimeout(r, 40));
+
+        let outBlob;
+        let mimeType;
+        if (fmt === 'm4r') {
+          mimeType = 'audio/x-m4r';
+          outBlob = await encodeStandardM4R(mergedBuffer, kbps, mimeType);
+        } else if (fmt === 'm4a') {
+          mimeType = 'audio/mp4';
+          outBlob = await encodeStandardM4R(mergedBuffer, kbps, mimeType);
+        } else if (fmt === 'mp3') {
+          mimeType = 'audio/mpeg';
+          outBlob = encodeMP3Blob(mergedBuffer, kbps, mimeType);
+        } else if (fmt === 'wav') {
+          mimeType = 'audio/wav';
+          outBlob = encodeWAVBlob(mergedBuffer, mimeType);
+        } else if (fmt === 'ogg') {
+          mimeType = 'audio/ogg';
+          outBlob = await encodeOGGBlob(mergedBuffer, kbps);
+        }
+
+        if (!outBlob || outBlob.size < 64) {
+          throw new Error('오디오 파일 인코딩 검증에 실패했습니다.');
+        }
+
+        const baseName = (active ? active.name : state.segments[0].fileName).replace(/\.[^/.]+$/, '');
+        const durStr = round01(mergedBuffer.duration).toFixed(1) + 's';
+        const filename = `${baseName}_ringtone_${durStr}.${fmt}`;
+
+        progressText.textContent = '3/3 기기 저장 경로로 파일 저장 중...';
+        progressPercent.textContent = '100%';
+        progressBar.style.width = '100%';
+
+        // 기기별 맞춤 저장 분기
+        if (isSmartDevice) {
+          // 스마트 기기(스마트폰·태블릿): 기본값은 해당 기기의 기본 다운로드 폴더
+          if (mobileSaveMode.value === 'files_share' && navigator.canShare) {
+            const shareFile = new File([outBlob], filename, { type: mimeType });
+            state.pendingMobileFile = shareFile;
+            try {
+              await navigator.share({
+                files: [shareFile],
+                title: filename
+              });
+              showToast(`완료! [${filename}] 파일을 선택한 위치에 저장했습니다.`, 'success');
+            } catch (shareErr) {
+              if (shareErr.name !== 'AbortError') {
+                mobileShareFallbackBox.classList.remove('hidden');
+                showToast('변환 완료! 아래 초록색 버튼을 누르면 원하는 폴더(파일 앱) 위치를 지정해 저장할 수 있습니다.', 'info');
+              }
+            }
+          } else {
+            triggerDirectDownload(outBlob, filename);
+            showToast(`완료! [${filename}] 파일이 스마트 기기의 기본 [다운로드] 폴더에 저장되었습니다.`, 'success');
+          }
+        } else {
+          // PC: 기본값은 내 PC '음악(Music)' 폴더 (또는 사용자가 변경한 폴더)
+          if (state.customDirHandle) {
+            const fileHandle = await state.customDirHandle.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(outBlob);
+            await writable.close();
+            showToast(`완료! [${filename}] 파일이 지정하신 [${state.customDirHandle.name}] 폴더에 저장되었습니다.`, 'success');
+          } else if (pcSaveMode.value === 'music' && window.showSaveFilePicker) {
+            try {
+              const saveHandle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                startIn: 'music'
+              });
+              const writable = await saveHandle.createWritable();
+              await writable.write(outBlob);
+              await writable.close();
+              showToast(`완료! [${filename}] 파일이 PC [음악(Music)] 폴더(또는 지정 경로)에 저장되었습니다.`, 'success');
+            } catch (pickErr) {
+              if (pickErr.name === 'AbortError') {
+                showToast('파일 저장이 취소되었습니다.', 'info');
+              } else {
+                triggerDirectDownload(outBlob, filename);
+                showToast(`완료! [${filename}] 파일이 PC 기본 다운로드 폴더에 저장되었습니다.`, 'success');
+              }
+            }
+          } else {
+            triggerDirectDownload(outBlob, filename);
+            showToast(`완료! [${filename}] 파일이 PC 기본 다운로드 폴더에 저장되었습니다.`, 'success');
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        showToast(`오류가 발생했습니다: ${err.message}`, 'error');
+      } finally {
+        generateRunBtn.disabled = false;
+      }
+    });
+
+    mobileShareActionBtn.addEventListener('click', async () => {
+      if (!state.pendingMobileFile) return;
+      try {
+        await navigator.share({
+          files: [state.pendingMobileFile],
+          title: state.pendingMobileFile.name
+        });
+        mobileShareFallbackBox.classList.add('hidden');
+        showToast(`완료! [${state.pendingMobileFile.name}] 파일이 저장되었습니다.`, 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          triggerDirectDownload(state.pendingMobileFile, state.pendingMobileFile.name);
+        }
+      }
+    });
+
+    function triggerDirectDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    // 초기 데모 파형 렌더링
+    drawWaveform();
+  </script>
+</body>
+</html>

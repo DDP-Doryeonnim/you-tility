@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 사진·문서 비교기 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070A10;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 14%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .mode-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 15px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 800;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .mode-tab:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      color: #ffffff;
+    }
+    .mode-tab.active {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.28) 0%, rgba(244, 63, 94, 0.25) 100%);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.3);
+    }
+    .upload-slot {
+      background: rgba(9, 13, 24, 0.85);
+      border: 2px dashed rgba(100, 116, 139, 0.45);
+      border-radius: 16px;
+      transition: all 0.18s ease;
+    }
+    .upload-slot:hover,
+    .upload-slot.drag-over {
+      border-color: #38bdf8;
+      background: rgba(15, 23, 42, 0.95);
+      box-shadow: 0 0 22px rgba(56, 189, 248, 0.2);
+    }
+    .upload-slot.active-slot {
+      border-color: rgba(34, 211, 238, 0.75);
+    }
+    .stage-checker {
+      background-color: #090d16;
+      background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
+      background-size: 18px 18px;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.55); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1760px] mx-auto px-3 sm:px-6 py-3.5 sm:py-5">
+    <!-- 상단 헤더 (초기화 버튼 포함) -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+          🖼️ 스마트 사진·문서 비교기 <span class="text-xs font-mono text-pink-400 align-middle">VISUAL-DIFF</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">스캔 계약서·도면·사진의 달라진 부분 형광펜 마킹 · 자동 번호 박스 · 슬라이더 & 깜빡임 대조</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <button type="button" onclick="resetAllImages(true)" class="px-3.5 py-2 rounded-xl bg-rose-950/85 hover:bg-rose-900 border border-rose-500/50 text-xs sm:text-sm font-extrabold text-rose-200 transition flex items-center gap-1.5">
+          <span>🗑️</span>
+          <span>초기화</span>
+        </button>
+        <button type="button" onclick="loadSampleVisualDiff('doc')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition">
+          🧪 샘플 계약서
+        </button>
+        <button type="button" onclick="loadSampleVisualDiff('blueprint')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+          📐 샘플 도면
+        </button>
+        <button id="exportMainBtn" type="button" onclick="exportFullResDiffImage()" disabled class="btn-primary px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+          <span>💾</span>
+          <span>원본크기 형광펜 결과 저장</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 -->
+    <input type="file" id="fileInputA" accept="image/*" multiple class="hidden" onchange="handleImageFiles(this.files, 'A')" />
+    <input type="file" id="fileInputB" accept="image/*" multiple class="hidden" onchange="handleImageFiles(this.files, 'B')" />
+
+    <!-- 1. 상단 원본 A / 변경본 B 업로드 & 클립보드 붙여넣기 슬롯 -->
+    <section class="glass-panel rounded-2xl p-3.5 mb-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs sm:text-sm font-extrabold text-white">📂 비교할 두 이미지 준비 (파일 선택 · 드래그 앤 드롭 · Ctrl+V 캡처 붙여넣기)</span>
+          <span class="text-[11px] text-cyan-300 hidden md:inline">💡 파일 2장을 한꺼번에 끌어다 놓으면 A와 B에 자동으로 들어갑니다!</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="swapImagesAB()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+            ⇄ A·B 맞바꾸기
+          </button>
+          <button type="button" onclick="resetAllImages(true)" class="px-2.5 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 border border-rose-500/40 text-xs font-bold text-rose-200 transition">
+            🗑️ 비우기
+          </button>
+          <button type="button" id="toggleSlotBarBtn" onclick="toggleUploadSlots()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">
+            ▲ 파일창 접기
+          </button>
+        </div>
+      </div>
+
+      <div id="uploadSlotsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- 슬롯 A: 원본 (Before) -->
+        <div id="slotBoxA" onclick="setActivePasteSlot('A')" class="upload-slot active-slot p-3 flex items-center justify-between gap-3 cursor-pointer">
+          <div class="flex items-center gap-3 min-w-0">
+            <img id="thumbPreviewA" class="w-14 h-14 rounded-lg object-contain bg-slate-900 border border-slate-700 shrink-0" alt="원본 A" />
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-[11px] font-extrabold text-rose-300">원본 A</span>
+                <span id="fileNameA" class="text-xs sm:text-sm font-bold text-white truncate">이미지를 선택해 주세요</span>
+              </div>
+              <div id="resLabelA" class="text-[11px] text-slate-400 font-mono mt-0.5">해상도: 대기 중</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="event.stopPropagation(); document.getElementById('fileInputA').click();" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+              📂 사진 선택
+            </button>
+            <button type="button" onclick="event.stopPropagation(); pasteClipboardImage('A');" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+              📋 붙여넣기
+            </button>
+          </div>
+        </div>
+
+        <!-- 슬롯 B: 변경본 (After) -->
+        <div id="slotBoxB" onclick="setActivePasteSlot('B')" class="upload-slot p-3 flex items-center justify-between gap-3 cursor-pointer">
+          <div class="flex items-center gap-3 min-w-0">
+            <img id="thumbPreviewB" class="w-14 h-14 rounded-lg object-contain bg-slate-900 border border-slate-700 shrink-0" alt="변경본 B" />
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-extrabold text-emerald-300">변경본 B</span>
+                <span id="fileNameB" class="text-xs sm:text-sm font-bold text-white truncate">이미지를 선택해 주세요</span>
+              </div>
+              <div id="resLabelB" class="text-[11px] text-slate-400 font-mono mt-0.5">해상도: 대기 중</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="event.stopPropagation(); document.getElementById('fileInputB').click();" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition">
+              📂 사진 선택
+            </button>
+            <button type="button" onclick="event.stopPropagation(); pasteClipboardImage('B');" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+              📋 붙여넣기
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 비교 모드 탭 & 정밀 튜닝 컨트롤 바 -->
+    <section class="glass-panel rounded-2xl p-3 sm:p-3.5 mb-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <!-- 4대 비교 모드 선택 탭 -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" data-mode="highlight" onclick="setCompareMode('highlight')" class="mode-tab active">
+            <span>🖍️</span>
+            <span>형광펜 차이점 마킹</span>
+          </button>
+          <button type="button" data-mode="slider" onclick="setCompareMode('slider')" class="mode-tab">
+            <span>↔️</span>
+            <span>슬라이더 커튼 비교</span>
+          </button>
+          <button type="button" data-mode="blink" onclick="setCompareMode('blink')" class="mode-tab">
+            <span>⚡</span>
+            <span>깜빡임·겹쳐보기</span>
+          </button>
+          <button type="button" data-mode="side" onclick="setCompareMode('side')" class="mode-tab">
+            <span>◫</span>
+            <span>좌우 나란히 (연동 돋보기)</span>
+          </button>
+        </div>
+
+        <!-- 검출 통계 배지 -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="sameAlertBadge" class="hidden px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-extrabold text-emerald-300">
+            ✅ 두 이미지가 완벽하게 일치합니다!
+          </span>
+          <span class="px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/35 text-xs font-bold text-rose-300">
+            🎯 발견된 차이점: <strong id="diffSpotCount" class="text-white text-sm">0</strong>곳
+          </span>
+          <span class="px-3 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/35 text-xs font-bold text-cyan-300">
+            📊 변경 비율: <strong id="diffPercentLabel" class="text-white">0.00%</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- 2단 세부 설정 바 -->
+      <div class="mt-3 pt-3 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
+          <!-- 오차 허용치 (노이즈 무시) -->
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800" title="높일수록 미세한 화질 차이나 스캔 먼지는 무시하고 뚜렷하게 바뀐 글자·도장만 잡습니다">
+            <span class="text-xs font-bold text-cyan-300">🎚️ 노이즈 무시(민감도)</span>
+            <input id="toleranceSlider" type="range" min="2" max="80" value="18" oninput="updateDiffParams()" class="w-20 sm:w-24 accent-cyan-400 cursor-pointer" />
+            <span id="toleranceVal" class="text-xs font-mono text-slate-200 w-7 text-right">18</span>
+          </div>
+
+          <!-- 원본 배경 흐리기 (형광펜 부각) -->
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800" title="변경되지 않은 배경 문서를 연하게 만들어 형광펜 마킹이 눈에 확 띄게 합니다">
+            <span class="text-xs font-bold text-pink-300">🕶️ 배경 흐리게</span>
+            <input id="dimBgSlider" type="range" min="0" max="90" value="55" oninput="updateDiffParams()" class="w-20 sm:w-24 accent-pink-400 cursor-pointer" />
+            <span id="dimBgVal" class="text-xs font-mono text-slate-200 w-8 text-right">55%</span>
+          </div>
+
+          <!-- 형광펜 색상 선택 -->
+          <div class="flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
+            <span class="font-bold text-amber-300">🖍️ 마킹 색상</span>
+            <select id="hlColorSelect" onchange="updateDiffParams()" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-white font-bold focus:outline-none">
+              <option value="split" selected>삭제(빨강) + 추가(초록) 구분</option>
+              <option value="red">네온 레드 형광펜</option>
+              <option value="magenta">네온 핑크 형광펜</option>
+              <option value="yellow">형광 옐로우 마커</option>
+            </select>
+          </div>
+
+          <!-- 틀린 곳 자동 번호 박스 토글 -->
+          <label class="flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/40 text-xs font-extrabold text-amber-300 cursor-pointer select-none">
+            <input type="checkbox" id="showClusterBoxesToggle" checked onchange="updateDiffParams()" class="accent-amber-400" />
+            <span>🎯 틀린 곳 번호 박스(#1, #2) 표시</span>
+          </label>
+        </div>
+
+        <!-- 스캔 위치 미세 정렬 (ΔX, ΔY 픽셀 이동) -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800 text-xs ml-auto">
+          <span class="text-slate-400 font-bold mr-1">🎯 위치 미세맞춤:</span>
+          <button type="button" onclick="nudgeImageB(-1, 0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200" title="왼쪽 1px 이동">◀</button>
+          <button type="button" onclick="nudgeImageB(1, 0)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200" title="오른쪽 1px 이동">▶</button>
+          <button type="button" onclick="nudgeImageB(0, -1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200" title="위쪽 1px 이동">▲</button>
+          <button type="button" onclick="nudgeImageB(0, 1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200" title="아래쪽 1px 이동">▼</button>
+          <span id="nudgeOffsetLabel" class="font-mono text-[11px] text-cyan-300 px-1">0, 0</span>
+          <button type="button" onclick="resetNudge()" class="text-[11px] text-slate-400 hover:text-white underline">리셋</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 메인 비교 스테이지 영역 -->
+    <section class="glass-panel rounded-2xl p-3.5 sm:p-4">
+      <!-- 상단 줌(확대) 컨트롤 & 모드별 보조 컨트롤 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
+        <div id="modeGuideText" class="text-xs sm:text-sm font-bold text-slate-200">
+          🖍️ <span class="text-rose-400">빨간색 형광펜</span>은 원본 A에서 삭제·변경된 부분, <span class="text-emerald-400">초록색 형광펜</span>은 변경본 B에 새로 추가된 부분입니다.
+        </div>
+
+        <!-- 깜빡임(Blink) 모드 전용 보조 컨트롤 -->
+        <div id="blinkExtraControls" class="hidden items-center gap-2 bg-slate-900 px-3 py-1 rounded-xl border border-cyan-500/40">
+          <button type="button" id="autoBlinkBtn" onclick="toggleAutoBlink()" class="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-xs font-extrabold animate-pulse">
+            ⚡ 0.5초 자동 깜빡임 ON
+          </button>
+          <span class="text-xs text-slate-300 font-bold ml-1">투명도 겹치기:</span>
+          <input id="onionOpacitySlider" type="range" min="0" max="100" value="50" oninput="onManualOnionSlide(this.value)" class="w-24 accent-cyan-400 cursor-pointer" />
+          <span id="onionOpacityLabel" class="text-xs font-mono text-cyan-300 w-10">50%</span>
+        </div>
+
+        <!-- 화면 확대 배율 버튼 -->
+        <div class="flex items-center gap-1.5 ml-auto">
+          <div class="flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-700">
+            <button type="button" id="stageZoom100" onclick="setStageZoom(1)" class="px-2.5 py-1 rounded-md bg-cyan-500 text-slate-950 text-xs font-extrabold transition">화면맞춤</button>
+            <button type="button" id="stageZoom150" onclick="setStageZoom(1.5)" class="px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-xs font-bold transition">150% 확대</button>
+            <button type="button" id="stageZoom200" onclick="setStageZoom(2.0)" class="px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-xs font-bold transition">200% 초확대</button>
+          </div>
+          <button id="exportReportBtn" type="button" onclick="exportCombinedReportImage()" disabled class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            📑 3단 비교표(A+B+형광펜) 저장
+          </button>
+        </div>
+      </div>
+
+      <!-- [초기 빈 화면 안내 영역] 두 이미지가 모두 준비되기 전에 표시 -->
+      <div id="emptyStagePlaceholder" class="stage-checker rounded-xl p-8 sm:p-14 flex flex-col items-center justify-center min-h-[460px] sm:min-h-[560px] text-center border border-slate-800/80">
+        <div class="text-5xl sm:text-6xl mb-4">🖼️</div>
+        <h2 id="emptyStageTitle" class="text-lg sm:text-xl font-extrabold text-white mb-2">
+          비교할 두 장의 사진·문서 이미지를 올려주세요
+        </h2>
+        <p id="emptyStageSub" class="text-xs sm:text-sm text-slate-400 max-w-lg mb-6 leading-relaxed">
+          위의 <strong class="text-rose-300">원본 A</strong>와 <strong class="text-emerald-300">변경본 B</strong> 슬롯에 이미지를 각각 넣거나, 파일 2개를 한꺼번에 끌어다 놓으면 틀린 곳을 형광펜과 번호 박스로 즉시 찾아줍니다.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-2.5">
+          <button type="button" onclick="document.getElementById('fileInputA').click()" class="btn-primary px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold">
+            📂 원본 A · 변경본 B 사진 선택하기
+          </button>
+          <button type="button" onclick="loadSampleVisualDiff('doc')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-xs sm:text-sm font-bold text-amber-300 transition">
+            🧪 샘플 계약서로 먼저 테스트해 보기
+          </button>
+        </div>
+      </div>
+
+      <!-- [스테이지 1] 단일 대형 캔버스 뷰 (형광펜 마킹 / 슬라이더 커튼 / 깜빡임 모드 공용) -->
+      <div id="singleStageContainer" class="hidden stage-checker rounded-xl p-2 sm:p-4 items-center justify-center min-h-[540px] sm:min-h-[680px] relative overflow-auto select-none">
+        <div id="singleCanvasWrapper" class="relative inline-block">
+          <canvas id="mainDiffCanvas" class="block bg-white rounded shadow-[0_20px_55px_rgba(0,0,0,0.9)]"></canvas>
+
+          <!-- 슬라이더 커튼 모드 전용 핸들 오버레이 -->
+          <div id="curtainOverlay" class="hidden absolute inset-0 pointer-events-none">
+            <div id="curtainLine" class="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-[0_0_12px_#22d3ee]" style="left: 50%;">
+              <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-slate-950 border-2 border-cyan-400 shadow-[0_0_18px_rgba(34,211,238,0.8)] flex items-center justify-center text-cyan-300 font-extrabold text-xs">
+                ↔
+              </div>
+              <div class="absolute top-3 right-2 px-2 py-0.5 rounded bg-rose-600/90 text-[10px] font-extrabold text-white whitespace-nowrap">원본 A</div>
+              <div class="absolute top-3 left-2 px-2 py-0.5 rounded bg-emerald-600/90 text-[10px] font-extrabold text-white whitespace-nowrap">변경본 B</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- [스테이지 2] 좌우 나란히 + 연동 돋보기 뷰 (Side-by-Side) -->
+      <div id="sideBySideStageContainer" class="hidden grid-cols-1 lg:grid-cols-3 gap-3">
+        <!-- 패널 1: 원본 A -->
+        <div class="stage-checker rounded-xl p-2.5 flex flex-col items-center border border-slate-800">
+          <div class="w-full flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-extrabold text-rose-300">
+            <span>🔴 원본 A (수정 전)</span>
+            <span class="text-[11px] text-slate-400">마우스 오버 시 3배율 연동 돋보기</span>
+          </div>
+          <div class="relative inline-block my-auto">
+            <canvas id="sideCanvasA" class="block bg-white rounded shadow-xl max-w-full h-auto cursor-crosshair"></canvas>
+            <canvas id="loupeSideA" width="132" height="132" class="hidden absolute z-30 pointer-events-none rounded-full border-2 border-rose-400 shadow-2xl bg-slate-950"></canvas>
+          </div>
+        </div>
+
+        <!-- 패널 2: 변경본 B -->
+        <div class="stage-checker rounded-xl p-2.5 flex flex-col items-center border border-slate-800">
+          <div class="w-full flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-extrabold text-emerald-300">
+            <span>🟢 변경본 B (수정 후)</span>
+            <span class="text-[11px] text-slate-400">동일 좌표 동시 확대</span>
+          </div>
+          <div class="relative inline-block my-auto">
+            <canvas id="sideCanvasB" class="block bg-white rounded shadow-xl max-w-full h-auto cursor-crosshair"></canvas>
+            <canvas id="loupeSideB" width="132" height="132" class="hidden absolute z-30 pointer-events-none rounded-full border-2 border-emerald-400 shadow-2xl bg-slate-950"></canvas>
+          </div>
+        </div>
+
+        <!-- 패널 3: 형광펜 차이점 결과 -->
+        <div class="stage-checker rounded-xl p-2.5 flex flex-col items-center border border-slate-800">
+          <div class="w-full flex items-center justify-between px-2 pb-2 mb-2 border-b border-slate-800 text-xs font-extrabold text-cyan-300">
+            <span>🖍️ 형광펜 차이점 마킹</span>
+            <span class="text-[11px] text-amber-300">번호 박스 표시</span>
+          </div>
+          <div class="relative inline-block my-auto">
+            <canvas id="sideCanvasDiff" class="block bg-white rounded shadow-xl max-w-full h-auto cursor-crosshair"></canvas>
+            <canvas id="loupeSideDiff" width="132" height="132" class="hidden absolute z-30 pointer-events-none rounded-full border-2 border-cyan-400 shadow-2xl bg-slate-950"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 로딩 오버레이 -->
+  <div id="loadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm">
+    <div class="glass-panel rounded-2xl px-7 py-5 text-center border-cyan-400/40">
+      <div class="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <div id="loadingText" class="text-sm font-extrabold text-white">원본 해상도(1:1) 비교 이미지를 생성하고 있습니다...</div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    const EMPTY_THUMB_A = "data:image/svg+xml;utf8," + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="10" fill="#0f172a"/><text x="32" y="38" fill="#fb7185" font-family="sans-serif" font-size="20" font-weight="900" text-anchor="middle">A</text></svg>`
+    );
+    const EMPTY_THUMB_B = "data:image/svg+xml;utf8," + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="10" fill="#0f172a"/><text x="32" y="38" fill="#34d399" font-family="sans-serif" font-size="20" font-weight="900" text-anchor="middle">B</text></svg>`
+    );
+
+    let fullCanvasA = null;
+    let fullCanvasB = null;
+    let workCanvasA = null;
+    let workCanvasB = null;
+    let workDiffCanvas = null;
+    let detectedClusters = [];
+
+    let activePasteSlot = "A";
+    let compareMode = "highlight"; // 'highlight' | 'slider' | 'blink' | 'side'
+    let stageZoom = 1.0;
+    let curtainRatio = 0.5;
+    let isDraggingCurtain = false;
+
+    let nudgeX = 0;
+    let nudgeY = 0;
+
+    let autoBlinkTimer = null;
+    let blinkShowB = false;
+    let onionAlpha = 0.5;
+    let isSlotsCollapsed = false;
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2600);
+    }
+
+    function setLoading(show, text = "처리 중입니다...") {
+      const el = document.getElementById("loadingOverlay");
+      document.getElementById("loadingText").textContent = text;
+      el.classList.toggle("hidden", !show);
+      el.classList.toggle("flex", show);
+    }
+
+    function setActivePasteSlot(slot) {
+      activePasteSlot = slot;
+      document.getElementById("slotBoxA").classList.toggle("active-slot", slot === "A");
+      document.getElementById("slotBoxB").classList.toggle("active-slot", slot === "B");
+    }
+
+    function toggleUploadSlots() {
+      isSlotsCollapsed = !isSlotsCollapsed;
+      document.getElementById("uploadSlotsGrid").classList.toggle("hidden", isSlotsCollapsed);
+      document.getElementById("toggleSlotBarBtn").textContent = isSlotsCollapsed ? "▼ 파일창 펼치기" : "▲ 파일창 접기";
+    }
+
+    // [화면 전체 초기화 함수]
+    function resetAllImages(showNotification = true) {
+      stopAutoBlink();
+
+      fullCanvasA = null;
+      fullCanvasB = null;
+      workCanvasA = null;
+      workCanvasB = null;
+      workDiffCanvas = null;
+      detectedClusters = [];
+
+      nudgeX = 0;
+      nudgeY = 0;
+      curtainRatio = 0.5;
+      document.getElementById("nudgeOffsetLabel").textContent = "0, 0";
+
+      document.getElementById("fileInputA").value = "";
+      document.getElementById("fileInputB").value = "";
+
+      document.getElementById("thumbPreviewA").src = EMPTY_THUMB_A;
+      document.getElementById("thumbPreviewB").src = EMPTY_THUMB_B;
+      document.getElementById("fileNameA").textContent = "이미지를 선택해 주세요";
+      document.getElementById("fileNameB").textContent = "이미지를 선택해 주세요";
+      document.getElementById("resLabelA").textContent = "해상도: 대기 중";
+      document.getElementById("resLabelB").textContent = "해상도: 대기 중";
+
+      document.getElementById("diffSpotCount").textContent = "0";
+      document.getElementById("diffPercentLabel").textContent = "0.00%";
+      document.getElementById("sameAlertBadge").classList.add("hidden");
+
+      document.getElementById("exportMainBtn").disabled = true;
+      document.getElementById("exportReportBtn").disabled = true;
+
+      setActivePasteSlot("A");
+      updateStageVisibility();
+
+      if (showNotification) {
+        showToast("불러온 이미지와 비교 화면이 모두 초기화되었습니다.");
+      }
+    }
+
+    function updateStageVisibility() {
+      const hasBoth = !!(fullCanvasA && fullCanvasB);
+      const emptyBox = document.getElementById("emptyStagePlaceholder");
+      const singleBox = document.getElementById("singleStageContainer");
+      const sideBox = document.getElementById("sideBySideStageContainer");
+
+      document.getElementById("exportMainBtn").disabled = !hasBoth;
+      document.getElementById("exportReportBtn").disabled = !hasBoth;
+
+      if (!hasBoth) {
+        emptyBox.classList.remove("hidden");
+        singleBox.classList.add("hidden");
+        singleBox.classList.remove("flex");
+        sideBox.classList.add("hidden");
+        sideBox.classList.remove("grid");
+
+        const titleEl = document.getElementById("emptyStageTitle");
+        const subEl = document.getElementById("emptyStageSub");
+        if (fullCanvasA && !fullCanvasB) {
+          titleEl.textContent = "원본 A가 준비되었습니다! 이제 '변경본 B' 이미지를 올려주세요";
+          subEl.innerHTML = "우측 상단의 <strong class='text-emerald-300'>변경본 B</strong> 슬롯에 비교할 두 번째 사진을 선택하거나 Ctrl+V로 붙여넣으면 즉시 비교가 시작됩니다.";
+        } else if (!fullCanvasA && fullCanvasB) {
+          titleEl.textContent = "변경본 B가 준비되었습니다! 이제 '원본 A' 이미지를 올려주세요";
+          subEl.innerHTML = "좌측 상단의 <strong class='text-rose-300'>원본 A</strong> 슬롯에 기준이 될 첫 번째 사진을 선택하거나 Ctrl+V로 붙여넣으면 즉시 비교가 시작됩니다.";
+        } else {
+          titleEl.textContent = "비교할 두 장의 사진·문서 이미지를 올려주세요";
+          subEl.innerHTML = "위의 <strong class='text-rose-300'>원본 A</strong>와 <strong class='text-emerald-300'>변경본 B</strong> 슬롯에 이미지를 각각 넣거나, 파일 2개를 한꺼번에 끌어다 놓으면 틀린 곳을 형광펜과 번호 박스로 즉시 찾아줍니다.";
+        }
+        return;
+      }
+
+      emptyBox.classList.add("hidden");
+      if (compareMode === "side") {
+        singleBox.classList.add("hidden");
+        singleBox.classList.remove("flex");
+        sideBox.classList.remove("hidden");
+        sideBox.classList.add("grid");
+      } else {
+        sideBox.classList.add("hidden");
+        sideBox.classList.remove("grid");
+        singleBox.classList.remove("hidden");
+        singleBox.classList.add("flex");
+      }
+    }
+
+    async function handleImageFiles(fileList, targetSlot) {
+      if (!fileList || fileList.length === 0) return;
+      const validFiles = Array.from(fileList).filter((f) => f.type.startsWith("image/") || /\.(png|jpe?g|webp|bmp|gif|svg)$/i.test(f.name));
+      if (validFiles.length === 0) {
+        showToast("이미지 파일(JPG, PNG, WebP 등)을 선택해 주세요.", "err");
+        return;
+      }
+
+      try {
+        if (validFiles.length >= 2) {
+          await loadSingleFileToSlot(validFiles[0], "A");
+          await loadSingleFileToSlot(validFiles[1], "B");
+          rebuildWorkCanvasesAndRunDiff();
+          showToast("2장의 이미지를 원본 A와 변경본 B에 동시에 불러왔습니다!", "ok");
+        } else {
+          await loadSingleFileToSlot(validFiles[0], targetSlot);
+          if (targetSlot === "A" && !fullCanvasB) setActivePasteSlot("B");
+          else if (targetSlot === "B" && !fullCanvasA) setActivePasteSlot("A");
+          rebuildWorkCanvasesAndRunDiff();
+          showToast(`'${validFiles[0].name}' 이미지를 ${targetSlot === "A" ? "원본 A" : "변경본 B"}에 불러왔습니다!`, "ok");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("이미지를 불러오는 중 오류가 발생했습니다.", "err");
+      } finally {
+        document.getElementById("fileInputA").value = "";
+        document.getElementById("fileInputB").value = "";
+      }
+    }
+
+    async function loadSingleFileToSlot(file, slot) {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => { URL.revokeObjectURL(url); resolve(i); };
+        i.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+        i.src = url;
+      });
+
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
+
+      applyCanvasToSlot(c, file.name, slot);
+    }
+
+    function applyCanvasToSlot(canvas, name, slot) {
+      if (slot === "A") {
+        fullCanvasA = canvas;
+        document.getElementById("fileNameA").textContent = name;
+        document.getElementById("resLabelA").textContent = `해상도: ${canvas.width} × ${canvas.height} px`;
+        document.getElementById("thumbPreviewA").src = canvas.toDataURL("image/jpeg", 0.6);
+      } else {
+        fullCanvasB = canvas;
+        document.getElementById("fileNameB").textContent = name;
+        document.getElementById("resLabelB").textContent = `해상도: ${canvas.width} × ${canvas.height} px`;
+        document.getElementById("thumbPreviewB").src = canvas.toDataURL("image/jpeg", 0.6);
+      }
+    }
+
+    async function pasteClipboardImage(slot) {
+      setActivePasteSlot(slot);
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+          showToast("키보드 Ctrl + V 를 누르면 캡처한 이미지가 바로 붙여넣어집니다!");
+          return;
+        }
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imgType = item.types.find((t) => t.startsWith("image/"));
+          if (imgType) {
+            const blob = await item.getType(imgType);
+            const file = new File([blob], `클립보드_캡처_${slot}.png`, { type: imgType });
+            await loadSingleFileToSlot(file, slot);
+            rebuildWorkCanvasesAndRunDiff();
+            showToast(`클립보드 캡처 이미지를 ${slot === "A" ? "원본 A" : "변경본 B"}에 붙여넣었습니다!`, "ok");
+            return;
+          }
+        }
+        showToast("클립보드에 복사된 이미지가 없습니다. 화면 캡처 후 다시 시도해 주세요.", "err");
+      } catch (e) {
+        showToast("키보드 Ctrl + V 를 눌러 클립보드 이미지를 바로 붙여넣으세요!");
+      }
+    }
+
+    window.addEventListener("paste", async (e) => {
+      if (!e.clipboardData || !e.clipboardData.items) return;
+      for (const item of e.clipboardData.items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            await loadSingleFileToSlot(file, activePasteSlot);
+            rebuildWorkCanvasesAndRunDiff();
+            showToast(`Ctrl+V 캡처 이미지를 ${activePasteSlot === "A" ? "원본 A" : "변경본 B"}에 적용했습니다!`, "ok");
+            setActivePasteSlot(activePasteSlot === "A" ? "B" : "A");
+          }
+          break;
+        }
+      }
+    });
+
+    function setupSlotDragAndDrop(boxId, slot) {
+      const box = document.getElementById(boxId);
+      ["dragenter", "dragover"].forEach((evt) => {
+        box.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          box.classList.add("drag-over");
+        });
+      });
+      ["dragleave", "drop"].forEach((evt) => {
+        box.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          box.classList.remove("drag-over");
+        });
+      });
+      box.addEventListener("drop", (e) => {
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+          handleImageFiles(e.dataTransfer.files, slot);
+        }
+      });
+    }
+
+    function swapImagesAB() {
+      if (!fullCanvasA && !fullCanvasB) {
+        showToast("맞바꿀 이미지가 없습니다.", "err");
+        return;
+      }
+      const tmpC = fullCanvasA;
+      fullCanvasA = fullCanvasB;
+      fullCanvasB = tmpC;
+
+      const nameA = document.getElementById("fileNameA").textContent;
+      const nameB = document.getElementById("fileNameB").textContent;
+
+      if (fullCanvasA) applyCanvasToSlot(fullCanvasA, nameB, "A");
+      else {
+        document.getElementById("thumbPreviewA").src = EMPTY_THUMB_A;
+        document.getElementById("fileNameA").textContent = "이미지를 선택해 주세요";
+        document.getElementById("resLabelA").textContent = "해상도: 대기 중";
+      }
+
+      if (fullCanvasB) applyCanvasToSlot(fullCanvasB, nameA, "B");
+      else {
+        document.getElementById("thumbPreviewB").src = EMPTY_THUMB_B;
+        document.getElementById("fileNameB").textContent = "이미지를 선택해 주세요";
+        document.getElementById("resLabelB").textContent = "해상도: 대기 중";
+      }
+
+      rebuildWorkCanvasesAndRunDiff();
+      showToast("원본 A와 변경본 B의 위치를 맞바꾸었습니다.");
+    }
+
+    function nudgeImageB(dx, dy) {
+      if (!fullCanvasA || !fullCanvasB) return;
+      nudgeX += dx;
+      nudgeY += dy;
+      document.getElementById("nudgeOffsetLabel").textContent = `${nudgeX}, ${nudgeY}`;
+      rebuildWorkCanvasesAndRunDiff();
+    }
+
+    function resetNudge() {
+      nudgeX = 0;
+      nudgeY = 0;
+      document.getElementById("nudgeOffsetLabel").textContent = "0, 0";
+      if (fullCanvasA && fullCanvasB) rebuildWorkCanvasesAndRunDiff();
+    }
+
+    function rebuildWorkCanvasesAndRunDiff() {
+      updateStageVisibility();
+      if (!fullCanvasA || !fullCanvasB) return;
+
+      const baseW = fullCanvasA.width;
+      const baseH = fullCanvasA.height;
+      const maxWorkDim = 1500;
+      const scale = Math.min(1.0, maxWorkDim / Math.max(baseW, baseH));
+      const wW = Math.max(60, Math.round(baseW * scale));
+      const wH = Math.max(60, Math.round(baseH * scale));
+
+      workCanvasA = document.createElement("canvas");
+      workCanvasA.width = wW;
+      workCanvasA.height = wH;
+      const ctxA = workCanvasA.getContext("2d", { willReadFrequently: true });
+      ctxA.fillStyle = "#ffffff";
+      ctxA.fillRect(0, 0, wW, wH);
+      ctxA.drawImage(fullCanvasA, 0, 0, wW, wH);
+
+      workCanvasB = document.createElement("canvas");
+      workCanvasB.width = wW;
+      workCanvasB.height = wH;
+      const ctxB = workCanvasB.getContext("2d", { willReadFrequently: true });
+      ctxB.fillStyle = "#ffffff";
+      ctxB.fillRect(0, 0, wW, wH);
+      ctxB.drawImage(fullCanvasB, nudgeX * scale, nudgeY * scale, wW, wH);
+
+      workDiffCanvas = document.createElement("canvas");
+      workDiffCanvas.width = wW;
+      workDiffCanvas.height = wH;
+
+      updateDiffParams();
+    }
+
+    function updateDiffParams() {
+      const tolerance = parseInt(document.getElementById("toleranceSlider").value, 10);
+      const dimBg = parseInt(document.getElementById("dimBgSlider").value, 10);
+      const hlColor = document.getElementById("hlColorSelect").value;
+      const showBoxes = document.getElementById("showClusterBoxesToggle").checked;
+
+      document.getElementById("toleranceVal").textContent = tolerance;
+      document.getElementById("dimBgVal").textContent = dimBg + "%";
+
+      if (!workCanvasA || !workCanvasB) return;
+
+      const result = computePixelDiffAndClusters(
+        workCanvasA,
+        workCanvasB,
+        workDiffCanvas,
+        tolerance,
+        dimBg,
+        hlColor,
+        showBoxes
+      );
+
+      detectedClusters = result.clusters;
+      document.getElementById("diffSpotCount").textContent = detectedClusters.length;
+      document.getElementById("diffPercentLabel").textContent = result.diffPercent.toFixed(2) + "%";
+      document.getElementById("sameAlertBadge").classList.toggle("hidden", result.diffPixelCount > 0);
+
+      renderActiveStageView();
+    }
+
+    function computePixelDiffAndClusters(canA, canB, outCanvas, tolerance, dimBgPercent, hlColorMode, drawBoxes) {
+      const W = canA.width;
+      const H = canA.height;
+      outCanvas.width = W;
+      outCanvas.height = H;
+
+      const dataA = canA.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+      const dataB = canB.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+      const outCtx = outCanvas.getContext("2d");
+      const outImg = outCtx.createImageData(W, H);
+      const dst = outImg.data;
+
+      const colorThresh = tolerance * 2.4;
+      const bgKeep = 1.0 - (dimBgPercent / 100) * 0.82;
+
+      const cellSize = Math.max(12, Math.round(Math.max(W, H) / 75));
+      const gW = Math.ceil(W / cellSize);
+      const gH = Math.ceil(H / cellSize);
+      const cellHits = new Uint16Array(gW * gH);
+
+      let diffPixelCount = 0;
+
+      for (let y = 0; y < H; y++) {
+        const gy = (y / cellSize) | 0;
+        const rowOff = y * W * 4;
+        for (let x = 0; x < W; x++) {
+          const idx = rowOff + x * 4;
+          const rA = dataA[idx], gA = dataA[idx + 1], bA = dataA[idx + 2];
+          const rB = dataB[idx], gB = dataB[idx + 1], bB = dataB[idx + 2];
+
+          const dR = rA - rB;
+          const dG = gA - gB;
+          const dB = bA - bB;
+          const dist = Math.sqrt(dR * dR + dG * dG + dB * dB);
+
+          if (dist > colorThresh) {
+            diffPixelCount++;
+            cellHits[gy * gW + ((x / cellSize) | 0)]++;
+
+            const lumaA = rA * 0.299 + gA * 0.587 + bA * 0.114;
+            const lumaB = rB * 0.299 + gB * 0.587 + bB * 0.114;
+
+            if (hlColorMode === "split") {
+              if (lumaA < lumaB - 12) {
+                dst[idx] = 244; dst[idx + 1] = 63; dst[idx + 2] = 94; dst[idx + 3] = 255;
+              } else if (lumaB < lumaA - 12) {
+                dst[idx] = 16; dst[idx + 1] = 185; dst[idx + 2] = 129; dst[idx + 3] = 255;
+              } else {
+                dst[idx] = 236; dst[idx + 1] = 72; dst[idx + 2] = 153; dst[idx + 3] = 255;
+              }
+            } else if (hlColorMode === "red") {
+              dst[idx] = 244; dst[idx + 1] = 63; dst[idx + 2] = 94; dst[idx + 3] = 255;
+            } else if (hlColorMode === "magenta") {
+              dst[idx] = 217; dst[idx + 1] = 70; dst[idx + 2] = 239; dst[idx + 3] = 255;
+            } else {
+              const minLuma = Math.min(lumaA, lumaB) * 0.55;
+              dst[idx] = Math.min(255, 250 - (255 - minLuma) * 0.25);
+              dst[idx + 1] = Math.min(255, 204 - (255 - minLuma) * 0.3);
+              dst[idx + 2] = 21;
+              dst[idx + 3] = 255;
+            }
+          } else {
+            const avgLuma = (rB * 0.299 + gB * 0.587 + bB * 0.114);
+            const grayMix = 255 - (255 - avgLuma) * bgKeep;
+            dst[idx]     = Math.round(rB * bgKeep + grayMix * (1 - bgKeep));
+            dst[idx + 1] = Math.round(gB * bgKeep + grayMix * (1 - bgKeep));
+            dst[idx + 2] = Math.round(bB * bgKeep + grayMix * (1 - bgKeep));
+            dst[idx + 3] = 255;
+          }
+        }
+      }
+
+      outCtx.putImageData(outImg, 0, 0);
+
+      const clusters = extractConnectedDiffClusters(cellHits, gW, gH, cellSize, W, H);
+
+      if (drawBoxes && clusters.length > 0) {
+        drawClusterBoxesOnCanvas(outCtx, clusters, W, H);
+      }
+
+      const diffPercent = (diffPixelCount / (W * H)) * 100;
+      return { diffPixelCount, diffPercent, clusters };
+    }
+
+    function extractConnectedDiffClusters(cellHits, gW, gH, cellSize, W, H) {
+      const visited = new Uint8Array(gW * gH);
+      const minPixelsPerCell = Math.max(2, Math.floor((cellSize * cellSize) * 0.015));
+      const rawBoxes = [];
+
+      for (let gy = 0; gy < gH; gy++) {
+        for (let gx = 0; gx < gW; gx++) {
+          const startIdx = gy * gW + gx;
+          if (visited[startIdx] || cellHits[startIdx] < minPixelsPerCell) continue;
+
+          const queue = [[gx, gy]];
+          visited[startIdx] = 1;
+          let minX = gx, maxX = gx, minY = gy, maxY = gy;
+
+          while (queue.length > 0) {
+            const [cx, cy] = queue.pop();
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            for (let dy = -2; dy <= 2; dy++) {
+              const ny = cy + dy;
+              if (ny < 0 || ny >= gH) continue;
+              for (let dx = -2; dx <= 2; dx++) {
+                const nx = cx + dx;
+                if (nx < 0 || nx >= gW) continue;
+                const nIdx = ny * gW + nx;
+                if (!visited[nIdx] && cellHits[nIdx] >= minPixelsPerCell) {
+                  visited[nIdx] = 1;
+                  queue.push([nx, ny]);
+                }
+              }
+            }
+          }
+
+          const pad = 6;
+          const x1 = Math.max(0, minX * cellSize - pad);
+          const y1 = Math.max(0, minY * cellSize - pad);
+          const x2 = Math.min(W, (maxX + 1) * cellSize + pad);
+          const y2 = Math.min(H, (maxY + 1) * cellSize + pad);
+
+          rawBoxes.push({
+            x: x1 / W,
+            y: y1 / H,
+            w: (x2 - x1) / W,
+            h: (y2 - y1) / H
+          });
+        }
+      }
+
+      rawBoxes.sort((a, b) => (Math.abs(a.y - b.y) > 0.04 ? a.y - b.y : a.x - b.x));
+      return rawBoxes.slice(0, 60);
+    }
+
+    function drawClusterBoxesOnCanvas(ctx, clusters, W, H) {
+      const scaleFactor = Math.max(1, Math.min(W, H) / 900);
+      const lineW = Math.max(2, Math.round(2.5 * scaleFactor));
+      const fontSize = Math.max(12, Math.round(14 * scaleFactor));
+
+      ctx.save();
+      clusters.forEach((box, idx) => {
+        const bx = Math.round(box.x * W);
+        const by = Math.round(box.y * H);
+        const bw = Math.round(box.w * W);
+        const bh = Math.round(box.h * H);
+
+        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = lineW;
+        ctx.strokeRect(bx, by, bw, bh);
+
+        const label = `#${idx + 1}`;
+        ctx.font = `900 ${fontSize}px Pretendard, sans-serif`;
+        const textW = ctx.measureText(label).width;
+        const badgeW = textW + fontSize * 0.8;
+        const badgeH = fontSize * 1.35;
+        const badgeY = by - badgeH >= 2 ? by - badgeH : by;
+
+        ctx.fillStyle = "#f43f5e";
+        ctx.beginPath();
+        ctx.roundRect(bx, badgeY, badgeW, badgeH, 4 * scaleFactor);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, bx + fontSize * 0.4, badgeY + badgeH / 2 + 0.5);
+      });
+      ctx.restore();
+    }
+
+    function setCompareMode(mode) {
+      compareMode = mode;
+      stopAutoBlink();
+
+      document.querySelectorAll(".mode-tab[data-mode]").forEach((btn) => {
+        btn.classList.toggle("active", btn.getAttribute("data-mode") === mode);
+      });
+
+      const curtainOverlay = document.getElementById("curtainOverlay");
+      const blinkControls = document.getElementById("blinkExtraControls");
+      const guideEl = document.getElementById("modeGuideText");
+
+      curtainOverlay.classList.toggle("hidden", mode !== "slider");
+      blinkControls.classList.toggle("hidden", mode !== "blink");
+      blinkControls.classList.toggle("flex", mode === "blink");
+
+      if (mode === "highlight") {
+        guideEl.innerHTML = `🖍️ <span class="text-rose-400">빨간 형광펜</span>은 삭제·변경 전 내용, <span class="text-emerald-400">초록 형광펜</span>은 새로 추가된 내용이며, <span class="text-amber-300">#번호 박스</span>로 위치를 즉시 알려줍니다.`;
+      } else if (mode === "slider") {
+        guideEl.innerHTML = `↔️ 이미지 중앙의 <span class="text-cyan-300">수직 커튼 바</span>를 마우스나 손가락으로 좌우로 움직여 원본 A와 변경본 B를 직접 비교하세요.`;
+      } else if (mode === "blink") {
+        guideEl.innerHTML = `⚡ <span class="text-rose-400">0.5초 자동 깜빡임</span>으로 두 이미지를 제자리에서 교차 비교하여 1픽셀의 미세한 차이도 눈으로 잡아냅니다.`;
+        if (workCanvasA && workCanvasB) startAutoBlink();
+      } else if (mode === "side") {
+        guideEl.innerHTML = `◫ 세 화면 중 아무 곳에나 마우스를 올리면 <span class="text-cyan-300">3배율 연동 돋보기</span>가 동일 위치를 동시에 확대해 보여줍니다.`;
+      }
+
+      updateStageVisibility();
+      renderActiveStageView();
+    }
+
+    function renderActiveStageView() {
+      if (!workCanvasA || !workCanvasB || !workDiffCanvas) return;
+
+      const mainCanvas = document.getElementById("mainDiffCanvas");
+      const W = workCanvasA.width;
+      const H = workCanvasA.height;
+      mainCanvas.width = W;
+      mainCanvas.height = H;
+      const ctx = mainCanvas.getContext("2d");
+
+      if (compareMode === "highlight") {
+        ctx.drawImage(workDiffCanvas, 0, 0);
+      } else if (compareMode === "slider") {
+        const splitX = Math.round(W * curtainRatio);
+        ctx.drawImage(workCanvasB, 0, 0);
+        if (splitX > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, 0, splitX, H);
+          ctx.clip();
+          ctx.drawImage(workCanvasA, 0, 0);
+          ctx.restore();
+        }
+        document.getElementById("curtainLine").style.left = (curtainRatio * 100) + "%";
+      } else if (compareMode === "blink") {
+        if (autoBlinkTimer) {
+          ctx.drawImage(blinkShowB ? workCanvasB : workCanvasA, 0, 0);
+          ctx.fillStyle = blinkShowB ? "rgba(16, 185, 129, 0.9)" : "rgba(244, 63, 94, 0.9)";
+          ctx.fillRect(16, 16, 150, 36);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "900 16px Pretendard, sans-serif";
+          ctx.fillText(blinkShowB ? "🟢 현재: 변경본 B" : "🔴 현재: 원본 A", 28, 39);
+        } else {
+          ctx.drawImage(workCanvasA, 0, 0);
+          ctx.save();
+          ctx.globalAlpha = onionAlpha;
+          ctx.drawImage(workCanvasB, 0, 0);
+          ctx.restore();
+        }
+      } else if (compareMode === "side") {
+        const cA = document.getElementById("sideCanvasA");
+        const cB = document.getElementById("sideCanvasB");
+        const cD = document.getElementById("sideCanvasDiff");
+        [cA, cB, cD].forEach((c) => { c.width = W; c.height = H; });
+        cA.getContext("2d").drawImage(workCanvasA, 0, 0);
+        cB.getContext("2d").drawImage(workCanvasB, 0, 0);
+        cD.getContext("2d").drawImage(workDiffCanvas, 0, 0);
+      }
+
+      applyMainCanvasZoomSize();
+    }
+
+    function setStageZoom(factor) {
+      stageZoom = factor;
+      [1, 1.5, 2.0].forEach((f) => {
+        const id = f === 1 ? "stageZoom100" : f === 1.5 ? "stageZoom150" : "stageZoom200";
+        const btn = document.getElementById(id);
+        btn.className = f === factor
+          ? "px-2.5 py-1 rounded-md bg-cyan-500 text-slate-950 text-xs font-extrabold transition"
+          : "px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-xs font-bold transition";
+      });
+      applyMainCanvasZoomSize();
+    }
+
+    function applyMainCanvasZoomSize() {
+      const mainCanvas = document.getElementById("mainDiffCanvas");
+      const stageBox = document.getElementById("singleStageContainer");
+      if (!mainCanvas || !mainCanvas.width || stageBox.classList.contains("hidden")) return;
+
+      const rect = stageBox.getBoundingClientRect();
+      const availW = Math.max(320, rect.width - 36);
+      const availH = Math.max(480, rect.height - 36);
+
+      const fitScale = Math.min(availW / mainCanvas.width, availH / mainCanvas.height);
+      const dispW = Math.round(mainCanvas.width * fitScale * stageZoom);
+      const dispH = Math.round(mainCanvas.height * fitScale * stageZoom);
+
+      mainCanvas.style.width = dispW + "px";
+      mainCanvas.style.height = dispH + "px";
+    }
+
+    const singleWrapper = document.getElementById("singleCanvasWrapper");
+    singleWrapper.addEventListener("pointerdown", (e) => {
+      if (compareMode !== "slider") return;
+      isDraggingCurtain = true;
+      singleWrapper.setPointerCapture(e.pointerId);
+      updateCurtainFromPointer(e.clientX);
+    });
+    singleWrapper.addEventListener("pointermove", (e) => {
+      if (!isDraggingCurtain || compareMode !== "slider") return;
+      updateCurtainFromPointer(e.clientX);
+    });
+    singleWrapper.addEventListener("pointerup", () => { isDraggingCurtain = false; });
+    singleWrapper.addEventListener("pointercancel", () => { isDraggingCurtain = false; });
+
+    function updateCurtainFromPointer(clientX) {
+      const rect = document.getElementById("mainDiffCanvas").getBoundingClientRect();
+      curtainRatio = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      renderActiveStageView();
+    }
+
+    function startAutoBlink() {
+      stopAutoBlink();
+      const btn = document.getElementById("autoBlinkBtn");
+      btn.textContent = "⚡ 0.5초 자동 깜빡임 ON";
+      btn.className = "px-2.5 py-1 rounded-lg bg-rose-500 text-white text-xs font-extrabold animate-pulse";
+      autoBlinkTimer = setInterval(() => {
+        blinkShowB = !blinkShowB;
+        renderActiveStageView();
+      }, 520);
+    }
+
+    function stopAutoBlink() {
+      if (autoBlinkTimer) {
+        clearInterval(autoBlinkTimer);
+        autoBlinkTimer = null;
+      }
+    }
+
+    function toggleAutoBlink() {
+      const btn = document.getElementById("autoBlinkBtn");
+      if (autoBlinkTimer) {
+        stopAutoBlink();
+        btn.textContent = "⏸️ 자동 깜빡임 꺼짐";
+        btn.className = "px-2.5 py-1 rounded-lg bg-slate-700 text-slate-200 text-xs font-bold";
+        renderActiveStageView();
+      } else {
+        startAutoBlink();
+      }
+    }
+
+    function onManualOnionSlide(val) {
+      stopAutoBlink();
+      const btn = document.getElementById("autoBlinkBtn");
+      btn.textContent = "⏸️ 자동 깜빡임 꺼짐";
+      btn.className = "px-2.5 py-1 rounded-lg bg-slate-700 text-slate-200 text-xs font-bold";
+      onionAlpha = parseInt(val, 10) / 100;
+      document.getElementById("onionOpacityLabel").textContent = val + "%";
+      renderActiveStageView();
+    }
+
+    function setupSyncedSideLoupes() {
+      const ids = [
+        { can: "sideCanvasA", loupe: "loupeSideA", src: () => workCanvasA },
+        { can: "sideCanvasB", loupe: "loupeSideB", src: () => workCanvasB },
+        { can: "sideCanvasDiff", loupe: "loupeSideDiff", src: () => workDiffCanvas }
+      ];
+
+      ids.forEach((item) => {
+        const cEl = document.getElementById(item.can);
+        cEl.addEventListener("pointermove", (e) => {
+          const rect = cEl.getBoundingClientRect();
+          const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+          ids.forEach((target) => {
+            const tCan = document.getElementById(target.can);
+            const tLoupe = document.getElementById(target.loupe);
+            const srcCanvas = target.src();
+            if (!srcCanvas) return;
+
+            tLoupe.classList.remove("hidden");
+            const tRect = tCan.getBoundingClientRect();
+            const lx = Math.max(4, Math.min(tRect.width - 136, normX * tRect.width - 66));
+            let ly = normY * tRect.height - 148;
+            if (ly < 4) ly = normY * tRect.height + 20;
+
+            tLoupe.style.left = lx + "px";
+            tLoupe.style.top = ly + "px";
+
+            const lCtx = tLoupe.getContext("2d");
+            const r = Math.max(24, Math.round(Math.min(srcCanvas.width, srcCanvas.height) * 0.045));
+            const sx = normX * srcCanvas.width - r;
+            const sy = normY * srcCanvas.height - r;
+
+            lCtx.fillStyle = "#090d16";
+            lCtx.fillRect(0, 0, 132, 132);
+            lCtx.drawImage(srcCanvas, sx, sy, r * 2, r * 2, 0, 0, 132, 132);
+
+            lCtx.strokeStyle = "#38bdf8";
+            lCtx.lineWidth = 1.5;
+            lCtx.beginPath();
+            lCtx.moveTo(66, 0); lCtx.lineTo(66, 132);
+            lCtx.moveTo(0, 66); lCtx.lineTo(132, 66);
+            lCtx.stroke();
+          });
+        });
+
+        cEl.addEventListener("pointerleave", () => {
+          ids.forEach((t) => document.getElementById(t.loupe).classList.add("hidden"));
+        });
+      });
+    }
+
+    function exportFullResDiffImage() {
+      if (!fullCanvasA || !fullCanvasB) {
+        showToast("먼저 비교할 두 이미지를 불러와 주세요.", "err");
+        return;
+      }
+      setLoading(true, `원본 해상도(${fullCanvasA.width}×${fullCanvasA.height}px) 그대로 형광펜 비교 이미지를 생성 중입니다...`);
+
+      setTimeout(() => {
+        try {
+          const W = fullCanvasA.width;
+          const H = fullCanvasA.height;
+
+          const alignedB = document.createElement("canvas");
+          alignedB.width = W;
+          alignedB.height = H;
+          const bCtx = alignedB.getContext("2d", { willReadFrequently: true });
+          bCtx.fillStyle = "#ffffff";
+          bCtx.fillRect(0, 0, W, H);
+          bCtx.drawImage(fullCanvasB, nudgeX, nudgeY, W, H);
+
+          const outCanvas = document.createElement("canvas");
+          const tolerance = parseInt(document.getElementById("toleranceSlider").value, 10);
+          const dimBg = parseInt(document.getElementById("dimBgSlider").value, 10);
+          const hlColor = document.getElementById("hlColorSelect").value;
+          const showBoxes = document.getElementById("showClusterBoxesToggle").checked;
+
+          computePixelDiffAndClusters(fullCanvasA, alignedB, outCanvas, tolerance, dimBg, hlColor, showBoxes);
+
+          outCanvas.toBlob((blob) => {
+            setLoading(false);
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `You-틸리티_형광펜비교결과_${W}x${H}.png`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 8000);
+            showToast(`원본 해상도(${W}×${H}px) 형광펜 비교 결과가 저장되었습니다!`, "ok");
+          }, "image/png");
+        } catch (err) {
+          setLoading(false);
+          showToast("이미지 저장 중 오류가 발생했습니다.", "err");
+        }
+      }, 40);
+    }
+
+    function exportCombinedReportImage() {
+      if (!workCanvasA || !workCanvasB || !workDiffCanvas) return;
+      const w = workCanvasA.width;
+      const h = workCanvasA.height;
+      const pad = 24;
+      const headerH = 58;
+
+      const reportCanvas = document.createElement("canvas");
+      reportCanvas.width = w * 3 + pad * 4;
+      reportCanvas.height = h + headerH + pad * 2;
+      const ctx = reportCanvas.getContext("2d");
+
+      ctx.fillStyle = "#0b1120";
+      ctx.fillRect(0, 0, reportCanvas.width, reportCanvas.height);
+
+      ctx.font = "900 22px Pretendard, sans-serif";
+      ctx.fillStyle = "#f43f5e";
+      ctx.fillText("🔴 원본 A (수정 전)", pad, 40);
+      ctx.fillStyle = "#10b981";
+      ctx.fillText("🟢 변경본 B (수정 후)", w + pad * 2, 40);
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillText(`🖍️ 형광펜 차이점 검출 (${detectedClusters.length}곳 발견)`, w * 2 + pad * 3, 40);
+
+      ctx.drawImage(workCanvasA, pad, headerH);
+      ctx.drawImage(workCanvasB, w + pad * 2, headerH);
+      ctx.drawImage(workDiffCanvas, w * 2 + pad * 3, headerH);
+
+      reportCanvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `You-틸리티_3단비교리포트_${Date.now()}.png`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 8000);
+        showToast("3단 한눈에 비교 리포트 이미지가 저장되었습니다!", "ok");
+      }, "image/png");
+    }
+
+    // =========================================================================
+    // 6. 개인정보가 완전히 배제된 일반 샘플 생성기 (DDP 도련님 적용)
+    // =========================================================================
+    function loadSampleVisualDiff(type) {
+      if (type === "doc") {
+        const canA = generateSampleContractCanvas(false);
+        const canB = generateSampleContractCanvas(true);
+        applyCanvasToSlot(canA, "표준솔루션계약서_원본_A.png", "A");
+        applyCanvasToSlot(canB, "표준솔루션계약서_수정본_B.png", "B");
+        nudgeX = 0; nudgeY = 0;
+        rebuildWorkCanvasesAndRunDiff();
+        showToast("샘플 계약서 2장을 비교하여 바뀐 금액·날짜·도장 등 4곳을 형광펜으로 찾았습니다!", "ok");
+      } else {
+        const canA = generateSampleBlueprintCanvas(false);
+        const canB = generateSampleBlueprintCanvas(true);
+        applyCanvasToSlot(canA, "네트워크배치도_Rev1.png", "A");
+        applyCanvasToSlot(canB, "네트워크배치도_Rev2.png", "B");
+        nudgeX = 0; nudgeY = 0;
+        rebuildWorkCanvasesAndRunDiff();
+        showToast("샘플 도면의 수정 전후를 비교하여 변경 위치를 모두 검출했습니다!", "ok");
+      }
+    }
+
+    function generateSampleContractCanvas(isModified) {
+      const c = document.createElement("canvas");
+      c.width = 1000;
+      c.height = 1320;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 1000, 1320);
+
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(60, 60, 880, 1200);
+
+      ctx.fillStyle = "#0f172a";
+      ctx.font = "900 42px Pretendard, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("솔 루 션 공 급 계 약 서", 500, 155);
+
+      ctx.lineWidth = 2;
+      ctx.strokeRect(110, 210, 780, 240);
+      ctx.beginPath();
+      ctx.moveTo(110, 290); ctx.lineTo(890, 290);
+      ctx.moveTo(110, 370); ctx.lineTo(890, 370);
+      ctx.moveTo(310, 210); ctx.lineTo(310, 450);
+      ctx.stroke();
+
+      ctx.textAlign = "left";
+      ctx.font = "800 24px Pretendard, sans-serif";
+      ctx.fillText("1. 계 약 건 명", 135, 258);
+      ctx.fillText("2. 계 약 금 액", 135, 338);
+      ctx.fillText("3. 납 품 기 한", 135, 418);
+
+      ctx.font = "700 24px Pretendard, sans-serif";
+      ctx.fillText("You-틸리티 클라우드 통합 플랫폼 구축", 340, 258);
+
+      if (!isModified) {
+        ctx.fillText("일금 삼천오백만원정 (₩35,000,000)", 340, 338);
+      } else {
+        ctx.fillText("일금 삼천팔백오십만원정 (₩38,500,000)", 340, 338);
+      }
+
+      if (!isModified) {
+        ctx.fillText("2026년 11월 30일", 340, 418);
+      } else {
+        ctx.fillText("2026년 12월 15일", 340, 418);
+      }
+
+      const clauses = [
+        "제1조 (목적) 본 계약은 공급자와 수요자 간의 솔루션 구축 및 검수에",
+        "필요한 제반 사항을 정함을 목적으로 한다.",
+        "",
+        "제2조 (지체상금) 공급자가 기한 내 납품을 완료하지 못할 경우",
+        isModified
+          ? "지연 1일당 계약금액의 1000분의 1.5에 해당하는 금액을 공제한다."
+          : "지연 1일당 계약금액의 1000분의 2.5에 해당하는 금액을 공제한다.",
+        "",
+        "제3조 (무상보증) 검수 완료일로부터 24개월간 무상 기술지원을 제공한다."
+      ];
+
+      ctx.font = "600 23px Pretendard, sans-serif";
+      clauses.forEach((line, idx) => {
+        ctx.fillText(line, 115, 540 + idx * 48);
+      });
+
+      ctx.textAlign = "center";
+      ctx.font = "800 28px Pretendard, sans-serif";
+      ctx.fillText("2026년  11월  18일", 500, 1020);
+
+      ctx.textAlign = "left";
+      ctx.font = "800 30px Pretendard, sans-serif";
+      ctx.fillText("공급자 대표 :   DDP 도련님   (인)", 250, 1130);
+
+      if (isModified) {
+        ctx.save();
+        ctx.strokeStyle = "#dc2626";
+        ctx.fillStyle = "#dc2626";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(695, 1120, 42, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = "900 19px serif";
+        ctx.textAlign = "center";
+        ctx.fillText("DDP", 695, 1112);
+        ctx.fillText("도련님", 695, 1136);
+        ctx.restore();
+      }
+
+      return c;
+    }
+
+    function generateSampleBlueprintCanvas(isModified) {
+      const c = document.createElement("canvas");
+      c.width = 1100;
+      c.height = 760;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 1100, 760);
+
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(40, 40, 1020, 680);
+
+      ctx.font = "900 28px Pretendard, sans-serif";
+      ctx.fillStyle = "#0f172a";
+      ctx.fillText("스마트 오피스 네트워크 서버실 배치도 (CAD)", 75, 95);
+
+      ctx.strokeRect(100, 160, 320, 220);
+      ctx.font = "800 22px Pretendard, sans-serif";
+      ctx.fillText("MAIN SERVER RACK #1", 140, 265);
+      ctx.fillText(isModified ? "전력: 1,850W (증설)" : "전력: 1,500W", 170, 305);
+
+      ctx.beginPath();
+      ctx.moveTo(420, 270);
+      ctx.lineTo(620, 270);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(isModified ? 545 : 500, 270, 24, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeRect(620, 140, 340, 460);
+      ctx.fillText("CLOUD STORAGE UNIT #1", 655, 210);
+      ctx.fillText("항온항습기: AC-100A", 680, 270);
+
+      if (isModified) {
+        ctx.strokeStyle = "#0284c7";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(680, 340, 220, 110);
+        ctx.fillStyle = "#0284c7";
+        ctx.fillText("+ 보조 방화벽 모듈 추가", 692, 402);
+      }
+
+      return c;
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setupSlotDragAndDrop("slotBoxA", "A");
+      setupSlotDragAndDrop("slotBoxB", "B");
+      setupSyncedSideLoupes();
+      resetAllImages(false);
+    });
+
+    window.addEventListener("resize", () => {
+      applyMainCanvasZoomSize();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 텍스트·코드 비교기 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 초고속 Myers Diff 알고리즘 엔진 (jsdiff) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-code {
+      font-family: 'JetBrains Mono', 'Consolas', 'D2Coding', 'Courier New', monospace;
+    }
+    body {
+      background-color: #070A10;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 14%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .mode-pill {
+      padding: 6px 13px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .mode-pill:hover {
+      color: #f8fafc;
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+    .mode-pill.active {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.26) 0%, rgba(244, 63, 94, 0.22) 100%);
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.28);
+    }
+    .input-drop-active {
+      border-color: #22d3ee !important;
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25) !important;
+      background: rgba(15, 23, 42, 0.98) !important;
+    }
+
+    /* 형광펜 마킹 스타일 (줄 배경 + 글자 단위 정밀 형광펜) */
+    .diff-row {
+      display: flex;
+      align-items: stretch;
+      min-height: 25px;
+      font-size: 13px;
+      line-height: 1.55;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.45);
+    }
+    .diff-row.active-jump {
+      outline: 2px solid #facc15;
+      outline-offset: -2px;
+      z-index: 10;
+    }
+    .diff-ln {
+      width: 48px;
+      min-width: 48px;
+      padding: 2px 8px 2px 4px;
+      text-align: right;
+      color: #64748b;
+      background: rgba(9, 13, 24, 0.7);
+      border-right: 1px solid rgba(51, 65, 85, 0.45);
+      user-select: none;
+      font-size: 11.5px;
+    }
+    .diff-sign {
+      width: 22px;
+      min-width: 22px;
+      text-align: center;
+      font-weight: 800;
+      user-select: none;
+      padding-top: 2px;
+    }
+    .diff-code {
+      flex: 1;
+      padding: 2px 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* 삭제된 줄 (좌측 원본) */
+    .diff-row-del {
+      background: rgba(244, 63, 94, 0.13);
+      color: #fecdd3;
+    }
+    .diff-row-del .diff-ln {
+      background: rgba(136, 19, 55, 0.35);
+      color: #fda4af;
+    }
+    .diff-row-del .diff-sign {
+      color: #fb7185;
+    }
+    /* 삭제된 줄 내부의 정밀 글자 형광펜 */
+    .hl-del {
+      background: rgba(244, 63, 94, 0.52);
+      color: #ffffff;
+      font-weight: 700;
+      border-radius: 3px;
+      padding: 0 2px;
+      box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.5);
+    }
+
+    /* 추가/변경된 줄 (우측 수정본) */
+    .diff-row-add {
+      background: rgba(16, 185, 129, 0.13);
+      color: #d1fae5;
+    }
+    .diff-row-add .diff-ln {
+      background: rgba(6, 78, 59, 0.4);
+      color: #6ee7b7;
+    }
+    .diff-row-add .diff-sign {
+      color: #34d399;
+    }
+    /* 추가/변경된 줄 내부의 정밀 글자 형광펜 */
+    .hl-add {
+      background: rgba(16, 185, 129, 0.52);
+      color: #ffffff;
+      font-weight: 700;
+      border-radius: 3px;
+      padding: 0 2px;
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.55);
+    }
+
+    /* 빈 줄 패딩 (좌우 줄 맞춤용) */
+    .diff-row-empty {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(15, 23, 42, 0.45),
+        rgba(15, 23, 42, 0.45) 6px,
+        rgba(30, 41, 59, 0.45) 6px,
+        rgba(30, 41, 59, 0.45) 12px
+      );
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.55); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1720px] mx-auto px-3 sm:px-6 py-3.5 sm:py-5">
+    <!-- 상단 헤더 -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+          🔍 스마트 텍스트·코드 비교기 <span class="text-xs font-mono text-cyan-400 align-middle">DIFF-PRO</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">계약서·보고서·소스코드 파일 불러오기 & 붙여넣기 · 틀린 글자 형광펜 정밀 마킹</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <button type="button" onclick="loadSampleComparison('contract')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition">
+          🧪 샘플 계약서 비교
+        </button>
+        <button type="button" onclick="loadSampleComparison('code')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+          💻 샘플 C# 코드 비교
+        </button>
+        <button type="button" onclick="exportDiffHtmlReport()" class="btn-primary px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+          <span>💾</span>
+          <span>형광펜 비교 리포트 저장</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 (좌측 원본 / 우측 변경본) -->
+    <input type="file" id="leftFileInput" accept=".txt,.cs,.sql,.csv,.json,.xml,.html,.css,.js,.ts,.md,.log,.ini,.py,.java,.c,.cpp" class="hidden" onchange="handleFileUpload(this.files, 'left')" />
+    <input type="file" id="rightFileInput" accept=".txt,.cs,.sql,.csv,.json,.xml,.html,.css,.js,.ts,.md,.log,.ini,.py,.java,.c,.cpp" class="hidden" onchange="handleFileUpload(this.files, 'right')" />
+
+    <!-- 1. 상단 컨트롤 & 통계 요약 바 -->
+    <section class="glass-panel rounded-2xl p-3 sm:p-3.5 mb-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- 보기 모드 & 정밀도 선택 -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" id="viewModeSideBtn" onclick="setViewMode('side')" class="mode-pill active">
+            ◫ 좌우 나란히 비교
+          </button>
+          <button type="button" id="viewModeUnifiedBtn" onclick="setViewMode('unified')" class="mode-pill">
+            ☰ 하나로 합쳐서 비교
+          </button>
+          <button type="button" id="onlyDiffToggleBtn" onclick="toggleShowOnlyDiff()" class="mode-pill">
+            🎯 틀린 줄만 모아보기
+          </button>
+        </div>
+
+        <!-- 비교 옵션 체크박스 (공백 무시, 대소문자 무시, 빈 줄 무시, 글자/단어 단위) -->
+        <div class="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-300 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-slate-800">
+          <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+            <input type="checkbox" id="optIgnoreWhitespace" onchange="runDiffAnalysis()" class="accent-cyan-400" />
+            <span>공백 차이 무시</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+            <input type="checkbox" id="optIgnoreCase" onchange="runDiffAnalysis()" class="accent-cyan-400" />
+            <span>대소문자 무시</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+            <input type="checkbox" id="optIgnoreEmptyLines" onchange="runDiffAnalysis()" class="accent-cyan-400" />
+            <span>빈 줄 무시</span>
+          </label>
+          <div class="h-3.5 w-[1px] bg-slate-700 mx-0.5"></div>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">형광펜 단위:</span>
+            <select id="optInlineGranularity" onchange="runDiffAnalysis()" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-cyan-300 focus:outline-none">
+              <option value="char" selected>글자 단위 (초정밀)</option>
+              <option value="word">단어 단위</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 우측 유틸 버튼 (좌우 맞바꾸기 / 전체 비우기) -->
+        <div class="flex items-center gap-1.5 ml-auto">
+          <button type="button" onclick="swapLeftAndRight()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+            ⇄ 좌우 내용 바꾸기
+          </button>
+          <button type="button" onclick="clearAllTexts()" class="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-xs font-bold text-rose-200 transition">
+            🗑️ 모두 비우기
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 원문 입력 영역 (파일 불러오기 + 클립보드 붙여넣기 + 직접 타이핑) -->
+    <section class="glass-panel rounded-2xl p-3.5 mb-4">
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs sm:text-sm font-extrabold text-white">📝 비교할 텍스트 입력 (파일 드래그 앤 드롭 또는 복사·붙여넣기)</span>
+          <span id="inputCollapseHint" class="text-[11px] text-slate-400 hidden sm:inline">글자를 치거나 붙여넣으면 아래 형광펜 비교창에 즉시 반영됩니다.</span>
+        </div>
+        <button type="button" id="toggleInputAreaBtn" onclick="toggleInputEditors()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300">
+          ▲ 입력창 접어두기 (결과 크게 보기)
+        </button>
+      </div>
+
+      <div id="inputEditorsGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+        <!-- 좌측: 수정 전 (원본 A) -->
+        <div id="leftDropBox" class="bg-slate-950/85 border border-slate-800 rounded-xl p-3 transition flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800/90">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-[11px] font-extrabold text-rose-300">원본 A</span>
+              <span id="leftFileNameLabel" class="text-xs font-bold text-slate-200 truncate max-w-[180px]">수정 전 텍스트</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="document.getElementById('leftFileInput').click()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+                📂 파일 불러오기
+              </button>
+              <button type="button" onclick="pasteFromClipboard('left')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+                📋 붙여넣기
+              </button>
+              <button type="button" onclick="copyEditorText('left')" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs text-slate-400 hover:text-white transition">
+                복사
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="leftTextarea"
+            rows="7"
+            oninput="scheduleLiveDiff()"
+            placeholder="여기에 수정 전 원본 내용을 붙여넣거나(Ctrl+V), 텍스트/코드 파일을 마우스로 끌어다 놓으세요..."
+            class="w-full bg-transparent text-xs sm:text-sm text-slate-100 font-code focus:outline-none resize-y leading-relaxed"
+          ></textarea>
+          <div class="mt-1.5 pt-1.5 border-t border-slate-900 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <span id="leftStatsLabel">0 줄 · 0 글자</span>
+            <span>UTF-8 / EUC-KR 한글 자동 인식</span>
+          </div>
+        </div>
+
+        <!-- 우측: 수정 후 (변경본 B) -->
+        <div id="rightDropBox" class="bg-slate-950/85 border border-slate-800 rounded-xl p-3 transition flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800/90">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-extrabold text-emerald-300">변경본 B</span>
+              <span id="rightFileNameLabel" class="text-xs font-bold text-slate-200 truncate max-w-[180px]">수정 후 텍스트</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="document.getElementById('rightFileInput').click()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+                📂 파일 불러오기
+              </button>
+              <button type="button" onclick="pasteFromClipboard('right')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+                📋 붙여넣기
+              </button>
+              <button type="button" onclick="copyEditorText('right')" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs text-slate-400 hover:text-white transition">
+                복사
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="rightTextarea"
+            rows="7"
+            oninput="scheduleLiveDiff()"
+            placeholder="여기에 수정 후 변경된 내용을 붙여넣거나(Ctrl+V), 텍스트/코드 파일을 마우스로 끌어다 놓으세요..."
+            class="w-full bg-transparent text-xs sm:text-sm text-slate-100 font-code focus:outline-none resize-y leading-relaxed"
+          ></textarea>
+          <div class="mt-1.5 pt-1.5 border-t border-slate-900 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <span id="rightStatsLabel">0 줄 · 0 글자</span>
+            <span>드래그 앤 드롭 지원</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 하단 형광펜 비교 결과 뷰어 -->
+    <section class="glass-panel rounded-2xl p-3.5 sm:p-4">
+      <!-- 결과 요약 배지 & 차이점 빠른 이동(Jump) 바 -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5 pb-3 mb-3 border-b border-slate-800">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-sm font-extrabold text-white mr-1">🖍️ 형광펜 비교 결과</span>
+          <span id="identicalBadge" class="hidden px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-extrabold text-emerald-300">
+            ✅ 두 텍스트가 100% 완벽하게 일치합니다!
+          </span>
+          <span class="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-xs font-bold text-rose-300">
+            삭제/변경 전: <strong id="removedCountLabel">0</strong>줄
+          </span>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs font-bold text-emerald-300">
+            추가/변경 후: <strong id="addedCountLabel">0</strong>줄
+          </span>
+          <span class="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-xs font-bold text-cyan-300">
+            차이점 묶음: <strong id="diffClusterCountLabel">0</strong>곳
+          </span>
+        </div>
+
+        <!-- 이전/다음 차이점 점프 네비게이터 -->
+        <div class="flex items-center gap-1.5">
+          <span id="currentJumpIndexLabel" class="text-xs font-mono text-amber-300 mr-1">0 / 0</span>
+          <button type="button" onclick="jumpToDiffCluster(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+            ▲ 이전 틀린 곳
+          </button>
+          <button type="button" onclick="jumpToDiffCluster(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+            ▼ 다음 틀린 곳
+          </button>
+        </div>
+      </div>
+
+      <!-- [뷰 1] 좌우 나란히 비교 (Side-by-Side) 컨테이너 -->
+      <div id="sideBySideContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+        <div class="bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+          <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-rose-300">
+            <span>🔴 원본 A (삭제·변경 전 내용은 빨간 형광펜)</span>
+            <span class="text-[11px] text-slate-400">스크롤 자동 동기화</span>
+          </div>
+          <div id="leftDiffPane" class="overflow-auto max-h-[58vh] font-code"></div>
+        </div>
+
+        <div class="bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+          <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-300">
+            <span>🟢 변경본 B (추가·수정된 내용은 초록 형광펜)</span>
+            <span class="text-[11px] text-slate-400">스크롤 자동 동기화</span>
+          </div>
+          <div id="rightDiffPane" class="overflow-auto max-h-[58vh] font-code"></div>
+        </div>
+      </div>
+
+      <!-- [뷰 2] 위아래 하나로 통합 비교 (Unified) 컨테이너 -->
+      <div id="unifiedContainer" class="hidden bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden">
+        <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-cyan-300">
+          <span>☰ 통합 비교 뷰 (한 화면에서 삭제[-]와 추가[+] 줄을 연속 확인)</span>
+        </div>
+        <div id="unifiedDiffPane" class="overflow-auto max-h-[60vh] font-code"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * [You-틸리티 스마트 텍스트·코드 비교기 (DIFF-PRO) 엔진]
+     * 1. 파일 불러오기 한글 무결점 디코더:
+     *    - UTF-8을 우선 시도하고, 깨진 바이트가 감지되면 즉시 윈도우 표준 EUC-KR(CP949)로 자동 디코딩하여
+     *      구형 메모장 파일(.txt), C# 소스(.cs), 오라클 SQL 스크립트(.sql), CSV 파일의 한글 깨짐을 100% 방지합니다.
+     * 2. 2단계 정밀 하이라이팅:
+     *    - 1차로 줄(Line) 단위 정렬을 수행하고, 수정된 인접 줄끼리는 2차로 글자(Char)/단어(Word) 단위 Diff를 수행하여
+     *      문장 속에서 바뀐 숫자나 글자만 밝은 형광펜(.hl-del, .hl-add)으로 콕 집어 마킹합니다.
+     */
+    let viewMode = "side"; // 'side' | 'unified'
+    let showOnlyDiff = false;
+    let isInputCollapsed = false;
+    let diffDebounceTimer = null;
+    let isSyncingScroll = false;
+    let diffClusterTotal = 0;
+    let currentJumpCluster = 0;
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${escapeHtml(msg)}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2600);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // 1. 로컬 파일 업로드 및 드래그 앤 드롭 (UTF-8 / EUC-KR 자동 감지)
+    async function readTextFileAutoEncoding(file) {
+      const buffer = await file.arrayBuffer();
+      try {
+        const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
+        return utf8Decoder.decode(buffer);
+      } catch (e) {
+        const eucKrDecoder = new TextDecoder("euc-kr");
+        return eucKrDecoder.decode(buffer);
+      }
+    }
+
+    async function handleFileUpload(fileList, side) {
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList[0];
+      try {
+        const text = await readTextFileAutoEncoding(file);
+        if (side === "left") {
+          document.getElementById("leftTextarea").value = text;
+          document.getElementById("leftFileNameLabel").textContent = file.name;
+        } else {
+          document.getElementById("rightTextarea").value = text;
+          document.getElementById("rightFileNameLabel").textContent = file.name;
+        }
+        runDiffAnalysis();
+        showToast(`'${file.name}' 파일을 성공적으로 불러왔습니다!`, "ok");
+      } catch (err) {
+        showToast("파일을 읽는 중 오류가 발생했습니다.", "err");
+      } finally {
+        document.getElementById(side === "left" ? "leftFileInput" : "rightFileInput").value = "";
+      }
+    }
+
+    function setupDragAndDropForBox(boxId, side) {
+      const box = document.getElementById(boxId);
+      ["dragenter", "dragover"].forEach((evt) => {
+        box.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          box.classList.add("input-drop-active");
+        });
+      });
+      ["dragleave", "drop"].forEach((evt) => {
+        box.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          box.classList.remove("input-drop-active");
+        });
+      });
+      box.addEventListener("drop", (e) => {
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+          handleFileUpload(e.dataTransfer.files, side);
+        }
+      });
+    }
+
+    // 2. 클립보드 붙여넣기 및 복사
+    async function pasteFromClipboard(side) {
+      const target = document.getElementById(side === "left" ? "leftTextarea" : "rightTextarea");
+      try {
+        const clipText = await navigator.clipboard.readText();
+        if (!clipText) {
+          showToast("클립보드에 복사된 텍스트가 없습니다.", "err");
+          return;
+        }
+        target.value = clipText;
+        runDiffAnalysis();
+        showToast("클립보드 내용을 붙여넣고 비교를 완료했습니다!", "ok");
+      } catch (e) {
+        target.focus();
+        showToast("입력창이 선택되었습니다. 키보드 Ctrl + V를 눌러 붙여넣으세요!");
+      }
+    }
+
+    function copyEditorText(side) {
+      const val = document.getElementById(side === "left" ? "leftTextarea" : "rightTextarea").value;
+      if (!val) {
+        showToast("복사할 텍스트가 없습니다.", "err");
+        return;
+      }
+      navigator.clipboard.writeText(val).then(() => {
+        showToast((side === "left" ? "원본 A" : "변경본 B") + " 전체 텍스트가 복사되었습니다!", "ok");
+      });
+    }
+
+    function swapLeftAndRight() {
+      const leftTa = document.getElementById("leftTextarea");
+      const rightTa = document.getElementById("rightTextarea");
+      const leftLbl = document.getElementById("leftFileNameLabel");
+      const rightLbl = document.getElementById("rightFileNameLabel");
+
+      const tmpVal = leftTa.value;
+      leftTa.value = rightTa.value;
+      rightTa.value = tmpVal;
+
+      const tmpName = leftLbl.textContent;
+      leftLbl.textContent = rightLbl.textContent;
+      rightLbl.textContent = tmpName;
+
+      runDiffAnalysis();
+      showToast("좌우 텍스트를 맞바꾸어 다시 비교했습니다.");
+    }
+
+    function clearAllTexts() {
+      document.getElementById("leftTextarea").value = "";
+      document.getElementById("rightTextarea").value = "";
+      document.getElementById("leftFileNameLabel").textContent = "수정 전 텍스트";
+      document.getElementById("rightFileNameLabel").textContent = "수정 후 텍스트";
+      runDiffAnalysis();
+      showToast("모든 입력 창을 비웠습니다.");
+    }
+
+    function toggleInputEditors() {
+      isInputCollapsed = !isInputCollapsed;
+      const grid = document.getElementById("inputEditorsGrid");
+      const btn = document.getElementById("toggleInputAreaBtn");
+      if (isInputCollapsed) {
+        grid.classList.add("hidden");
+        btn.textContent = "▼ 입력창 펼치기 (원문 수정)";
+      } else {
+        grid.classList.remove("hidden");
+        btn.textContent = "▲ 입력창 접어두기 (결과 크게 보기)";
+      }
+    }
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      document.getElementById("viewModeSideBtn").classList.toggle("active", mode === "side");
+      document.getElementById("viewModeUnifiedBtn").classList.toggle("active", mode === "unified");
+      document.getElementById("sideBySideContainer").classList.toggle("hidden", mode !== "side");
+      document.getElementById("unifiedContainer").classList.toggle("hidden", mode !== "unified");
+    }
+
+    function toggleShowOnlyDiff() {
+      showOnlyDiff = !showOnlyDiff;
+      document.getElementById("onlyDiffToggleBtn").classList.toggle("active", showOnlyDiff);
+      runDiffAnalysis();
+    }
+
+    function scheduleLiveDiff() {
+      if (diffDebounceTimer) clearTimeout(diffDebounceTimer);
+      diffDebounceTimer = setTimeout(() => {
+        runDiffAnalysis();
+      }, 90);
+    }
+
+    // =========================================================================
+    // 3. 핵심 형광펜 비교 분석 엔진 (줄 정렬 + 줄 내부 글자/단어 단위 정밀 하이라이트)
+    // =========================================================================
+    function updateTextStats(rawLeft, rawRight) {
+      const leftLines = rawLeft ? rawLeft.replace(/\r\n/g, "\n").split("\n").length : 0;
+      const rightLines = rawRight ? rawRight.replace(/\r\n/g, "\n").split("\n").length : 0;
+      document.getElementById("leftStatsLabel").textContent = `${leftLines} 줄 · ${rawLeft.length.toLocaleString()} 글자`;
+      document.getElementById("rightStatsLabel").textContent = `${rightLines} 줄 · ${rawRight.length.toLocaleString()} 글자`;
+    }
+
+    function normalizeLineForCompare(line, ignoreWs, ignoreCase) {
+      let s = line;
+      if (ignoreWs) s = s.replace(/\s+/g, "");
+      if (ignoreCase) s = s.toLowerCase();
+      return s;
+    }
+
+    /**
+     * 수정된 두 줄(oldLine vs newLine) 내부에서 정확히 어떤 글자/단어가 바뀌었는지 찾아
+     * 빨간 형광펜(<span class="hl-del">)과 초록 형광펜(<span class="hl-add">) HTML을 생성합니다.
+     */
+    function buildInlineHighlightedPair(oldLine, newLine, granularity, ignoreCase) {
+      if (!window.Diff) {
+        return {
+          leftHtml: `<span class="hl-del">${escapeHtml(oldLine)}</span>`,
+          rightHtml: `<span class="hl-add">${escapeHtml(newLine)}</span>`
+        };
+      }
+
+      const opts = { ignoreCase: !!ignoreCase };
+      const parts = granularity === "word"
+        ? Diff.diffWordsWithSpace(oldLine, newLine, opts)
+        : Diff.diffChars(oldLine, newLine, opts);
+
+      let leftHtml = "";
+      let rightHtml = "";
+
+      for (const p of parts) {
+        const escaped = escapeHtml(p.value);
+        if (p.added) {
+          rightHtml += `<span class="hl-add">${escaped}</span>`;
+        } else if (p.removed) {
+          leftHtml += `<span class="hl-del">${escaped}</span>`;
+        } else {
+          leftHtml += escaped;
+          rightHtml += escaped;
+        }
+      }
+
+      return { leftHtml, rightHtml };
+    }
+
+    function runDiffAnalysis() {
+      const rawLeft = document.getElementById("leftTextarea").value.replace(/\r\n/g, "\n");
+      const rawRight = document.getElementById("rightTextarea").value.replace(/\r\n/g, "\n");
+      updateTextStats(rawLeft, rawRight);
+
+      const ignoreWs = document.getElementById("optIgnoreWhitespace").checked;
+      const ignoreCase = document.getElementById("optIgnoreCase").checked;
+      const ignoreEmpty = document.getElementById("optIgnoreEmptyLines").checked;
+      const granularity = document.getElementById("optInlineGranularity").value;
+
+      let leftLines = rawLeft.split("\n");
+      let rightLines = rawRight.split("\n");
+
+      if (ignoreEmpty) {
+        leftLines = leftLines.filter((l) => l.trim().length > 0);
+        rightLines = rightLines.filter((l) => l.trim().length > 0);
+      }
+
+      // 빈 입력 상태 처리
+      if (rawLeft.length === 0 && rawRight.length === 0) {
+        const emptyMsg = `<div class="p-10 text-center text-xs text-slate-500">위에 비교할 텍스트를 붙여넣거나 파일을 불러오면 틀린 곳이 형광펜으로 표시됩니다.</div>`;
+        document.getElementById("leftDiffPane").innerHTML = emptyMsg;
+        document.getElementById("rightDiffPane").innerHTML = emptyMsg;
+        document.getElementById("unifiedDiffPane").innerHTML = emptyMsg;
+        document.getElementById("identicalBadge").classList.add("hidden");
+        document.getElementById("removedCountLabel").textContent = "0";
+        document.getElementById("addedCountLabel").textContent = "0";
+        document.getElementById("diffClusterCountLabel").textContent = "0";
+        document.getElementById("currentJumpIndexLabel").textContent = "0 / 0";
+        diffClusterTotal = 0;
+        currentJumpCluster = 0;
+        return;
+      }
+
+      // 비교 옵션(공백/대소문자 무시)을 적용한 키 배열 생성 후 Myers Diff 수행
+      const normLeft = leftLines.map((l) => normalizeLineForCompare(l, ignoreWs, ignoreCase)).join("\n");
+      const normRight = rightLines.map((l) => normalizeLineForCompare(l, ignoreWs, ignoreCase)).join("\n");
+
+      const rawChunks = window.Diff
+        ? Diff.diffLines(normLeft, normRight)
+        : [{ value: normLeft, removed: true }, { value: normRight, added: true }];
+
+      // 원본 실제 줄 문자열과 매핑하여 블록 재구성
+      let lCursor = 0;
+      let rCursor = 0;
+      const structuredHunks = [];
+
+      for (const chunk of rawChunks) {
+        const linesInChunk = chunk.value.split("\n");
+        if (linesInChunk.length > 1 && linesInChunk[linesInChunk.length - 1] === "") {
+          linesInChunk.pop();
+        }
+        const count = linesInChunk.length;
+
+        if (chunk.added) {
+          const actualAdded = rightLines.slice(rCursor, rCursor + count);
+          rCursor += count;
+          structuredHunks.push({ type: "add", lines: actualAdded });
+        } else if (chunk.removed) {
+          const actualRemoved = leftLines.slice(lCursor, lCursor + count);
+          lCursor += count;
+          structuredHunks.push({ type: "del", lines: actualRemoved });
+        } else {
+          const actualLeft = leftLines.slice(lCursor, lCursor + count);
+          const actualRight = rightLines.slice(rCursor, rCursor + count);
+          lCursor += count;
+          rCursor += count;
+          structuredHunks.push({ type: "eq", leftLines: actualLeft, rightLines: actualRight });
+        }
+      }
+
+      // 인접한 (del -> add) 묶음을 찾아 줄 내부 글자 단위 정밀 형광펜(Inline Diff) 매칭
+      let leftRowHtmlList = [];
+      let rightRowHtmlList = [];
+      let unifiedRowHtmlList = [];
+
+      let lLineNum = 1;
+      let rLineNum = 1;
+      let removedLineTotal = 0;
+      let addedLineTotal = 0;
+      let clusterIdx = 0;
+
+      for (let i = 0; i < structuredHunks.length; i++) {
+        const h = structuredHunks[i];
+
+        // 1) 변경 없는 동일 구간
+        if (h.type === "eq") {
+          for (let k = 0; k < h.leftLines.length; k++) {
+            if (!showOnlyDiff) {
+              const safeL = escapeHtml(h.leftLines[k]);
+              const safeR = escapeHtml(h.rightLines[k] !== undefined ? h.rightLines[k] : h.leftLines[k]);
+              leftRowHtmlList.push(renderRowHtml(lLineNum, "", safeL, ""));
+              rightRowHtmlList.push(renderRowHtml(rLineNum, "", safeR, ""));
+              unifiedRowHtmlList.push(renderUnifiedRowHtml(lLineNum, rLineNum, "", safeR, ""));
+            }
+            lLineNum++;
+            rLineNum++;
+          }
+          continue;
+        }
+
+        // 2) 삭제(del) 바로 뒤에 추가(add)가 오는 경우 -> 수정된 블록으로 묶어 글자 단위 형광펜 마킹!
+        if (h.type === "del" && i + 1 < structuredHunks.length && structuredHunks[i + 1].type === "add") {
+          const delLines = h.lines;
+          const addLines = structuredHunks[i + 1].lines;
+          i++; // 다음 add 블록까지 함께 소비
+
+          clusterIdx++;
+          const maxLen = Math.max(delLines.length, addLines.length);
+          removedLineTotal += delLines.length;
+          addedLineTotal += addLines.length;
+
+          for (let k = 0; k < maxLen; k++) {
+            const hasDel = k < delLines.length;
+            const hasAdd = k < addLines.length;
+            const clusterAttr = k === 0 ? `data-diff-cluster="${clusterIdx}"` : "";
+
+            if (hasDel && hasAdd) {
+              const inline = buildInlineHighlightedPair(delLines[k], addLines[k], granularity, ignoreCase);
+              leftRowHtmlList.push(renderRowHtml(lLineNum, "−", inline.leftHtml, "diff-row-del", clusterAttr));
+              rightRowHtmlList.push(renderRowHtml(rLineNum, "+", inline.rightHtml, "diff-row-add", clusterAttr));
+
+              unifiedRowHtmlList.push(renderUnifiedRowHtml(lLineNum, "", "−", inline.leftHtml, "diff-row-del", clusterAttr));
+              unifiedRowHtmlList.push(renderUnifiedRowHtml("", rLineNum, "+", inline.rightHtml, "diff-row-add", ""));
+              lLineNum++;
+              rLineNum++;
+            } else if (hasDel) {
+              const safeDel = `<span class="hl-del">${escapeHtml(delLines[k])}</span>`;
+              leftRowHtmlList.push(renderRowHtml(lLineNum, "−", safeDel, "diff-row-del", clusterAttr));
+              rightRowHtmlList.push(renderRowHtml("", "", "", "diff-row-empty", ""));
+              unifiedRowHtmlList.push(renderUnifiedRowHtml(lLineNum, "", "−", safeDel, "diff-row-del", clusterAttr));
+              lLineNum++;
+            } else if (hasAdd) {
+              const safeAdd = `<span class="hl-add">${escapeHtml(addLines[k])}</span>`;
+              leftRowHtmlList.push(renderRowHtml("", "", "", "diff-row-empty", clusterAttr));
+              rightRowHtmlList.push(renderRowHtml(rLineNum, "+", safeAdd, "diff-row-add", clusterAttr));
+              unifiedRowHtmlList.push(renderUnifiedRowHtml("", rLineNum, "+", safeAdd, "diff-row-add", clusterAttr));
+              rLineNum++;
+            }
+          }
+          continue;
+        }
+
+        // 3) 순수 삭제(del)만 있는 경우
+        if (h.type === "del") {
+          clusterIdx++;
+          removedLineTotal += h.lines.length;
+          for (let k = 0; k < h.lines.length; k++) {
+            const clusterAttr = k === 0 ? `data-diff-cluster="${clusterIdx}"` : "";
+            const safeDel = `<span class="hl-del">${escapeHtml(h.lines[k])}</span>`;
+            leftRowHtmlList.push(renderRowHtml(lLineNum, "−", safeDel, "diff-row-del", clusterAttr));
+            rightRowHtmlList.push(renderRowHtml("", "", "", "diff-row-empty", clusterAttr));
+            unifiedRowHtmlList.push(renderUnifiedRowHtml(lLineNum, "", "−", safeDel, "diff-row-del", clusterAttr));
+            lLineNum++;
+          }
+          continue;
+        }
+
+        // 4) 순수 추가(add)만 있는 경우
+        if (h.type === "add") {
+          clusterIdx++;
+          addedLineTotal += h.lines.length;
+          for (let k = 0; k < h.lines.length; k++) {
+            const clusterAttr = k === 0 ? `data-diff-cluster="${clusterIdx}"` : "";
+            const safeAdd = `<span class="hl-add">${escapeHtml(h.lines[k])}</span>`;
+            leftRowHtmlList.push(renderRowHtml("", "", "", "diff-row-empty", clusterAttr));
+            rightRowHtmlList.push(renderRowHtml(rLineNum, "+", safeAdd, "diff-row-add", clusterAttr));
+            unifiedRowHtmlList.push(renderUnifiedRowHtml("", rLineNum, "+", safeAdd, "diff-row-add", clusterAttr));
+            rLineNum++;
+          }
+        }
+      }
+
+      document.getElementById("leftDiffPane").innerHTML = leftRowHtmlList.join("") || `<div class="p-8 text-center text-xs text-slate-400">표시할 차이점이 없습니다.</div>`;
+      document.getElementById("rightDiffPane").innerHTML = rightRowHtmlList.join("") || `<div class="p-8 text-center text-xs text-slate-400">표시할 차이점이 없습니다.</div>`;
+      document.getElementById("unifiedDiffPane").innerHTML = unifiedRowHtmlList.join("") || `<div class="p-8 text-center text-xs text-slate-400">표시할 차이점이 없습니다.</div>`;
+
+      // 통계 배지 업데이트
+      document.getElementById("removedCountLabel").textContent = removedLineTotal;
+      document.getElementById("addedCountLabel").textContent = addedLineTotal;
+      document.getElementById("diffClusterCountLabel").textContent = clusterIdx;
+
+      const isIdentical = clusterIdx === 0 && (rawLeft.length > 0 || rawRight.length > 0);
+      document.getElementById("identicalBadge").classList.toggle("hidden", !isIdentical);
+
+      diffClusterTotal = clusterIdx;
+      currentJumpCluster = clusterIdx > 0 ? 1 : 0;
+      document.getElementById("currentJumpIndexLabel").textContent = `${currentJumpCluster} / ${diffClusterTotal}`;
+    }
+
+    function renderRowHtml(lineNum, sign, codeHtml, rowClass, extraAttr = "") {
+      return `
+        <div class="diff-row ${rowClass}" ${extraAttr}>
+          <div class="diff-ln">${lineNum}</div>
+          <div class="diff-sign">${sign}</div>
+          <div class="diff-code">${codeHtml || "&nbsp;"}</div>
+        </div>
+      `;
+    }
+
+    function renderUnifiedRowHtml(lNum, rNum, sign, codeHtml, rowClass, extraAttr = "") {
+      return `
+        <div class="diff-row ${rowClass}" ${extraAttr}>
+          <div class="diff-ln">${lNum}</div>
+          <div class="diff-ln">${rNum}</div>
+          <div class="diff-sign">${sign}</div>
+          <div class="diff-code">${codeHtml || "&nbsp;"}</div>
+        </div>
+      `;
+    }
+
+    // 4. 이전 / 다음 틀린 곳으로 즉시 점프 네비게이션
+    function jumpToDiffCluster(dir) {
+      if (diffClusterTotal === 0) {
+        showToast("이동할 차이점(틀린 곳)이 없습니다.");
+        return;
+      }
+      currentJumpCluster += dir;
+      if (currentJumpCluster > diffClusterTotal) currentJumpCluster = 1;
+      if (currentJumpCluster < 1) currentJumpCluster = diffClusterTotal;
+
+      document.getElementById("currentJumpIndexLabel").textContent = `${currentJumpCluster} / ${diffClusterTotal}`;
+
+      document.querySelectorAll(".diff-row.active-jump").forEach((el) => el.classList.remove("active-jump"));
+
+      const containerSelector = viewMode === "side" ? "#sideBySideContainer" : "#unifiedContainer";
+      const targets = document.querySelectorAll(`${containerSelector} [data-diff-cluster="${currentJumpCluster}"]`);
+      targets.forEach((el) => {
+        el.classList.add("active-jump");
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+
+    // 5. 좌우 비교창 스크롤 자동 동기화
+    const leftPane = document.getElementById("leftDiffPane");
+    const rightPane = document.getElementById("rightDiffPane");
+
+    leftPane.addEventListener("scroll", () => {
+      if (isSyncingScroll) return;
+      isSyncingScroll = true;
+      rightPane.scrollTop = leftPane.scrollTop;
+      rightPane.scrollLeft = leftPane.scrollLeft;
+      requestAnimationFrame(() => { isSyncingScroll = false; });
+    });
+
+    rightPane.addEventListener("scroll", () => {
+      if (isSyncingScroll) return;
+      isSyncingScroll = true;
+      leftPane.scrollTop = rightPane.scrollTop;
+      leftPane.scrollLeft = rightPane.scrollLeft;
+      requestAnimationFrame(() => { isSyncingScroll = false; });
+    });
+
+    // 6. 형광펜 비교 리포트 HTML 파일로 다운로드
+    function exportDiffHtmlReport() {
+      if (!document.getElementById("leftTextarea").value && !document.getElementById("rightTextarea").value) {
+        showToast("먼저 비교할 내용을 입력해 주세요.", "err");
+        return;
+      }
+      const now = new Date().toLocaleString("ko-KR");
+      const leftTitle = document.getElementById("leftFileNameLabel").textContent;
+      const rightTitle = document.getElementById("rightFileNameLabel").textContent;
+      const leftContent = document.getElementById("leftDiffPane").innerHTML;
+      const rightContent = document.getElementById("rightDiffPane").innerHTML;
+
+      const htmlDoc = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>You-틸리티 텍스트 비교 리포트</title>
+<style>
+  body { background:#0b1120; color:#f8fafc; font-family:'Pretendard',sans-serif; padding:24px; margin:0; }
+  h1 { font-size:20px; margin-bottom:6px; color:#38bdf8; }
+  .meta { font-size:12px; color:#94a3b8; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .box { background:#090d16; border:1px solid #1e293b; border-radius:10px; overflow:hidden; font-family:Consolas,monospace; }
+  .box-head { padding:10px 14px; background:#1e293b; font-size:13px; font-weight:bold; }
+  .diff-row { display:flex; min-height:24px; font-size:12.5px; line-height:1.5; border-bottom:1px solid rgba(30,41,59,0.5); }
+  .diff-ln { width:44px; min-width:44px; padding:2px 6px; text-align:right; color:#64748b; background:#070a12; }
+  .diff-sign { width:20px; text-align:center; font-weight:bold; }
+  .diff-code { flex:1; padding:2px 8px; white-space:pre-wrap; word-break:break-all; }
+  .diff-row-del { background:rgba(244,63,94,0.14); color:#fecdd3; }
+  .hl-del { background:rgba(244,63,94,0.55); color:#fff; font-weight:bold; border-radius:3px; padding:0 2px; }
+  .diff-row-add { background:rgba(16,185,129,0.14); color:#d1fae5; }
+  .hl-add { background:rgba(16,185,129,0.55); color:#fff; font-weight:bold; border-radius:3px; padding:0 2px; }
+  .diff-row-empty { background:rgba(15,23,42,0.5); }
+</style>
+</head>
+<body>
+  <h1>🔍 You-틸리티 텍스트·코드 형광펜 비교 리포트</h1>
+  <div class="meta">생성 시각: ${now} | 삭제/변경 전: ${document.getElementById("removedCountLabel").textContent}줄 · 추가/변경 후: ${document.getElementById("addedCountLabel").textContent}줄</div>
+  <div class="grid">
+    <div class="box"><div class="box-head">🔴 원본 A (${escapeHtml(leftTitle)})</div>${leftContent}</div>
+    <div class="box"><div class="box-head">🟢 변경본 B (${escapeHtml(rightTitle)})</div>${rightContent}</div>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlDoc], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `You-틸리티_텍스트비교리포트_${Date.now()}.html`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast("형광펜 비교 리포트(.html)가 저장되었습니다!", "ok");
+    }
+
+    // 7. 1초 테스트용 샘플 데이터 (계약서 비교 & C# 코드 비교)
+    function loadSampleComparison(kind) {
+      if (kind === "contract") {
+        document.getElementById("leftFileNameLabel").textContent = "물품공급계약서_초안_v1.txt";
+        document.getElementById("rightFileNameLabel").textContent = "물품공급계약서_최종본_v2.txt";
+        document.getElementById("leftTextarea").value = [
+          "제1조 (계약 목적)",
+          "본 계약은 (주)도련시스템(이하 '갑')과 도련님 개발자(이하 '을') 간의",
+          "스마트 공장 MES 고도화 솔루션 납품에 관한 권리와 의무를 규정한다.",
+          "",
+          "제2조 (계약 금액 및 지급 조건)",
+          "1. 총 계약 금액: 일금 삼천오백만원정 (₩35,000,000 / 부가세 별도)",
+          "2. 선급금: 계약 체결 후 7일 이내 총 금액의 30% 현금 지급",
+          "3. 잔  금: 최종 검수 완료 후 30일 이내 70% 어음 지급",
+          "",
+          "제3조 (납품 기한 및 지체상금)",
+          "1. 납품 기한: 2026년 11월 30일한",
+          "2. 지체상금률: 지연 1일당 계약금액의 1000분의 2.5로 한다.",
+          "",
+          "제4조 (하자보수 보증기간)",
+          "검수 완료일로부터 12개월간 무상 하자보수를 지원한다."
+        ].join("\n");
+
+        document.getElementById("rightTextarea").value = [
+          "제1조 (계약 목적)",
+          "본 계약은 (주)도령시스템(이하 '갑')과 도련니무 수석개발자(이하 '을') 간의",
+          "스마트 공장 MES 및 통합 유틸리티 솔루션 납품에 관한 권리와 의무를 규정한다.",
+          "",
+          "제2조 (계약 금액 및 지급 조건)",
+          "1. 총 계약 금액: 일금 사천이백만원정 (₩42,000,000 / 부가세 별도)",
+          "2. 선급금: 계약 체결 후 5일 이내 총 금액의 50% 현금 지급",
+          "3. 잔  금: 최종 검수 완료 후 14일 이내 50% 전액 현금 지급",
+          "",
+          "제3조 (납품 기한 및 지체상금)",
+          "1. 납품 기한: 2026년 12월 15일한",
+          "2. 지체상금률: 지연 1일당 계약금액의 1000분의 1.5로 한다.",
+          "",
+          "제4조 (하자보수 보증기간)",
+          "검수 완료일로부터 12개월간 무상 하자보수를 지원한다.",
+          "단, 갑의 요구에 의한 신규 기능 추가는 별도 유상 계약으로 진행한다."
+        ].join("\n");
+        showToast("샘플 계약서 초안과 수정본의 차이점을 형광펜으로 표시했습니다!", "ok");
+      } else {
+        document.getElementById("leftFileNameLabel").textContent = "MesLotService_Before.cs";
+        document.getElementById("rightFileNameLabel").textContent = "MesLotService_After.cs";
+        document.getElementById("leftTextarea").value = [
+          "using System;",
+          "using System.Data;",
+          "",
+          "public class MesLotService",
+          "{",
+          "    private readonly string _connStr = \"Data Source=ORA_MES;User Id=mes_user;\";",
+          "",
+          "    public DataTable GetWorkOrderList(string plantCode)",
+          "    {",
+          "        string sql = \"SELECT LOT_NO, ITEM_CD, PLAN_QTY FROM TB_WORK_ORDER \" +",
+          "                     \"WHERE PLANT_CD = '\" + plantCode + \"' AND USE_YN = 'Y'\";",
+          "        return OracleHelper.ExecuteDataTable(_connStr, sql);",
+          "    }",
+          "}"
+        ].join("\n");
+
+        document.getElementById("rightTextarea").value = [
+          "using System;",
+          "using System.Data;",
+          "using Oracle.ManagedDataAccess.Client;",
+          "",
+          "public class MesLotService",
+          "{",
+          "    private readonly string _connStr = \"Data Source=ORA_MES_PROD;User Id=mes_admin;\";",
+          "",
+          "    public DataTable GetWorkOrderList(string plantCode, string workDate)",
+          "    {",
+          "        string sql = \"SELECT LOT_NO, ITEM_CD, PLAN_QTY, PROD_QTY FROM TB_WORK_ORDER \" +",
+          "                     \"WHERE PLANT_CD = :plantCode AND WORK_DATE = :workDate AND USE_YN = 'Y'\";",
+          "        return OracleHelper.ExecuteDataTable(_connStr, sql, plantCode, workDate);",
+          "    }",
+          "}"
+        ].join("\n");
+        showToast("샘플 C# 코드의 변경된 변수와 쿼리를 형광펜으로 표시했습니다!", "ok");
+      }
+      runDiffAnalysis();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setupDragAndDropForBox("leftDropBox", "left");
+      setupDragAndDropForBox("rightDropBox", "right");
+    });
+  </script>
+</body>
+</html>

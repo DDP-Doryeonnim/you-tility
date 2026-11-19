@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>01. 이미지 포맷·크기 일괄 변환 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #070b14;
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+    /* 배경 오로라 광원 */
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 18%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 12%;
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+    }
+    .dropzone-box {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+      border: 2px dashed rgba(56, 189, 248, 0.5);
+      transition: all 0.2s ease;
+    }
+    .dropzone-box:hover, .dropzone-box.drag-over {
+      border-color: #f472b6;
+      background: rgba(30, 41, 59, 0.85);
+      box-shadow: 0 0 28px rgba(56, 189, 248, 0.22), inset 0 0 24px rgba(244, 114, 182, 0.1);
+    }
+    .table-header-glow {
+      background: linear-gradient(90deg, rgba(14, 116, 144, 0.38) 0%, rgba(30, 41, 59, 0.9) 50%, rgba(14, 116, 144, 0.38) 100%);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
+    }
+    .dark-input {
+      background: rgba(9, 13, 22, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #f1f5f9;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dark-input:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+    }
+    .dark-input:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 60%, #f472b6 100%);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #e0f2fe;
+      border: 2px solid #38bdf8;
+      margin-top: -6px;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+    }
+    .btn-gradient-action {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      box-shadow: 0 6px 26px rgba(56, 189, 248, 0.35), 0 4px 20px rgba(244, 63, 94, 0.28);
+      transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+    }
+    .btn-gradient-action:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+      box-shadow: 0 8px 32px rgba(56, 189, 248, 0.5), 0 6px 24px rgba(244, 63, 94, 0.4);
+    }
+    .btn-gradient-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-7">
+    <!-- 상단 헤더 (루트 경로 ./index.html 연결) -->
+    <header class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
+      <div class="flex items-center gap-3.5 w-full sm:w-auto justify-between sm:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <h1 class="text-xl sm:text-2xl md:text-[26px] font-bold tracking-tight text-white text-center">
+        01. 이미지 포맷·크기 일괄 변환
+      </h1>
+
+      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-900/70 border border-slate-800 px-3 py-1.5 rounded-full">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>로컬 즉시 처리</span>
+      </div>
+    </header>
+
+    <!-- 1. 다중 파일 업로드 드롭존 -->
+    <section class="mb-5">
+      <div id="dropZone" class="dropzone-box rounded-2xl p-6 sm:p-8 text-center cursor-pointer relative">
+        <input id="fileInput" type="file" accept="image/*" multiple class="hidden" />
+        <div class="flex flex-col items-center justify-center gap-2">
+          <div class="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-cyan-400 mb-1 shadow-inner">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+            </svg>
+          </div>
+          <p class="text-base sm:text-lg font-bold text-slate-100">
+            PC · 스마트폰 · 태블릿 이미지 다중 선택 또는 드래그 <span class="text-cyan-400">(+ 파일 추가)</span>
+          </p>
+          <p class="text-xs sm:text-sm text-slate-400">
+            (여러 장의 이미지를 동시에 업로드하여 압축 없이 개별 이미지 파일로 즉시 변환합니다)
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 사진 목록 테이블 -->
+    <section class="glass-panel rounded-2xl overflow-hidden mb-5">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-900/60 border-b border-slate-800/80 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-slate-300">선택된 사진 목록</span>
+          <span id="fileCountBadge" class="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold">0개</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="addMoreBtn" type="button" class="px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+            + 사진 추가
+          </button>
+          <button id="clearAllBtn" type="button" class="px-2.5 py-1 rounded-md bg-slate-800/70 hover:bg-rose-950/70 text-slate-400 hover:text-rose-300 border border-slate-700/70 transition hidden">
+            전체 비우기
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-[260px] overflow-y-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="sticky top-0 z-10 table-header-glow text-xs sm:text-sm">
+            <tr>
+              <th class="py-3 px-4 font-semibold text-cyan-300">사진 이름</th>
+              <th class="py-3 px-3 font-semibold text-cyan-300 text-center whitespace-nowrap">사진 크기</th>
+              <th class="py-3 px-3 font-semibold text-cyan-300 text-center whitespace-nowrap">변환될 사진 크기</th>
+              <th class="py-3 px-3 font-semibold text-cyan-300 text-center whitespace-nowrap">변환 포맷</th>
+              <th class="py-3 px-3 font-semibold text-slate-400 text-center w-12">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="fileTableBody" class="divide-y divide-slate-800/70 text-xs sm:text-sm">
+            <tr>
+              <td colspan="5" class="py-10 px-4 text-center text-slate-400">
+                상단 박스를 클릭하거나 이미지를 드래그하면 <span class="text-cyan-400 font-medium">사진 크기</span>와 <span class="text-cyan-400 font-medium">변환될 사진 크기</span>가 즉시 표시됩니다.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. 설정 영역 (좌: 사진 크기 설정 / 우: 일괄 포맷 변환) -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-5">
+      <!-- 좌측 패널: 사진 크기 설정 -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-5">
+        <h2 class="text-sm sm:text-base font-bold text-white mb-4 flex items-center gap-1.5">
+          <span class="text-cyan-400">*</span> 사진 크기 설정
+        </h2>
+
+        <div class="space-y-3.5 text-xs sm:text-sm">
+          <!-- 라디오 1: 가로/세로 픽셀 기준 자동 변환 -->
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="resizeMode" value="dimension" checked class="w-4 h-4 accent-cyan-400 cursor-pointer" />
+            </label>
+            <select id="dimensionAxis" class="dark-input rounded-lg px-2.5 py-1.5 font-medium cursor-pointer">
+              <option value="width" selected>가로</option>
+              <option value="height">세로</option>
+              <option value="long">긴 변</option>
+              <option value="short">짧은 변</option>
+            </select>
+            <span class="text-slate-300">를</span>
+            <input id="dimensionValue" type="number" min="0" max="16384" value="728" placeholder="원본"
+              class="dark-input rounded-lg px-3 py-1.5 w-24 text-center font-semibold text-cyan-300" />
+            <span id="dimensionHintLabel" class="text-slate-300">에 맞춰서 세로 자동 변환</span>
+          </div>
+
+          <!-- 라디오 2: 비율로 조정 -->
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="resizeMode" value="percent" class="w-4 h-4 accent-cyan-400 cursor-pointer" />
+              <span class="text-slate-200 font-medium">비율로 조정</span>
+            </label>
+            <input id="percentValue" type="number" min="1" max="1000" value="100" disabled
+              class="dark-input rounded-lg px-3 py-1.5 w-24 text-center font-semibold text-cyan-300" />
+            <span class="text-slate-300">%</span>
+            <button id="keepOriginalSizeBtn" type="button"
+              class="ml-auto px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition">
+              원본 크기 유지(100%)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 패널: 일괄 포맷 변환 (기본값 JPG 선택) -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm sm:text-base font-bold text-white mb-4">일괄 포맷 변환</h2>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 mb-4">
+            <select id="outputFormat" class="dark-input rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-white sm:w-48 cursor-pointer">
+              <option value="webp">WEBP (권장)</option>
+              <option value="jpeg" selected>JPG (JPEG)</option>
+              <option value="png">PNG (무손실)</option>
+              <option value="gif">GIF</option>
+              <option value="original">원본 포맷 유지</option>
+            </select>
+            <div class="dark-input rounded-lg px-3 py-2 text-xs text-slate-400 flex-1 flex items-center justify-between">
+              <span>JPG / PNG / WebP / GIF</span>
+              <span id="formatNote" class="text-cyan-400 font-medium">범용 호환·작은 용량</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 품질 슬라이더 -->
+        <div class="flex items-center gap-3 pt-1">
+          <span class="text-xs sm:text-sm font-medium text-slate-300 whitespace-nowrap">품질</span>
+          <input id="qualityRange" type="range" min="10" max="100" value="90" class="flex-1" />
+          <span id="qualityText" class="text-xs sm:text-sm font-bold text-cyan-300 w-11 text-right">90%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 하단 저장 경로 설정 및 실행 (ZIP 없이 개별 이미지 저장) -->
+    <section class="glass-panel rounded-2xl p-4 sm:p-5">
+      <div class="mb-4">
+        <h2 class="text-sm sm:text-base font-bold text-white mb-2">저장 경로 설정 (PC / 모바일·태블릿)</h2>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <!-- PC 저장 폴더 지정 -->
+          <div class="flex items-center flex-1 gap-2">
+            <div id="pcFolderDisplay" class="dark-input rounded-lg px-3.5 py-2 text-xs sm:text-sm text-slate-200 flex-1 truncate">
+              PC 저장 경로: <span class="text-cyan-300 font-medium">기본 다운로드 폴더에 개별 이미지로 각각 저장 (우측 버튼으로 폴더 지정 가능)</span>
+            </div>
+            <button id="pickFolderBtn" type="button" title="PC 저장 폴더 직접 선택"
+              class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600/80 text-cyan-300 flex items-center gap-1.5 text-xs sm:text-sm font-medium transition shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
+              <span>폴더 선택</span>
+            </button>
+            <button id="resetFolderBtn" type="button" title="기본 다운로드 폴더로 초기화"
+              class="hidden px-2.5 py-2 rounded-lg bg-slate-800/80 hover:bg-rose-950/70 border border-slate-700 text-slate-300 hover:text-rose-300 text-xs font-medium transition shrink-0">
+              초기화
+            </button>
+          </div>
+
+          <!-- 모바일/태블릿 저장 방식 -->
+          <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs">
+            <span class="text-pink-400 font-bold shrink-0">모바일·태블릿:</span>
+            <select id="mobileSaveMode" class="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer">
+              <option value="album" selected class="bg-slate-900">사진첩(앨범)에 저장</option>
+              <option value="download" class="bg-slate-900">다운로드 폴더에 각각 저장</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 진행률 표시바 -->
+      <div id="progressContainer" class="hidden mb-4">
+        <div class="flex justify-between text-xs text-cyan-300 mb-1">
+          <span id="progressText">변환 중...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div id="progressBar" class="h-full bg-gradient-to-r from-cyan-400 via-indigo-400 to-pink-500 transition-all duration-150" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 결과 알림창 -->
+      <div id="statusToast" class="hidden mb-4 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium border"></div>
+
+      <!-- 모바일/태블릿 대량 변환 시 보안 제스처 만료 대비 원터치 사진첩 저장 버튼 -->
+      <div id="mobileAlbumFallbackBox" class="hidden mb-4 flex justify-center">
+        <button id="mobileAlbumActionBtn" type="button"
+          class="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2">
+          <span>📲 변환 완료! 여기를 눌러 사진첩(앨범)에 저장하기</span>
+        </button>
+      </div>
+
+      <!-- 실행 버튼 -->
+      <div class="flex justify-center">
+        <button id="convertRunBtn" type="button"
+          class="btn-gradient-action w-full sm:w-auto sm:min-w-[290px] py-3 px-8 rounded-xl text-sm sm:text-base font-extrabold text-white tracking-wide">
+          일괄 변환 및 저장 실행
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      files: [],
+      dirHandle: null,
+      pendingShareFiles: null
+    };
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const addMoreBtn = document.getElementById('addMoreBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const fileTableBody = document.getElementById('fileTableBody');
+    const fileCountBadge = document.getElementById('fileCountBadge');
+
+    const resizeRadios = document.querySelectorAll('input[name="resizeMode"]');
+    const dimensionAxis = document.getElementById('dimensionAxis');
+    const dimensionValue = document.getElementById('dimensionValue');
+    const dimensionHintLabel = document.getElementById('dimensionHintLabel');
+    const percentValue = document.getElementById('percentValue');
+    const keepOriginalSizeBtn = document.getElementById('keepOriginalSizeBtn');
+
+    const outputFormat = document.getElementById('outputFormat');
+    const formatNote = document.getElementById('formatNote');
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityText = document.getElementById('qualityText');
+
+    const pcFolderDisplay = document.getElementById('pcFolderDisplay');
+    const pickFolderBtn = document.getElementById('pickFolderBtn');
+    const resetFolderBtn = document.getElementById('resetFolderBtn');
+    const mobileSaveMode = document.getElementById('mobileSaveMode');
+    const convertRunBtn = document.getElementById('convertRunBtn');
+
+    const progressContainer = document.getElementById('progressContainer');
+    const progressText = document.getElementById('progressText');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressBar = document.getElementById('progressBar');
+    const statusToast = document.getElementById('statusToast');
+
+    const mobileAlbumFallbackBox = document.getElementById('mobileAlbumFallbackBox');
+    const mobileAlbumActionBtn = document.getElementById('mobileAlbumActionBtn');
+
+    // 스마트폰 및 태블릿(아이패드·안드로이드 패드 포함) 정밀 감지
+    const isMobileOrTablet = (() => {
+      const ua = navigator.userAgent || '';
+      const isUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet|Silk/i.test(ua);
+      const isIPadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isCoarseTouch = (navigator.maxTouchPoints > 1 && window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      return isUA || isIPadOS || isCoarseTouch;
+    })();
+
+    function showToast(message, type = 'info') {
+      statusToast.classList.remove(
+        'hidden',
+        'bg-emerald-950/70', 'border-emerald-500/40', 'text-emerald-300',
+        'bg-rose-950/70', 'border-rose-500/40', 'text-rose-300',
+        'bg-cyan-950/70', 'border-cyan-500/40', 'text-cyan-200'
+      );
+      if (type === 'success') {
+        statusToast.classList.add('bg-emerald-950/70', 'border-emerald-500/40', 'text-emerald-300');
+      } else if (type === 'error') {
+        statusToast.classList.add('bg-rose-950/70', 'border-rose-500/40', 'text-rose-300');
+      } else {
+        statusToast.classList.add('bg-cyan-950/70', 'border-cyan-500/40', 'text-cyan-200');
+      }
+      statusToast.textContent = message;
+    }
+
+    // 파일 업로드 이벤트
+    dropZone.addEventListener('click', () => fileInput.click());
+    addMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files?.length) {
+        handleIncomingFiles(e.dataTransfer.files);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files?.length) {
+        handleIncomingFiles(e.target.files);
+        fileInput.value = '';
+      }
+    });
+
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const pasted = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) pasted.push(f);
+        }
+      }
+      if (pasted.length) handleIncomingFiles(pasted);
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+      state.files.forEach(item => URL.revokeObjectURL(item.thumbUrl));
+      state.files = [];
+      state.pendingShareFiles = null;
+      mobileAlbumFallbackBox.classList.add('hidden');
+      renderTable();
+      statusToast.classList.add('hidden');
+    });
+
+    async function handleIncomingFiles(fileList) {
+      const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      if (!validFiles.length) {
+        showToast('이미지 파일(JPG, PNG, WebP, GIF 등)만 추가할 수 있습니다.', 'error');
+        return;
+      }
+
+      for (const file of validFiles) {
+        try {
+          const meta = await readImageMeta(file);
+          state.files.push({
+            id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`,
+            file,
+            name: file.name,
+            origW: meta.width,
+            origH: meta.height,
+            thumbUrl: meta.url,
+            imgEl: meta.img
+          });
+        } catch (err) {
+          console.error('이미지 로드 실패:', file.name, err);
+        }
+      }
+      renderTable();
+    }
+
+    function readImageMeta(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, url, img });
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('이미지 로드 실패'));
+        };
+        img.src = url;
+      });
+    }
+
+    function calcTargetSize(origW, origH) {
+      const mode = document.querySelector('input[name="resizeMode"]:checked').value;
+      if (mode === 'percent') {
+        const pct = Math.max(1, parseFloat(percentValue.value) || 100) / 100;
+        return {
+          w: Math.max(1, Math.round(origW * pct)),
+          h: Math.max(1, Math.round(origH * pct))
+        };
+      }
+
+      const target = parseInt(dimensionValue.value, 10);
+      if (!target || target <= 0) {
+        return { w: origW, h: origH };
+      }
+
+      const axis = dimensionAxis.value;
+      if (axis === 'width') {
+        return { w: target, h: Math.max(1, Math.round(origH * (target / origW))) };
+      }
+      if (axis === 'height') {
+        return { w: Math.max(1, Math.round(origW * (target / origH))), h: target };
+      }
+      if (axis === 'long') {
+        if (origW >= origH) {
+          return { w: target, h: Math.max(1, Math.round(origH * (target / origW))) };
+        }
+        return { w: Math.max(1, Math.round(origW * (target / origH))), h: target };
+      }
+      if (axis === 'short') {
+        if (origW <= origH) {
+          return { w: target, h: Math.max(1, Math.round(origH * (target / origW))) };
+        }
+        return { w: Math.max(1, Math.round(origW * (target / origH))), h: target };
+      }
+      return { w: origW, h: origH };
+    }
+
+    function getResolvedFormat(file) {
+      const fmt = outputFormat.value;
+      if (fmt !== 'original') return fmt;
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      if (ext === 'jpg' || ext === 'jpeg') return 'jpeg';
+      if (ext === 'webp') return 'webp';
+      if (ext === 'gif') return 'gif';
+      return 'png';
+    }
+
+    function renderTable() {
+      fileCountBadge.textContent = `${state.files.length}개`;
+      clearAllBtn.classList.toggle('hidden', state.files.length === 0);
+
+      if (state.files.length === 0) {
+        fileTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-10 px-4 text-center text-slate-400">
+              상단 박스를 클릭하거나 이미지를 드래그하면 <span class="text-cyan-400 font-medium">사진 크기</span>와 <span class="text-cyan-400 font-medium">변환될 사진 크기</span>가 즉시 표시됩니다.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      fileTableBody.innerHTML = state.files.map(item => {
+        const target = calcTargetSize(item.origW, item.origH);
+        const fmt = getResolvedFormat(item.file);
+        const fmtBadge = fmt === 'jpeg' ? 'JPG' : fmt.toUpperCase();
+
+        return `
+          <tr class="hover:bg-slate-800/45 transition">
+            <td class="py-2.5 px-4">
+              <div class="flex items-center gap-2.5">
+                <img src="${item.thumbUrl}" alt="" class="w-8 h-8 rounded object-cover border border-slate-700 shrink-0 bg-slate-900" />
+                <span class="font-medium text-slate-100 truncate max-w-[160px] sm:max-w-[280px]" title="${item.name}">${item.name}</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-3 text-center text-slate-300 font-mono whitespace-nowrap">${item.origW} * ${item.origH}</td>
+            <td class="py-2.5 px-3 text-center text-cyan-400 font-bold font-mono whitespace-nowrap">${target.w} * ${target.h}</td>
+            <td class="py-2.5 px-3 text-center whitespace-nowrap">
+              <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                ${fmtBadge}
+              </span>
+            </td>
+            <td class="py-2.5 px-3 text-center">
+              <button type="button" onclick="removeFile('${item.id}')" class="text-slate-400 hover:text-rose-400 font-bold px-2 py-0.5 rounded transition" title="삭제">
+                ×
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    window.removeFile = function(id) {
+      const idx = state.files.findIndex(f => f.id === id);
+      if (idx !== -1) {
+        URL.revokeObjectURL(state.files[idx].thumbUrl);
+        state.files.splice(idx, 1);
+        renderTable();
+      }
+    };
+
+    // 크기 설정 이벤트
+    resizeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        const isDim = document.querySelector('input[name="resizeMode"]:checked').value === 'dimension';
+        dimensionAxis.disabled = !isDim;
+        dimensionValue.disabled = !isDim;
+        percentValue.disabled = isDim;
+        renderTable();
+      });
+    });
+
+    keepOriginalSizeBtn.addEventListener('click', () => {
+      document.querySelector('input[name="resizeMode"][value="percent"]').checked = true;
+      dimensionAxis.disabled = true;
+      dimensionValue.disabled = true;
+      percentValue.disabled = false;
+      percentValue.value = 100;
+      renderTable();
+    });
+
+    dimensionAxis.addEventListener('change', () => {
+      const map = {
+        width: '에 맞춰서 세로 자동 변환',
+        height: '에 맞춰서 가로 자동 변환',
+        long: '에 맞춰서 짧은 변 자동 변환',
+        short: '에 맞춰서 긴 변 자동 변환'
+      };
+      dimensionHintLabel.textContent = map[dimensionAxis.value];
+      renderTable();
+    });
+
+    dimensionValue.addEventListener('input', renderTable);
+    percentValue.addEventListener('input', renderTable);
+
+    outputFormat.addEventListener('change', () => {
+      const notes = {
+        webp: '고압축·고화질',
+        jpeg: '범용 호환·작은 용량',
+        png: '무손실·투명 유지',
+        gif: '256색 GIF 변환',
+        original: '원본 확장자 유지'
+      };
+      formatNote.textContent = notes[outputFormat.value] || '';
+      renderTable();
+    });
+
+    qualityRange.addEventListener('input', () => {
+      qualityText.textContent = `${qualityRange.value}%`;
+    });
+
+    // PC 저장 폴더 직접 선택
+    pickFolderBtn.addEventListener('click', async () => {
+      if (!window.showDirectoryPicker) {
+        showToast('현재 브라우저는 폴더 직접 지정을 지원하지 않아 기본 다운로드 폴더에 각각 저장됩니다.', 'info');
+        return;
+      }
+      try {
+        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        state.dirHandle = handle;
+        pcFolderDisplay.innerHTML = `PC 저장 경로: <span class="text-emerald-400 font-bold">지정된 폴더 [${handle.name}]에 각각 저장</span>`;
+        resetFolderBtn.classList.remove('hidden');
+        showToast(`저장 경로가 [${handle.name}] 폴더로 설정되었습니다.`, 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          showToast('폴더 지정 중 오류가 발생했습니다.', 'error');
+        }
+      }
+    });
+
+    // PC 폴더 지정 초기화 (기본 다운로드 폴더로 복귀)
+    resetFolderBtn.addEventListener('click', () => {
+      state.dirHandle = null;
+      resetFolderBtn.classList.add('hidden');
+      pcFolderDisplay.innerHTML = `PC 저장 경로: <span class="text-cyan-300 font-medium">기본 다운로드 폴더에 개별 이미지로 각각 저장 (우측 버튼으로 폴더 지정 가능)</span>`;
+      showToast('PC 기본 다운로드 폴더로 저장 경로가 초기화되었습니다.', 'info');
+    });
+
+    // 이미지 1장 변환 처리 (사전 로드된 imgEl 재사용으로 초고속 변환)
+    async function convertSingleImage(item, usedNames) {
+      const target = calcTargetSize(item.origW, item.origH);
+      const fmt = getResolvedFormat(item.file);
+      const quality = parseInt(qualityRange.value, 10) / 100;
+
+      const img = item.imgEl || await loadImageElement(item.thumbUrl);
+
+      let srcCanvas = document.createElement('canvas');
+      srcCanvas.width = item.origW;
+      srcCanvas.height = item.origH;
+      let srcCtx = srcCanvas.getContext('2d');
+      srcCtx.drawImage(img, 0, 0);
+
+      let curW = item.origW;
+      let curH = item.origH;
+      while (curW * 0.5 > target.w && curH * 0.5 > target.h) {
+        const nextW = Math.max(target.w, Math.round(curW * 0.5));
+        const nextH = Math.max(target.h, Math.round(curH * 0.5));
+        const stepCanvas = document.createElement('canvas');
+        stepCanvas.width = nextW;
+        stepCanvas.height = nextH;
+        const stepCtx = stepCanvas.getContext('2d');
+        stepCtx.imageSmoothingEnabled = true;
+        stepCtx.imageSmoothingQuality = 'high';
+        stepCtx.drawImage(srcCanvas, 0, 0, curW, curH, 0, 0, nextW, nextH);
+        srcCanvas = stepCanvas;
+        curW = nextW;
+        curH = nextH;
+      }
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = target.w;
+      outCanvas.height = target.h;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.imageSmoothingEnabled = true;
+      outCtx.imageSmoothingQuality = 'high';
+
+      if (fmt === 'jpeg') {
+        outCtx.fillStyle = '#ffffff';
+        outCtx.fillRect(0, 0, target.w, target.h);
+      }
+      outCtx.drawImage(srcCanvas, 0, 0, curW, curH, 0, 0, target.w, target.h);
+
+      let blob;
+      let ext;
+      let mime;
+      if (fmt === 'gif') {
+        blob = encodeCanvasToGifBlob(outCanvas);
+        ext = 'gif';
+        mime = 'image/gif';
+      } else {
+        mime = fmt === 'jpeg' ? 'image/jpeg' : fmt === 'webp' ? 'image/webp' : 'image/png';
+        ext = fmt === 'jpeg' ? 'jpg' : fmt;
+        blob = await new Promise(res => outCanvas.toBlob(res, mime, quality));
+      }
+
+      const baseName = item.name.replace(/\.[^/.]+$/, '');
+      let filename = `${baseName}_${target.w}x${target.h}.${ext}`;
+      let counter = 1;
+      while (usedNames.has(filename)) {
+        filename = `${baseName}_${target.w}x${target.h}_(${counter++}).${ext}`;
+      }
+      usedNames.add(filename);
+
+      return { filename, blob, mime };
+    }
+
+    function loadImageElement(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    // 순수 JS GIF89a 인코더
+    function encodeCanvasToGifBlob(canvas) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const rgba = canvas.getContext('2d').getImageData(0, 0, w, h).data;
+
+      const palette = new Uint8Array(256 * 3);
+      let pIdx = 0;
+      for (let r = 0; r < 6; r++) {
+        for (let g = 0; g < 8; g++) {
+          for (let b = 0; b < 5; b++) {
+            palette[pIdx++] = Math.round((r * 255) / 5);
+            palette[pIdx++] = Math.round((g * 255) / 7);
+            palette[pIdx++] = Math.round((b * 255) / 4);
+          }
+        }
+      }
+
+      const indexed = new Uint8Array(w * h);
+      for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
+        if (rgba[i + 3] < 128) {
+          indexed[j] = 255;
+        } else {
+          const r = Math.round((rgba[i] * 5) / 255);
+          const g = Math.round((rgba[i + 1] * 7) / 255);
+          const b = Math.round((rgba[i + 2] * 4) / 255);
+          indexed[j] = r * 40 + g * 5 + b;
+        }
+      }
+
+      const out = [];
+      const writeStr = s => { for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i)); };
+      const writeU16 = v => { out.push(v & 0xff, (v >> 8) & 0xff); };
+
+      writeStr('GIF89a');
+      writeU16(w);
+      writeU16(h);
+      out.push(0xf7, 255, 0);
+      for (let i = 0; i < palette.length; i++) out.push(palette[i]);
+
+      out.push(0x21, 0xf9, 0x04, 0x01, 0, 0, 255, 0);
+      out.push(0x2c);
+      writeU16(0); writeU16(0); writeU16(w); writeU16(h);
+      out.push(0x00);
+
+      const minCodeSize = 8;
+      out.push(minCodeSize);
+      const lzwData = lzwEncode(indexed, minCodeSize);
+      for (let i = 0; i < lzwData.length; i += 255) {
+        const chunk = lzwData.slice(i, i + 255);
+        out.push(chunk.length);
+        for (let k = 0; k < chunk.length; k++) out.push(chunk[k]);
+      }
+      out.push(0x00, 0x3b);
+      return new Blob([new Uint8Array(out)], { type: 'image/gif' });
+    }
+
+    function lzwEncode(indices, minCodeSize) {
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let nextCode = eoiCode + 1;
+      const dict = new Map();
+
+      const bytes = [];
+      let bitBuf = 0;
+      let bitCount = 0;
+
+      const emit = (code) => {
+        bitBuf |= (code << bitCount);
+        bitCount += codeSize;
+        while (bitCount >= 8) {
+          bytes.push(bitBuf & 0xff);
+          bitBuf >>= 8;
+          bitCount -= 8;
+        }
+      };
+
+      const resetDict = () => {
+        dict.clear();
+        codeSize = minCodeSize + 1;
+        nextCode = eoiCode + 1;
+      };
+
+      emit(clearCode);
+      let prefix = indices[0];
+      for (let i = 1; i < indices.length; i++) {
+        const k = indices[i];
+        const key = (prefix << 8) | k;
+        if (dict.has(key)) {
+          prefix = dict.get(key);
+        } else {
+          emit(prefix);
+          if (nextCode < 4096) {
+            dict.set(key, nextCode++);
+            if (nextCode > (1 << codeSize) && codeSize < 12) codeSize++;
+          } else {
+            emit(clearCode);
+            resetDict();
+          }
+          prefix = k;
+        }
+      }
+      emit(prefix);
+      emit(eoiCode);
+      if (bitCount > 0) bytes.push(bitBuf & 0xff);
+      return bytes;
+    }
+
+    // 모바일/태블릿 사진첩(앨범) 공유 호출 헬퍼
+    async function saveToMobilePhotoAlbum(results) {
+      const shareFiles = results.map(r => new File([r.blob], r.filename, { type: r.mime || r.blob.type }));
+
+      if (navigator.canShare && navigator.canShare({ files: shareFiles })) {
+        try {
+          await navigator.share({
+            files: shareFiles,
+            title: 'You-틸리티 변환 이미지'
+          });
+          mobileAlbumFallbackBox.classList.add('hidden');
+          showToast(`완료! 총 ${results.length}장의 이미지를 사진첩(앨범)으로 저장했습니다.`, 'success');
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            showToast('사진첩 저장이 취소되었습니다.', 'info');
+            return;
+          }
+          // 이미지 장수가 많아 변환 시간 초과로 브라우저 터치 제스처가 만료된 경우 -> 즉시 원터치 버튼 노출
+          state.pendingShareFiles = shareFiles;
+          mobileAlbumFallbackBox.classList.remove('hidden');
+          showToast('변환이 완료되었습니다! 아래 초록색 버튼을 한 번 누르면 사진첩(앨범)에 즉시 저장됩니다.', 'info');
+          return;
+        }
+      }
+
+      // 파일 공유 API를 지원하지 않는 태블릿/브라우저의 경우 개별 파일 다운로드로 저장 (안드로이드 갤러리 자동 등록)
+      await downloadFilesIndividually(results, true);
+    }
+
+    // 원터치 사진첩 저장 버튼 클릭 이벤트 (사용자 직접 클릭이므로 100% 작동)
+    mobileAlbumActionBtn.addEventListener('click', async () => {
+      if (!state.pendingShareFiles || !state.pendingShareFiles.length) return;
+      try {
+        await navigator.share({
+          files: state.pendingShareFiles,
+          title: 'You-틸리티 변환 이미지'
+        });
+        mobileAlbumFallbackBox.classList.add('hidden');
+        showToast(`완료! 총 ${state.pendingShareFiles.length}장의 이미지가 사진첩(앨범)에 저장되었습니다.`, 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          const fallbackItems = state.pendingShareFiles.map(f => ({ filename: f.name, blob: f }));
+          await downloadFilesIndividually(fallbackItems, true);
+        }
+      }
+    });
+
+    // ZIP 없이 각 이미지 파일을 순차적으로 다운로드 폴더에 개별 저장
+    async function downloadFilesIndividually(results, isMobileFallback = false) {
+      for (let i = 0; i < results.length; i++) {
+        progressText.textContent = `개별 파일 저장 중... (${i + 1} / ${results.length}) - ${results[i].filename}`;
+        triggerDownload(results[i].blob, results[i].filename);
+        // 브라우저의 다중 다운로드 누락을 방지하기 위한 순차 간격(220ms)
+        if (i < results.length - 1) {
+          await new Promise(r => setTimeout(r, 220));
+        }
+      }
+
+      if (isMobileFallback) {
+        showToast(`완료! 총 ${results.length}장의 이미지가 기기 갤러리(다운로드 앨범)에 각각 저장되었습니다.`, 'success');
+      } else {
+        showToast(`완료! 총 ${results.length}장의 이미지가 다운로드 폴더에 개별 파일로 각각 저장되었습니다.`, 'success');
+      }
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    // 일괄 변환 및 저장 실행
+    convertRunBtn.addEventListener('click', async () => {
+      if (!state.files.length) {
+        showToast('변환할 이미지를 먼저 1장 이상 추가해 주세요.', 'error');
+        return;
+      }
+
+      convertRunBtn.disabled = true;
+      mobileAlbumFallbackBox.classList.add('hidden');
+      state.pendingShareFiles = null;
+      progressContainer.classList.remove('hidden');
+      statusToast.classList.add('hidden');
+
+      const results = [];
+      const usedNames = new Set();
+
+      try {
+        for (let i = 0; i < state.files.length; i++) {
+          const pct = Math.round((i / state.files.length) * 100);
+          progressText.textContent = `변환 처리 중... (${i + 1} / ${state.files.length}) - ${state.files[i].name}`;
+          progressPercent.textContent = `${pct}%`;
+          progressBar.style.width = `${pct}%`;
+
+          const converted = await convertSingleImage(state.files[i], usedNames);
+          results.push(converted);
+        }
+
+        progressText.textContent = '파일 저장 중...';
+        progressPercent.textContent = '100%';
+        progressBar.style.width = '100%';
+
+        // 1) PC에서 사용자가 직접 저장 폴더를 선택한 경우
+        if (state.dirHandle) {
+          for (const res of results) {
+            const fileHandle = await state.dirHandle.getFileHandle(res.filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(res.blob);
+            await writable.close();
+          }
+          showToast(`완료! 총 ${results.length}장의 이미지가 지정 폴더 [${state.dirHandle.name}]에 개별 파일로 저장되었습니다.`, 'success');
+        }
+        // 2) 모바일 기기(스마트폰·태블릿)인 경우: 사진첩(앨범) 저장 또는 개별 다운로드
+        else if (isMobileOrTablet) {
+          if (mobileSaveMode.value === 'album') {
+            await saveToMobilePhotoAlbum(results);
+          } else {
+            await downloadFilesIndividually(results, true);
+          }
+        }
+        // 3) PC 기본 상태(폴더 미지정): 사용자의 '다운로드' 폴더에 개별 파일로 각각 저장
+        else {
+          await downloadFilesIndividually(results, false);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+          showToast(`처리 중 오류가 발생했습니다: ${err.message}`, 'error');
+        }
+      } finally {
+        convertRunBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

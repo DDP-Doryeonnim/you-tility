@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 문서 스캐너 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PDF 생성 및 다중 이미지 ZIP 압축 엔진 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070A10;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 14%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .filter-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 8px 14px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      min-width: 102px;
+      user-select: none;
+    }
+    .filter-btn:hover {
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #ffffff;
+      background: rgba(30, 41, 59, 0.95);
+      transform: translateY(-1px);
+    }
+    .filter-btn.active {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.28) 0%, rgba(244, 63, 94, 0.25) 100%);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.32);
+    }
+    .ratio-pill {
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .ratio-pill:hover {
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    .ratio-pill.active {
+      background: #22d3ee;
+      color: #0f172a;
+      border-color: #22d3ee;
+    }
+    .drop-zone {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(11, 17, 32, 0.88) 100%);
+      border: 2.5px dashed rgba(56, 189, 248, 0.65);
+      border-radius: 24px;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.14);
+    }
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #f472b6;
+      box-shadow: 0 0 42px rgba(244, 114, 182, 0.28), inset 0 0 24px rgba(56, 189, 248, 0.12);
+      transform: translateY(-2px);
+    }
+    .stage-bg {
+      background-color: #090d18;
+      background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
+      background-size: 18px 18px;
+    }
+    .thumb-card {
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.92);
+      transition: all 0.14s ease;
+      cursor: pointer;
+    }
+    .thumb-card:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+    }
+    .thumb-card.selected {
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+      background: rgba(30, 41, 59, 0.98);
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1780px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+    <!-- 상단 공통 헤더 -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-3.5">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+          📸 스마트 문서 스캐너 <span class="text-xs font-mono text-emerald-400 align-middle">1:1 원본 무손실 v3.0</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">원본 해상도 100% 그대로 입출력 · 초고화질 샤프닝(USM) · 4꼭짓점 자동 인식 · 그림자 제거</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <button id="topAddPhotoBtn" type="button" onclick="triggerFileSelect()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition flex items-center gap-1">
+          <span>➕</span>
+          <span>사진 추가</span>
+        </button>
+        <button id="topCameraBtn" type="button" onclick="triggerCameraCapture()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-purple-500/40 text-xs font-bold text-purple-300 transition flex items-center gap-1">
+          <span>📷</span>
+          <span>카메라 촬영</span>
+        </button>
+        <button id="downloadImgBtn" type="button" onclick="exportScannedImages()" disabled class="px-3.5 py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-xs sm:text-sm font-extrabold text-emerald-300 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span>🖼️</span>
+          <span>원본크기 이미지 저장</span>
+        </button>
+        <button id="downloadPdfBtn" type="button" onclick="exportAllAsPdf()" disabled class="btn-primary px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+          <span>📄</span>
+          <span>스캔본 PDF 저장</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 -->
+    <input type="file" id="photoFileInput" accept="image/png,image/jpeg,image/webp,image/bmp" multiple class="hidden" onchange="handleFiles(this.files)" />
+    <input type="file" id="cameraFileInput" accept="image/*" capture="environment" class="hidden" onchange="handleFiles(this.files)" />
+
+    <!-- [초기 화면] 파일 업로드 드롭존 -->
+    <div id="emptyUploadView" class="max-w-3xl mx-auto my-6">
+      <div id="dropZone" onclick="triggerFileSelect()" class="drop-zone p-8 sm:p-14 text-center cursor-pointer">
+        <div class="text-6xl mb-4">📑</div>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-2">
+          삐뚤게 찍힌 문서·영수증·신분증 사진을 올려주세요!
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-300 mb-6">
+          3000×5000px 이상의 초고화질 원본도 축소 없이 <strong>100% 원본 해상도 그대로</strong> 읽어들여 반듯하고 선명하게 스캔합니다.
+        </p>
+
+        <div class="flex flex-wrap items-center justify-center gap-3">
+          <div class="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl btn-primary text-sm sm:text-base font-extrabold">
+            <span>📂 내 PC · 스마트폰에서 사진 선택</span>
+          </div>
+          <button type="button" onclick="event.stopPropagation(); triggerCameraCapture();" class="px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-cyan-400/50 text-sm sm:text-base font-extrabold text-cyan-300 transition flex items-center gap-2">
+            <span>📷 스마트폰 카메라로 바로 찍기</span>
+          </button>
+        </div>
+
+        <div class="mt-5">
+          <button type="button" onclick="event.stopPropagation(); loadSampleSkewedDocument();" class="px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-amber-300 transition">
+            🧪 사진 없이 '삐뚤고 그림자 진 고해상도 샘플 계약서'로 즉시 테스트해 보기
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-8 text-xs text-slate-300 max-w-2xl mx-auto">
+          <div class="bg-slate-900/85 border border-cyan-500/30 rounded-xl p-3">
+            <div class="text-base mb-1">💎</div>
+            <div class="font-bold text-cyan-300">원본 해상도 100% 유지</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">3000×5000 원본 크기 그대로 저장</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">🔪</div>
+            <div class="font-bold text-white">초고화질 글자 샤프닝</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">흐릿한 글자 획을 인쇄급으로 복원</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">✨</div>
+            <div class="font-bold text-white">그림자 완벽 제거</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">종이는 순백색, 도장은 선명하게</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">🔍</div>
+            <div class="font-bold text-white">대형 비교 화면 & 줌</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">200% 초정밀 확대 미리보기 지원</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- [스캐너 메인 워크스페이스] -->
+    <div id="scannerWorkspace" class="hidden space-y-3">
+
+      <!-- 1. 상단 컨트롤 바: 스캔 화질 모드 + 문서 규격(원본 크기 1:1 기본) + 세부 튜닝 슬라이더 -->
+      <section class="glass-panel rounded-2xl p-3 sm:p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2.5">
+          <!-- 4대 스캔 보정 필터 -->
+          <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button type="button" data-filter="magic_color" onclick="setScanFilter('magic_color')" class="filter-btn active">
+              <span class="text-lg">✨</span>
+              <span class="text-xs font-extrabold text-cyan-200">매직 컬러 스캔</span>
+              <span class="text-[10px] text-slate-400">순백 배경+선명한 글씨</span>
+            </button>
+            <button type="button" data-filter="bw_clean" onclick="setScanFilter('bw_clean')" class="filter-btn">
+              <span class="text-lg">📄</span>
+              <span class="text-xs font-extrabold">흑백 공문 스캔</span>
+              <span class="text-[10px] text-slate-400">레이저 인쇄급 흑백</span>
+            </button>
+            <button type="button" data-filter="clear_light" onclick="setScanFilter('clear_light')" class="filter-btn">
+              <span class="text-lg">🔆</span>
+              <span class="text-xs font-extrabold">선명한 문서</span>
+              <span class="text-[10px] text-slate-400">자연스러운 조명 보정</span>
+            </button>
+            <button type="button" data-filter="original" onclick="setScanFilter('original')" class="filter-btn">
+              <span class="text-lg">🖼️</span>
+              <span class="text-xs font-extrabold">원본 색상 유지</span>
+              <span class="text-[10px] text-slate-400">반듯하게 펴기+샤프닝</span>
+            </button>
+          </div>
+
+          <!-- 출력 규격(해상도/비율) 원클릭 선택: '원본 크기 그대로(1:1)' 기본 선택 -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+            <span class="text-[11px] font-bold text-slate-400 px-2">📐 출력 규격</span>
+            <button type="button" data-ratio="orig_size" onclick="setAspectRatio('orig_size')" class="ratio-pill active" title="원본 사진의 가로×세로 픽셀 해상도와 100% 똑같은 크기로 저장합니다">원본 크기 그대로(1:1)</button>
+            <button type="button" data-ratio="auto" onclick="setAspectRatio('auto')" class="ratio-pill" title="선택한 모서리의 가로·세로 비율에 맞추되 원본 고해상도를 유지합니다">모서리 비율(원본화질)</button>
+            <button type="button" data-ratio="a4_p" onclick="setAspectRatio('a4_p')" class="ratio-pill">A4 세로</button>
+            <button type="button" data-ratio="a4_l" onclick="setAspectRatio('a4_l')" class="ratio-pill">A4 가로</button>
+            <button type="button" data-ratio="id_card" onclick="setAspectRatio('id_card')" class="ratio-pill">신분증·명함</button>
+          </div>
+        </div>
+
+        <!-- 2단 세부 화질 튜닝 슬라이더 바 -->
+        <div class="mt-2.5 pt-2.5 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
+          <div class="flex flex-wrap items-center gap-2.5 sm:gap-3.5">
+            <!-- 그림자 제거 / 배경 백색화 강도 -->
+            <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
+              <span class="text-xs font-bold text-cyan-300">☀️ 배경 백색화</span>
+              <input id="whitenessSlider" type="range" min="0" max="100" value="78" oninput="updateTuningSliders()" class="w-20 sm:w-24 accent-cyan-400 cursor-pointer" />
+              <span id="whitenessVal" class="text-xs font-mono text-slate-200 w-8 text-right">78%</span>
+            </div>
+
+            <!-- 글자 진하기 / 잉크 농도 -->
+            <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
+              <span class="text-xs font-bold text-purple-300">✒️ 잉크 진하기</span>
+              <input id="contrastSlider" type="range" min="0" max="100" value="65" oninput="updateTuningSliders()" class="w-20 sm:w-24 accent-purple-400 cursor-pointer" />
+              <span id="contrastVal" class="text-xs font-mono text-slate-200 w-8 text-right">65%</span>
+            </div>
+
+            <!-- 글자 외곽선 칼핀 샤프닝 (Unsharp Mask) -->
+            <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]">
+              <span class="text-xs font-extrabold text-amber-300">🔪 글자 선명화(샤프닝)</span>
+              <input id="sharpnessSlider" type="range" min="0" max="100" value="72" oninput="updateTuningSliders()" class="w-20 sm:w-24 accent-amber-400 cursor-pointer" />
+              <span id="sharpnessVal" class="text-xs font-mono text-amber-300 font-bold w-8 text-right">72%</span>
+            </div>
+
+            <!-- 인쇄용 흰색 여백 추가 (원본 전체 해상도는 유지한 채 내부 여백 적용) -->
+            <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
+              <span class="text-xs font-bold text-emerald-300">⬜ 여백</span>
+              <input id="marginSlider" type="range" min="0" max="48" value="0" oninput="updateTuningSliders()" class="w-16 sm:w-20 accent-emerald-400 cursor-pointer" />
+              <span id="marginVal" class="text-xs font-mono text-slate-200 w-8 text-right">0px</span>
+            </div>
+          </div>
+
+          <!-- 다중 페이지 일괄 적용 & 초기화 -->
+          <div class="flex items-center gap-1.5 ml-auto">
+            <button type="button" onclick="applyCurrentSettingsToAllPages()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+              📑 전체 페이지 일괄 적용
+            </button>
+            <button type="button" onclick="resetCurrentSliders()" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-400 hover:text-white transition">
+              초기화
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 대형 2단 비교 작업대: [좌측] 원본 4꼭짓점 지정 (대형) + [우측] 초고화질 스캔 미리보기 (대형) -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+        
+        <!-- 좌측 6칸: 원본 사진 & 4꼭짓점 조정 영역 -->
+        <section class="xl:col-span-6 glass-panel rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-xs font-extrabold text-cyan-300">BEFORE · 원본</span>
+                <h2 class="text-sm sm:text-base font-extrabold text-white">1단계: 문서 모서리 4곳 맞추기</h2>
+              </div>
+
+              <!-- 꼭짓점 자동 찾기 / 전체 선택 / 회전 버튼 -->
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="autoDetectCurrentPageCorners(true)" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+                  🎯 자동 모서리 찾기
+                </button>
+                <button type="button" onclick="setFullImageCorners()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition">
+                  ⬜ 전체 선택
+                </button>
+                <button type="button" onclick="rotateSourceImage(-90)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition" title="왼쪽으로 90도 회전">
+                  ↺ 90°
+                </button>
+                <button type="button" onclick="rotateSourceImage(90)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition" title="오른쪽으로 90도 회전">
+                  ↻ 90°
+                </button>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-2.5">
+              💡 문서의 네 모서리 점(<span class="text-cyan-300 font-bold">1 좌상 · 2 우상 · 3 우하 · 4 좌하</span>)을 마우스나 손가락으로 끌어 문서 끝에 맞추세요.
+            </p>
+          </div>
+
+          <!-- 대형 원본 캔버스 스테이지 -->
+          <div id="sourceStageBox" class="stage-bg rounded-xl p-2 sm:p-3 flex items-center justify-center min-h-[540px] sm:min-h-[660px] lg:min-h-[720px] relative overflow-hidden select-none">
+            <div id="sourceCanvasWrapper" class="relative inline-block">
+              <canvas id="sourceStageCanvas" class="block rounded shadow-2xl cursor-crosshair touch-none"></canvas>
+              <!-- 모서리 드래그 시 나타나는 3.5배율 초선명 돋보기 -->
+              <div id="loupeContainer" class="hidden absolute z-30 pointer-events-none rounded-full border-2 border-cyan-400 shadow-[0_0_28px_rgba(34,211,238,0.75)] overflow-hidden bg-slate-950" style="width: 136px; height: 136px;">
+                <canvas id="loupeCanvas" width="136" height="136" class="block w-full h-full"></canvas>
+                <div id="loupeCornerBadge" class="absolute bottom-1 inset-x-0 text-center text-[10px] font-extrabold text-cyan-300 bg-slate-950/85 py-0.5">
+                  1 좌상단
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2.5 flex items-center justify-between text-xs text-slate-400">
+            <span id="sourceResolutionLabel" class="font-mono text-cyan-300 font-bold">원본 해상도: -</span>
+            <span class="text-slate-300 font-semibold">축소 없이 100% 원본 픽셀이 메모리에 유지됩니다 →</span>
+          </div>
+        </section>
+
+        <!-- 우측 6칸: 스캔 보정 완료 실시간 미리보기 영역 -->
+        <section class="xl:col-span-6 glass-panel rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-pink-500/20 border border-pink-500/40 text-xs font-extrabold text-pink-300">AFTER · 스캔 결과</span>
+                <h2 class="text-sm sm:text-base font-extrabold text-white">2단계: 실시간 미리보기 & 원본 크기 저장</h2>
+              </div>
+
+              <!-- 미리보기 확대(Zoom) 컨트롤 & 개별 원본크기 저장 버튼 -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <div class="flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-700 mr-1">
+                  <button type="button" id="zoomBtn100" onclick="setPreviewZoom(1)" class="px-2 py-1 rounded-md bg-cyan-500 text-slate-950 text-[11px] font-extrabold transition">화면맞춤</button>
+                  <button type="button" id="zoomBtn150" onclick="setPreviewZoom(1.5)" class="px-2 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition">150% 확대</button>
+                  <button type="button" id="zoomBtn200" onclick="setPreviewZoom(2.0)" class="px-2 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition">200% 초확대</button>
+                </div>
+                <button type="button" onclick="downloadCurrentPagePng()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-extrabold text-emerald-300 transition">
+                  💾 원본크기 PNG 저장
+                </button>
+                <button type="button" onclick="downloadCurrentPageJpg()" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-extrabold text-cyan-300 transition">
+                  💾 원본크기 JPG 저장
+                </button>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-2.5">
+              ✨ 저장 버튼을 누르면 축소 없는 <strong class="text-emerald-300">100% 원본 가로×세로 사이즈 그대로</strong> 출력됩니다.
+            </p>
+          </div>
+
+          <!-- 대형 결과 미리보기 캔버스 스테이지 -->
+          <div id="previewStageBox" class="stage-bg rounded-xl p-2 sm:p-4 flex items-center justify-center min-h-[540px] sm:min-h-[660px] lg:min-h-[720px] relative overflow-auto">
+            <canvas id="previewResultCanvas" class="block bg-white rounded shadow-[0_20px_55px_rgba(0,0,0,0.9)] transition-all duration-150"></canvas>
+          </div>
+
+          <div class="mt-2.5 flex items-center justify-between text-xs text-slate-400">
+            <span id="outputResolutionLabel" class="font-mono text-emerald-300 font-bold">최종 저장 해상도: -</span>
+            <span id="activeFilterSummary" class="text-cyan-300 font-bold">적용 필터: ✨ 매직 컬러 스캔</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- 3. 하단 다중 스캔 페이지 목록 바 -->
+      <section class="glass-panel rounded-2xl p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-xs sm:text-sm font-extrabold text-white">📑 스캔 페이지 목록 (<span id="pageCountLabel" class="text-cyan-400">1</span>장)</span>
+            <span class="text-xs text-slate-400">여러 장을 추가해 한 권의 고화질 PDF로 묶어 저장할 수 있습니다.</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="moveCurrentPageOrder(-1)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">◀ 앞으로 이동</button>
+            <button type="button" onclick="moveCurrentPageOrder(1)" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">뒤로 이동 ▶</button>
+            <button type="button" onclick="deleteCurrentScanPage()" class="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-xs font-bold text-rose-200">🗑️ 현재 장 삭제</button>
+          </div>
+        </div>
+
+        <div id="pageThumbStrip" class="flex items-center gap-3 overflow-x-auto pb-1"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- 로딩 오버레이 -->
+  <div id="loadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm">
+    <div class="glass-panel rounded-2xl px-7 py-5 text-center border-cyan-400/40">
+      <div class="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <div id="loadingText" class="text-sm font-extrabold text-white">원본 해상도(1:1) 스캔 문서를 생성하고 있습니다...</div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * [You-틸리티 스마트 문서 스캐너 v3.0 - 100% 원본 해상도 무손실 엔진]
+     * 1. 입력 리사이징 완전 제거: 3000x5000, 4000x6000 등 어떤 고해상도 사진이든 단 1픽셀도 축소하지 않고 원본 그대로 읽어들입니다.
+     * 2. 듀얼 파이프라인:
+     *    - 드래그/슬라이더 조작 중 실시간 미리보기는 캐시된 고속 버퍼(1400px급)로 0.02초 만에 부드럽게 반응합니다.
+     *    - 저장(PNG/JPG/PDF) 시에는 100% 원본 캔버스 픽셀 전체를 사용해 원본과 동일한 크기(예: 3000x5000)로 출력합니다.
+     * 3. 해상도 적응형(Resolution-Adaptive) 커널:
+     *    - 그림자 제거 그리드 블록 크기와 샤프닝(USM) 반경이 이미지 해상도에 비례해 자동 스케일링되어,
+     *      초고해상도 원본에서도 글자 속이 파이지 않고 미리보기와 100% 동일한 품질로 선명하게 저장됩니다.
+     */
+    let scanPages = [];
+    let currentPageIdx = 0;
+    let activeCornerIdx = -1;
+    let isDraggingCorner = false;
+    let stageScale = 1;
+    let previewZoomFactor = 1.0;
+    let previewRafId = null;
+
+    const CORNER_NAMES = ["1 좌상단", "2 우상단", "3 우하단", "4 좌하단"];
+    const CORNER_COLORS = ["#22d3ee", "#a855f7", "#f43f5e", "#10b981"];
+    const FILTER_LABELS = {
+      magic_color: "✨ 매직 컬러 스캔 + 초고화질 샤프닝",
+      bw_clean: "📄 흑백 공문 스캔 + 레이저 샤프닝",
+      clear_light: "🔆 선명한 문서 스캔 + 샤프닝",
+      original: "🖼️ 원본 색상 유지 + 샤프닝"
+    };
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2800);
+    }
+
+    function setLoading(show, text = "처리 중입니다...") {
+      const el = document.getElementById("loadingOverlay");
+      document.getElementById("loadingText").textContent = text;
+      if (show) {
+        el.classList.remove("hidden");
+        el.classList.add("flex");
+      } else {
+        el.classList.add("hidden");
+        el.classList.remove("flex");
+      }
+    }
+
+    function triggerFileSelect() {
+      document.getElementById("photoFileInput").click();
+    }
+
+    function triggerCameraCapture() {
+      document.getElementById("cameraFileInput").click();
+    }
+
+    // 드래그 앤 드롭 업로드 바인딩
+    const dropZone = document.getElementById("dropZone");
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("drag-over");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    // 1. 이미지 파일 100% 원본 크기 로드 (축소 제한 완전 제거)
+    async function handleFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      setLoading(true, "원본 해상도(100%) 그대로 사진을 읽어들이고 있습니다...");
+
+      try {
+        const startIdx = scanPages.length;
+        let added = 0;
+
+        for (let i = 0; i < fileList.length; i++) {
+          const file = fileList[i];
+          if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|bmp)$/i.test(file.name)) continue;
+
+          const img = await loadFileAsImage(file);
+          // 단 1픽셀도 줄이지 않고 원본 해상도 그대로 캔버스 생성
+          const fullSourceCanvas = createFullResSourceCanvas(img);
+          const previewProxy = createPreviewProxyData(fullSourceCanvas, 1400);
+          const detectedCorners = detectDocumentCornersFromCanvas(fullSourceCanvas);
+
+          scanPages.push({
+            id: "scan_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            name: file.name.replace(/\.[^.]+$/, ""),
+            sourceCanvas: fullSourceCanvas,
+            previewProxy: previewProxy, // { width, height, data: Uint8ClampedArray }
+            corners: detectedCorners,
+            filter: "magic_color",
+            ratioMode: "orig_size", // 기본값: 원본 해상도 크기(예: 3000x5000) 그대로 유지
+            whiteness: 78,
+            contrast: 65,
+            sharpness: 72,
+            margin: 0,
+            thumbDataUrl: ""
+          });
+          added++;
+        }
+
+        if (added === 0) {
+          setLoading(false);
+          showToast("이미지 파일(JPG, PNG, WebP)을 선택해 주세요.", "err");
+          return;
+        }
+
+        activateScannerUI();
+        setTimeout(() => {
+          selectScanPage(startIdx);
+          setLoading(false);
+          const first = scanPages[startIdx];
+          showToast(`원본 크기(${first.sourceCanvas.width}×${first.sourceCanvas.height}px) 그대로 로드 완료!`, "ok");
+        }, 30);
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+        showToast("이미지를 불러오는 중 오류가 발생했습니다.", "err");
+      } finally {
+        document.getElementById("photoFileInput").value = "";
+        document.getElementById("cameraFileInput").value = "";
+      }
+    }
+
+    function loadFileAsImage(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.onerror = (e) => {
+          URL.revokeObjectURL(url);
+          reject(e);
+        };
+        img.src = url;
+      });
+    }
+
+    // 축소 없이 100% 원본 가로×세로 픽셀 그대로 생성
+    function createFullResSourceCanvas(img) {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+      return c;
+    }
+
+    // 실시간 60fps 미리보기 반응 속도를 위한 고속 프록시 버퍼 (원본 캔버스는 절대 건드리지 않음)
+    function createPreviewProxyData(fullCanvas, maxPreviewDim = 1400) {
+      const origW = fullCanvas.width;
+      const origH = fullCanvas.height;
+      const scale = Math.min(1.0, maxPreviewDim / Math.max(origW, origH));
+      const pW = Math.max(1, Math.round(origW * scale));
+      const pH = Math.max(1, Math.round(origH * scale));
+
+      const temp = document.createElement("canvas");
+      temp.width = pW;
+      temp.height = pH;
+      const ctx = temp.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(fullCanvas, 0, 0, pW, pH);
+
+      return {
+        width: pW,
+        height: pH,
+        data: ctx.getImageData(0, 0, pW, pH).data
+      };
+    }
+
+    function activateScannerUI() {
+      document.getElementById("emptyUploadView").classList.add("hidden");
+      document.getElementById("scannerWorkspace").classList.remove("hidden");
+      document.getElementById("topAddPhotoBtn").classList.remove("hidden");
+      document.getElementById("topCameraBtn").classList.remove("hidden");
+      document.getElementById("downloadImgBtn").disabled = false;
+      document.getElementById("downloadPdfBtn").disabled = false;
+    }
+
+    // ============================================================================
+    // 2. 문서 4꼭짓점 자동 인식 알고리즘
+    // ============================================================================
+    function detectDocumentCornersFromCanvas(srcCanvas) {
+      try {
+        const sampleSize = 200;
+        const temp = document.createElement("canvas");
+        temp.width = sampleSize;
+        temp.height = sampleSize;
+        const tCtx = temp.getContext("2d");
+        tCtx.drawImage(srcCanvas, 0, 0, sampleSize, sampleSize);
+        const data = tCtx.getImageData(0, 0, sampleSize, sampleSize).data;
+
+        let borderR = 0, borderG = 0, borderB = 0, borderCnt = 0;
+        for (let i = 0; i < sampleSize; i++) {
+          const idxs = [
+            (0 * sampleSize + i) * 4,
+            ((sampleSize - 1) * sampleSize + i) * 4,
+            (i * sampleSize + 0) * 4,
+            (i * sampleSize + (sampleSize - 1)) * 4
+          ];
+          for (const idx of idxs) {
+            borderR += data[idx];
+            borderG += data[idx + 1];
+            borderB += data[idx + 2];
+            borderCnt++;
+          }
+        }
+        borderR /= borderCnt;
+        borderG /= borderCnt;
+        borderB /= borderCnt;
+        const borderLuma = 0.299 * borderR + 0.587 * borderG + 0.114 * borderB;
+
+        const paperPoints = [];
+        for (let y = 4; y < sampleSize - 4; y++) {
+          for (let x = 4; x < sampleSize - 4; x++) {
+            const idx = (y * sampleSize + x) * 4;
+            const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+            const colorDist = Math.hypot(r - borderR, g - borderG, b - borderB);
+
+            if ((luma - borderLuma > 22 && luma > 105) || (colorDist > 45 && luma > 120)) {
+              paperPoints.push({ x: x / sampleSize, y: y / sampleSize });
+            }
+          }
+        }
+
+        if (paperPoints.length > sampleSize * sampleSize * 0.08 && paperPoints.length < sampleSize * sampleSize * 0.92) {
+          let tl = paperPoints[0], tr = paperPoints[0], br = paperPoints[0], bl = paperPoints[0];
+          let minSum = Infinity, maxSum = -Infinity, maxDiff = -Infinity, minDiff = Infinity;
+
+          for (const pt of paperPoints) {
+            const sum = pt.x + pt.y;
+            const diff = pt.x - pt.y;
+            if (sum < minSum) { minSum = sum; tl = pt; }
+            if (sum > maxSum) { maxSum = sum; br = pt; }
+            if (diff > maxDiff) { maxDiff = diff; tr = pt; }
+            if (diff < minDiff) { minDiff = diff; bl = pt; }
+          }
+
+          const polyArea = Math.abs(
+            (tl.x * tr.y - tr.x * tl.y) +
+            (tr.x * br.y - br.x * tr.y) +
+            (br.x * bl.y - bl.x * br.y) +
+            (bl.x * tl.y - tl.x * bl.y)
+          ) / 2;
+
+          if (polyArea > 0.12) {
+            return [
+              { x: clamp(tl.x, 0.01, 0.99), y: clamp(tl.y, 0.01, 0.99) },
+              { x: clamp(tr.x, 0.01, 0.99), y: clamp(tr.y, 0.01, 0.99) },
+              { x: clamp(br.x, 0.01, 0.99), y: clamp(br.y, 0.01, 0.99) },
+              { x: clamp(bl.x, 0.01, 0.99), y: clamp(bl.y, 0.01, 0.99) }
+            ];
+          }
+        }
+      } catch (e) {}
+
+      return [
+        { x: 0.06, y: 0.06 },
+        { x: 0.94, y: 0.06 },
+        { x: 0.94, y: 0.94 },
+        { x: 0.06, y: 0.94 }
+      ];
+    }
+
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    // 3. 현재 페이지 선택 및 UI 동기화
+    function selectScanPage(idx) {
+      if (idx < 0 || idx >= scanPages.length) return;
+      currentPageIdx = idx;
+      const page = scanPages[idx];
+
+      document.querySelectorAll(".filter-btn[data-filter]").forEach((btn) => {
+        if (btn.getAttribute("data-filter") === page.filter) btn.classList.add("active");
+        else btn.classList.remove("active");
+      });
+
+      document.querySelectorAll(".ratio-pill[data-ratio]").forEach((btn) => {
+        if (btn.getAttribute("data-ratio") === page.ratioMode) btn.classList.add("active");
+        else btn.classList.remove("active");
+      });
+
+      document.getElementById("whitenessSlider").value = page.whiteness;
+      document.getElementById("whitenessVal").textContent = page.whiteness + "%";
+      document.getElementById("contrastSlider").value = page.contrast;
+      document.getElementById("contrastVal").textContent = page.contrast + "%";
+      document.getElementById("sharpnessSlider").value = page.sharpness !== undefined ? page.sharpness : 72;
+      document.getElementById("sharpnessVal").textContent = (page.sharpness !== undefined ? page.sharpness : 72) + "%";
+      document.getElementById("marginSlider").value = page.margin;
+      document.getElementById("marginVal").textContent = page.margin + "px";
+
+      document.getElementById("activeFilterSummary").textContent = "적용 필터: " + (FILTER_LABELS[page.filter] || "");
+      document.getElementById("sourceResolutionLabel").textContent = `원본 해상도: ${page.sourceCanvas.width} × ${page.sourceCanvas.height} px (100% 무손실)`;
+
+      drawSourceStage();
+      scheduleLivePreviewUpdate();
+      renderPageThumbStrip();
+    }
+
+    // 4. 좌측 대형 원본 이미지 & 4꼭짓점 폴리곤 오버레이 렌더링
+    function drawSourceStage() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const src = page.sourceCanvas;
+      const canvas = document.getElementById("sourceStageCanvas");
+      const stageBox = document.getElementById("sourceStageBox");
+
+      const boxRect = stageBox.getBoundingClientRect();
+      const maxW = Math.max(320, boxRect.width - 28);
+      const maxH = Math.max(480, boxRect.height - 28);
+      stageScale = Math.min(maxW / src.width, maxH / src.height);
+
+      const dispW = Math.max(1, Math.round(src.width * stageScale));
+      const dispH = Math.max(1, Math.round(src.height * stageScale));
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = dispW * dpr;
+      canvas.height = dispH * dpr;
+      canvas.style.width = dispW + "px";
+      canvas.style.height = dispH + "px";
+
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      ctx.drawImage(src, 0, 0, dispW, dispH);
+
+      const pts = page.corners.map((c) => ({ x: c.x * dispW, y: c.y * dispH }));
+      ctx.fillStyle = "rgba(7, 10, 16, 0.55)";
+      ctx.beginPath();
+      ctx.rect(0, 0, dispW, dispH);
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.lineTo(pts[2].x, pts[2].y);
+      ctx.lineTo(pts[3].x, pts[3].y);
+      ctx.closePath();
+      ctx.fill("evenodd");
+
+      ctx.strokeStyle = "#22d3ee";
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.lineTo(pts[2].x, pts[2].y);
+      ctx.lineTo(pts[3].x, pts[3].y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([5, 5]);
+      for (let t = 1; t <= 2; t++) {
+        const r = t / 3;
+        const lx = pts[0].x + (pts[3].x - pts[0].x) * r;
+        const ly = pts[0].y + (pts[3].y - pts[0].y) * r;
+        const rx = pts[1].x + (pts[2].x - pts[1].x) * r;
+        const ry = pts[1].y + (pts[2].y - pts[1].y) * r;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx, ry); ctx.stroke();
+
+        const tx = pts[0].x + (pts[1].x - pts[0].x) * r;
+        const ty = pts[0].y + (pts[1].y - pts[0].y) * r;
+        const bx = pts[3].x + (pts[2].x - pts[3].x) * r;
+        const by = pts[3].y + (pts[2].y - pts[3].y) * r;
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(bx, by); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      pts.forEach((p, idx) => {
+        const isCurrent = idx === activeCornerIdx;
+        const radius = isCurrent ? 15 : 12;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius + 4, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = CORNER_COLORS[idx];
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 12px Pretendard, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(idx + 1), p.x, p.y + 0.5);
+      });
+
+      ctx.restore();
+    }
+
+    // 5. 우측 미리보기 화면 확대/맞춤(Zoom) 제어
+    function setPreviewZoom(factor) {
+      previewZoomFactor = factor;
+      [1, 1.5, 2.0].forEach((f) => {
+        const id = f === 1 ? "zoomBtn100" : f === 1.5 ? "zoomBtn150" : "zoomBtn200";
+        const btn = document.getElementById(id);
+        if (f === factor) {
+          btn.className = "px-2 py-1 rounded-md bg-cyan-500 text-slate-950 text-[11px] font-extrabold transition";
+        } else {
+          btn.className = "px-2 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition";
+        }
+      });
+      applyPreviewCanvasDisplaySize();
+    }
+
+    function applyPreviewCanvasDisplaySize() {
+      const previewCanvas = document.getElementById("previewResultCanvas");
+      const previewBox = document.getElementById("previewStageBox");
+      if (!previewCanvas || !previewCanvas.width) return;
+
+      const boxRect = previewBox.getBoundingClientRect();
+      const availW = Math.max(320, boxRect.width - 32);
+      const availH = Math.max(480, boxRect.height - 32);
+
+      const fitScale = Math.min(availW / previewCanvas.width, availH / previewCanvas.height);
+      const displayW = Math.round(previewCanvas.width * fitScale * previewZoomFactor);
+      const displayH = Math.round(previewCanvas.height * fitScale * previewZoomFactor);
+
+      previewCanvas.style.width = displayW + "px";
+      previewCanvas.style.height = displayH + "px";
+    }
+
+    // 6. 마우스/터치로 4꼭짓점 드래그 및 3.5배율 초선명 돋보기(루페) 표시
+    const stageCanvas = document.getElementById("sourceStageCanvas");
+
+    stageCanvas.addEventListener("pointerdown", (e) => {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const rect = stageCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      let bestIdx = -1;
+      let minDist = 38;
+      page.corners.forEach((c, idx) => {
+        const cx = c.x * rect.width;
+        const cy = c.y * rect.height;
+        const d = Math.hypot(mx - cx, my - cy);
+        if (d < minDist) {
+          minDist = d;
+          bestIdx = idx;
+        }
+      });
+
+      if (bestIdx !== -1) {
+        activeCornerIdx = bestIdx;
+        isDraggingCorner = true;
+        stageCanvas.setPointerCapture(e.pointerId);
+        updateCornerPositionAndLoupe(e.clientX, e.clientY);
+      }
+    });
+
+    stageCanvas.addEventListener("pointermove", (e) => {
+      if (!isDraggingCorner || activeCornerIdx === -1) return;
+      updateCornerPositionAndLoupe(e.clientX, e.clientY);
+    });
+
+    function finishCornerDrag() {
+      if (!isDraggingCorner) return;
+      isDraggingCorner = false;
+      activeCornerIdx = -1;
+      document.getElementById("loupeContainer").classList.add("hidden");
+      drawSourceStage();
+      scheduleLivePreviewUpdate();
+    }
+
+    stageCanvas.addEventListener("pointerup", finishCornerDrag);
+    stageCanvas.addEventListener("pointercancel", finishCornerDrag);
+
+    function updateCornerPositionAndLoupe(clientX, clientY) {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const rect = stageCanvas.getBoundingClientRect();
+      const normX = clamp((clientX - rect.left) / rect.width, 0.0, 1.0);
+      const normY = clamp((clientY - rect.top) / rect.height, 0.0, 1.0);
+
+      page.corners[activeCornerIdx] = { x: normX, y: normY };
+      drawSourceStage();
+
+      const loupeWrap = document.getElementById("loupeContainer");
+      const loupeCanvas = document.getElementById("loupeCanvas");
+      const lCtx = loupeCanvas.getContext("2d");
+      loupeWrap.classList.remove("hidden");
+
+      const dispX = normX * rect.width;
+      const dispY = normY * rect.height;
+      let loupeLeft = dispX - 68;
+      let loupeTop = dispY - 154;
+      if (loupeTop < 6) loupeTop = dispY + 28;
+      loupeLeft = clamp(loupeLeft, 4, rect.width - 140);
+
+      loupeWrap.style.left = loupeLeft + "px";
+      loupeWrap.style.top = loupeTop + "px";
+      document.getElementById("loupeCornerBadge").textContent = CORNER_NAMES[activeCornerIdx];
+
+      const src = page.sourceCanvas;
+      const srcX = normX * src.width;
+      const srcY = normY * src.height;
+      const cropRadius = Math.max(24, Math.round(Math.min(src.width, src.height) * 0.038));
+
+      lCtx.fillStyle = "#090d18";
+      lCtx.fillRect(0, 0, 136, 136);
+      lCtx.imageSmoothingEnabled = true;
+      lCtx.imageSmoothingQuality = "high";
+      lCtx.drawImage(
+        src,
+        srcX - cropRadius,
+        srcY - cropRadius,
+        cropRadius * 2,
+        cropRadius * 2,
+        0,
+        0,
+        136,
+        136
+      );
+
+      lCtx.strokeStyle = CORNER_COLORS[activeCornerIdx];
+      lCtx.lineWidth = 2;
+      ctxCrosshair(lCtx, 68, 68, 136);
+
+      scheduleLivePreviewUpdate();
+    }
+
+    function ctxCrosshair(ctx, cx, cy, size) {
+      ctx.beginPath();
+      ctx.moveTo(cx, 0); ctx.lineTo(cx, size);
+      ctx.moveTo(0, cy); ctx.lineTo(size, cy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // ============================================================================
+    // 7. 원본 해상도(1:1) 정밀 계산 및 초고속 원근 보정 + 적응형 샤프닝 엔진
+    // ============================================================================
+    function scheduleLivePreviewUpdate() {
+      if (previewRafId) cancelAnimationFrame(previewRafId);
+      previewRafId = requestAnimationFrame(() => {
+        const page = scanPages[currentPageIdx];
+        if (!page) return;
+        const previewCanvas = document.getElementById("previewResultCanvas");
+        // 실시간 미리보기는 고속 프록시 데이터를 사용해 지연 없이 즉시 렌더링
+        renderWarpedAndFilteredScan(page, previewCanvas, true);
+        applyPreviewCanvasDisplaySize();
+        page.thumbDataUrl = previewCanvas.toDataURL("image/jpeg", 0.65);
+        updateThumbCardImage(currentPageIdx, page.thumbDataUrl);
+      });
+    }
+
+    /**
+     * 최종 저장될 정확한 출력 해상도(픽셀)를 계산합니다.
+     * - 'orig_size' (기본값): 원본 이미지의 가로×세로 픽셀(예: 3000×5000)과 100% 동일하게 고정!
+     * - 'auto' / 'a4_p' / 'a4_l' / 'id_card': 원본의 긴 변 픽셀 수를 그대로 유지하면서 비율만 맞춤!
+     */
+    function getFullExportDimensions(page) {
+      const origW = page.sourceCanvas.width;
+      const origH = page.sourceCanvas.height;
+
+      if (page.ratioMode === "orig_size") {
+        return { width: origW, height: origH };
+      }
+
+      const pts = page.corners.map((c) => ({ x: c.x * origW, y: c.y * origH }));
+      const topW = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      const botW = Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y);
+      const leftH = Math.hypot(pts[3].x - pts[0].x, pts[3].y - pts[0].y);
+      const rightH = Math.hypot(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
+
+      let calcW = Math.max(60, (topW + botW) / 2);
+      let calcH = Math.max(60, (leftH + rightH) / 2);
+
+      if (page.ratioMode === "a4_p") {
+        calcH = calcW * 1.41421356;
+      } else if (page.ratioMode === "a4_l") {
+        calcW = calcH * 1.41421356;
+      } else if (page.ratioMode === "id_card") {
+        calcW = calcH * 1.5858;
+      }
+
+      // 원본의 최대 해상도(긴 변)와 동일한 스케일로 맞춰 화질 손실 원천 차단
+      const origMax = Math.max(origW, origH);
+      const scale = origMax / Math.max(calcW, calcH);
+      return {
+        width: Math.max(60, Math.round(calcW * scale)),
+        height: Math.max(60, Math.round(calcH * scale))
+      };
+    }
+
+    function computeUnitSquareToQuadHomography(x0, y0, x1, y1, x2, y2, x3, y3) {
+      const dx1 = x1 - x2;
+      const dx2 = x3 - x2;
+      const sx = x0 - x1 + x2 - x3;
+      const dy1 = y1 - y2;
+      const dy2 = y3 - y2;
+      const sy = y0 - y1 + y2 - y3;
+
+      const det = dx1 * dy2 - dx2 * dy1;
+      if (Math.abs(det) < 1e-8) {
+        return { a: x1 - x0, b: x3 - x0, c: x0, d: y1 - y0, e: y3 - y0, f: y0, g: 0, h: 0 };
+      }
+      const g = (sx * dy2 - sy * dx2) / det;
+      const h = (dx1 * sy - dy1 * sx) / det;
+      const a = x1 - x0 + g * x1;
+      const b = x3 - x0 + h * x3;
+      const c = x0;
+      const d = y1 - y0 + g * y1;
+      const e = y3 - y0 + h * y3;
+      const f = y0;
+      return { a, b, c, d, e, f, g, h };
+    }
+
+    /**
+     * @param {Object} page - 현재 스캔 페이지 객체
+     * @param {HTMLCanvasElement} outCanvas - 렌더링 대상 캔버스
+     * @param {boolean} isPreview - true이면 화면 표시용 고속 렌더링, false이면 100% 원본 크기(3000x5000 등) 출력
+     */
+    function renderWarpedAndFilteredScan(page, outCanvas, isPreview = true) {
+      const fullDims = getFullExportDimensions(page);
+
+      let srcW, srcH, srcData, finalW, finalH;
+      if (isPreview) {
+        srcW = page.previewProxy.width;
+        srcH = page.previewProxy.height;
+        srcData = page.previewProxy.data;
+        const previewScale = Math.min(1.0, 1400 / Math.max(fullDims.width, fullDims.height));
+        finalW = Math.max(60, Math.round(fullDims.width * previewScale));
+        finalH = Math.max(60, Math.round(fullDims.height * previewScale));
+      } else {
+        // 최종 저장: 단 1픽셀의 축소도 없이 원본 해상도 100% 그대로 사용!
+        srcW = page.sourceCanvas.width;
+        srcH = page.sourceCanvas.height;
+        const srcCtx = page.sourceCanvas.getContext("2d", { willReadFrequently: true });
+        srcData = srcCtx.getImageData(0, 0, srcW, srcH).data;
+        finalW = fullDims.width;
+        finalH = fullDims.height;
+      }
+
+      // 여백(margin)을 적용하더라도 전체 캔버스 크기(finalW × finalH, 예: 3000×5000)는 절대 변하지 않도록 내부 여백(Inset)으로 처리
+      const pad = Math.round((page.margin || 0) * (Math.max(finalW, finalH) / 1200));
+      const warpW = Math.max(20, finalW - pad * 2);
+      const warpH = Math.max(20, finalH - pad * 2);
+
+      outCanvas.width = finalW;
+      outCanvas.height = finalH;
+      const outCtx = outCanvas.getContext("2d");
+
+      outCtx.fillStyle = "#ffffff";
+      outCtx.fillRect(0, 0, finalW, finalH);
+
+      const warpedImgData = outCtx.createImageData(warpW, warpH);
+      const dst = warpedImgData.data;
+
+      const p0 = { x: page.corners[0].x * (srcW - 1), y: page.corners[0].y * (srcH - 1) };
+      const p1 = { x: page.corners[1].x * (srcW - 1), y: page.corners[1].y * (srcH - 1) };
+      const p2 = { x: page.corners[2].x * (srcW - 1), y: page.corners[2].y * (srcH - 1) };
+      const p3 = { x: page.corners[3].x * (srcW - 1), y: page.corners[3].y * (srcH - 1) };
+
+      const H = computeUnitSquareToQuadHomography(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+
+      const invW = 1 / Math.max(1, warpW - 1);
+      const invH = 1 / Math.max(1, warpH - 1);
+
+      // 1단계: 정밀 쌍선형 보간(Bilinear Interpolation) 원근 펴기
+      for (let v = 0; v < warpH; v++) {
+        const t = v * invH;
+        const bt_c = H.b * t + H.c;
+        const et_f = H.e * t + H.f;
+        const ht_1 = H.h * t + 1.0;
+
+        for (let u = 0; u < warpW; u++) {
+          const s = u * invW;
+          const w = H.g * s + ht_1;
+          const sx = (H.a * s + bt_c) / w;
+          const sy = (H.d * s + et_f) / w;
+
+          const x0 = Math.max(0, Math.min(srcW - 2, sx | 0));
+          const y0 = Math.max(0, Math.min(srcH - 2, sy | 0));
+          const fx = Math.max(0, Math.min(1, sx - x0));
+          const fy = Math.max(0, Math.min(1, sy - y0));
+
+          const idx00 = (y0 * srcW + x0) * 4;
+          const idx10 = idx00 + 4;
+          const idx01 = idx00 + srcW * 4;
+          const idx11 = idx01 + 4;
+
+          const w00 = (1 - fx) * (1 - fy);
+          const w10 = fx * (1 - fy);
+          const w01 = (1 - fx) * fy;
+          const w11 = fx * fy;
+
+          const dIdx = (v * warpW + u) * 4;
+          dst[dIdx]     = srcData[idx00] * w00 + srcData[idx10] * w10 + srcData[idx01] * w01 + srcData[idx11] * w11;
+          dst[dIdx + 1] = srcData[idx00 + 1] * w00 + srcData[idx10 + 1] * w10 + srcData[idx01 + 1] * w01 + srcData[idx11 + 1] * w11;
+          dst[dIdx + 2] = srcData[idx00 + 2] * w00 + srcData[idx10 + 2] * w10 + srcData[idx01 + 2] * w01 + srcData[idx11 + 2] * w11;
+          dst[dIdx + 3] = 255;
+        }
+      }
+
+      // 2단계: 해상도 적응형 그림자 제거 및 잉크 농도 강화
+      if (page.filter !== "original") {
+        applyDocumentScanEnhancement(dst, warpW, warpH, page.filter, page.whiteness, page.contrast);
+      }
+
+      // 3단계: 해상도 적응형 언샵 마스크(USM) 칼핀 샤프닝
+      const sharpAmount = page.sharpness !== undefined ? page.sharpness : 72;
+      if (sharpAmount > 0) {
+        applyUnsharpMaskFilter(dst, warpW, warpH, sharpAmount);
+      }
+
+      outCtx.putImageData(warpedImgData, pad, pad);
+
+      if (isPreview) {
+        document.getElementById("outputResolutionLabel").textContent =
+          `최종 저장 해상도: ${fullDims.width} × ${fullDims.height} px (원본 1:1 크기 그대로 출력)`;
+      }
+    }
+
+    /**
+     * [해상도 적응형] 로컬 배경 조명 분할 + S-커브 잉크 농도 강화
+     * - 3000×5000px 같은 초고해상도에서도 굵은 글자 내부가 하얗게 파이지 않도록
+     *   조명 추정 블록 크기(blockSize)를 이미지 해상도에 비례하여 자동 스케일링합니다.
+     */
+    function applyDocumentScanEnhancement(dst, W, H, filterMode, whiteness, contrast) {
+      const blockSize = Math.max(18, Math.round(Math.max(W, H) / 72));
+      const sampleStep = Math.max(2, Math.floor(blockSize / 9));
+      const gW = Math.ceil(W / blockSize);
+      const gH = Math.ceil(H / blockSize);
+      const gridR = new Float32Array(gW * gH);
+      const gridG = new Float32Array(gW * gH);
+      const gridB = new Float32Array(gW * gH);
+
+      for (let gy = 0; gy < gH; gy++) {
+        const yStart = gy * blockSize;
+        const yEnd = Math.min(H, yStart + blockSize);
+        for (let gx = 0; gx < gW; gx++) {
+          const xStart = gx * blockSize;
+          const xEnd = Math.min(W, xStart + blockSize);
+          let maxLuma = -1;
+          let bestR = 240, bestG = 240, bestB = 240;
+
+          for (let y = yStart; y < yEnd; y += sampleStep) {
+            for (let x = xStart; x < xEnd; x += sampleStep) {
+              const idx = (y * W + x) * 4;
+              const r = dst[idx], g = dst[idx + 1], b = dst[idx + 2];
+              const luma = r * 0.299 + g * 0.587 + b * 0.114;
+              if (luma > maxLuma) {
+                maxLuma = luma;
+                bestR = r; bestG = g; bestB = b;
+              }
+            }
+          }
+          const gIdx = gy * gW + gx;
+          gridR[gIdx] = Math.max(85, bestR);
+          gridG[gIdx] = Math.max(85, bestG);
+          gridB[gIdx] = Math.max(85, bestB);
+        }
+      }
+
+      const smoothChannel = (arr) => {
+        const out = new Float32Array(arr.length);
+        for (let y = 0; y < gH; y++) {
+          for (let x = 0; x < gW; x++) {
+            let sum = 0, cnt = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+              const ny = y + dy;
+              if (ny < 0 || ny >= gH) continue;
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx;
+                if (nx < 0 || nx >= gW) continue;
+                sum += arr[ny * gW + nx];
+                cnt++;
+              }
+            }
+            out[y * gW + x] = sum / cnt;
+          }
+        }
+        return out;
+      };
+
+      const bgR = smoothChannel(smoothChannel(gridR));
+      const bgG = smoothChannel(smoothChannel(gridG));
+      const bgB = smoothChannel(smoothChannel(gridB));
+
+      const whiteClip = 250 - (whiteness / 100) * 58;
+      const darkFloor = (contrast / 100) * 88;
+      const rangeScale = 255 / Math.max(18, whiteClip - darkFloor);
+      const gamma = 1.0 + (contrast / 100) * 0.55;
+      const gammaLut = new Uint8Array(256);
+      for (let i = 0; i < 256; i++) {
+        const v = clamp((i - darkFloor) * rangeScale, 0, 255) / 255;
+        gammaLut[i] = Math.round(Math.pow(v, gamma) * 255);
+      }
+
+      for (let y = 0; y < H; y++) {
+        const gy = Math.min(gH - 1, (y / blockSize) | 0);
+        for (let x = 0; x < W; x++) {
+          const gx = Math.min(gW - 1, (x / blockSize) | 0);
+          const gIdx = gy * gW + gx;
+          const idx = (y * W + x) * 4;
+
+          const r = dst[idx], g = dst[idx + 1], b = dst[idx + 2];
+          const normR = Math.min(255, ((r / bgR[gIdx]) * 255) | 0);
+          const normG = Math.min(255, ((g / bgG[gIdx]) * 255) | 0);
+          const normB = Math.min(255, ((b / bgB[gIdx]) * 255) | 0);
+
+          if (filterMode === "magic_color") {
+            let mr = gammaLut[normR];
+            let mg = gammaLut[normG];
+            let mb = gammaLut[normB];
+
+            if (mr > 235 && mg > 235 && mb > 235) {
+              mr = 255; mg = 255; mb = 255;
+            }
+            dst[idx] = mr;
+            dst[idx + 1] = mg;
+            dst[idx + 2] = mb;
+          }
+          else if (filterMode === "bw_clean") {
+            const normLuma = normR * 0.299 + normG * 0.587 + normB * 0.114;
+            const threshold = 215 - (contrast - 50) * 0.75 + (whiteness - 50) * 0.35;
+            let bw;
+            if (normLuma > threshold + 8) bw = 255;
+            else if (normLuma < threshold - 22) bw = 0;
+            else bw = ((normLuma - (threshold - 22)) / 30) * 255;
+            dst[idx] = dst[idx + 1] = dst[idx + 2] = bw;
+          }
+          else if (filterMode === "clear_light") {
+            const mix = whiteness / 100;
+            const cr = r * (1 - mix * 0.7) + normR * (mix * 0.7);
+            const cg = g * (1 - mix * 0.7) + normG * (mix * 0.7);
+            const cb = b * (1 - mix * 0.7) + normB * (mix * 0.7);
+            const cFactor = 1 + (contrast / 100) * 0.55;
+            dst[idx]     = clamp((cr - 128) * cFactor + 135, 0, 255);
+            dst[idx + 1] = clamp((cg - 128) * cFactor + 135, 0, 255);
+            dst[idx + 2] = clamp((cb - 128) * cFactor + 135, 0, 255);
+          }
+        }
+      }
+    }
+
+    /**
+     * [해상도 적응형] 언샵 마스크 (Unsharp Mask, USM) 외곽선 선명화 엔진
+     * - 3000×5000px 이상의 고해상도에서도 글자 획 테두리가 뚜렷하게 살아나도록
+     *   커널 샘플링 반경(radiusStep)을 이미지 해상도에 비례해 자동 조정합니다.
+     */
+    function applyUnsharpMaskFilter(dst, W, H, sharpnessPercent) {
+      const amount = (sharpnessPercent / 100) * 2.15;
+      const srcCopy = new Uint8ClampedArray(dst);
+      const rStep = Math.max(1, Math.round(Math.max(W, H) / 1600));
+      const rowStride = W * 4;
+      const stepY = rStep * rowStride;
+      const stepX = rStep * 4;
+
+      for (let y = rStep; y < H - rStep; y++) {
+        const yOff = y * rowStride;
+        for (let x = rStep; x < W - rStep; x++) {
+          const i = yOff + x * 4;
+
+          const r = srcCopy[i], g = srcCopy[i + 1], b = srcCopy[i + 2];
+          if (r === 255 && g === 255 && b === 255) {
+            const top = srcCopy[i - stepY], bot = srcCopy[i + stepY];
+            const left = srcCopy[i - stepX], right = srcCopy[i + stepX];
+            if (top === 255 && bot === 255 && left === 255 && right === 255) continue;
+          }
+
+          for (let c = 0; c < 3; c++) {
+            const center = srcCopy[i + c];
+            const nTop = srcCopy[i - stepY + c];
+            const nBot = srcCopy[i + stepY + c];
+            const nLeft = srcCopy[i - stepX + c];
+            const nRight = srcCopy[i + stepX + c];
+            const nTL = srcCopy[i - stepY - stepX + c];
+            const nTR = srcCopy[i - stepY + stepX + c];
+            const nBL = srcCopy[i + stepY - stepX + c];
+            const nBR = srcCopy[i + stepY + stepX + c];
+
+            const blur = (
+              center * 4 +
+              (nTop + nBot + nLeft + nRight) * 2 +
+              (nTL + nTR + nBL + nBR)
+            ) * 0.0625;
+
+            const diff = center - blur;
+            if (Math.abs(diff) > 2.5) {
+              const sharpened = center + diff * amount;
+              dst[i + c] = sharpened < 0 ? 0 : sharpened > 255 ? 255 : sharpened;
+            }
+          }
+        }
+      }
+    }
+
+    // 8. 컨트롤 바 이벤트 핸들러
+    function setScanFilter(filterName) {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.filter = filterName;
+      selectScanPage(currentPageIdx);
+    }
+
+    function setAspectRatio(ratioMode) {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.ratioMode = ratioMode;
+      selectScanPage(currentPageIdx);
+    }
+
+    function updateTuningSliders() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.whiteness = parseInt(document.getElementById("whitenessSlider").value, 10);
+      page.contrast = parseInt(document.getElementById("contrastSlider").value, 10);
+      page.sharpness = parseInt(document.getElementById("sharpnessSlider").value, 10);
+      page.margin = parseInt(document.getElementById("marginSlider").value, 10);
+
+      document.getElementById("whitenessVal").textContent = page.whiteness + "%";
+      document.getElementById("contrastVal").textContent = page.contrast + "%";
+      document.getElementById("sharpnessVal").textContent = page.sharpness + "%";
+      document.getElementById("marginVal").textContent = page.margin + "px";
+
+      scheduleLivePreviewUpdate();
+    }
+
+    function resetCurrentSliders() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.whiteness = 78;
+      page.contrast = 65;
+      page.sharpness = 72;
+      page.margin = 0;
+      selectScanPage(currentPageIdx);
+      showToast("화질 및 선명도 설정을 최적 기본값으로 복원했습니다.");
+    }
+
+    function applyCurrentSettingsToAllPages() {
+      const cur = scanPages[currentPageIdx];
+      if (!cur || scanPages.length <= 1) {
+        showToast("현재 설정이 적용되었습니다.");
+        return;
+      }
+      scanPages.forEach((p) => {
+        p.filter = cur.filter;
+        p.ratioMode = cur.ratioMode;
+        p.whiteness = cur.whiteness;
+        p.contrast = cur.contrast;
+        p.sharpness = cur.sharpness;
+        p.margin = cur.margin;
+      });
+      scheduleLivePreviewUpdate();
+      showToast(`전체 ${scanPages.length}장 페이지에 동일한 화질·선명도 설정을 적용했습니다!`, "ok");
+    }
+
+    function autoDetectCurrentPageCorners(notify = false) {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.corners = detectDocumentCornersFromCanvas(page.sourceCanvas);
+      drawSourceStage();
+      scheduleLivePreviewUpdate();
+      if (notify) showToast("문서 테두리 4꼭짓점을 자동으로 다시 찾았습니다!", "ok");
+    }
+
+    function setFullImageCorners() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      page.corners = [
+        { x: 0.0, y: 0.0 },
+        { x: 1.0, y: 0.0 },
+        { x: 1.0, y: 1.0 },
+        { x: 0.0, y: 1.0 }
+      ];
+      drawSourceStage();
+      scheduleLivePreviewUpdate();
+      showToast("사진 전체 영역(100%)으로 모서리를 맞췄습니다.");
+    }
+
+    function rotateSourceImage(angleDeg) {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const oldCanvas = page.sourceCanvas;
+      const newCanvas = document.createElement("canvas");
+      newCanvas.width = oldCanvas.height;
+      newCanvas.height = oldCanvas.width;
+      const ctx = newCanvas.getContext("2d", { willReadFrequently: true });
+
+      ctx.save();
+      if (angleDeg === 90) {
+        ctx.translate(newCanvas.width, 0);
+        ctx.rotate(Math.PI / 2);
+        const c = page.corners.map((pt) => ({ x: 1 - pt.y, y: pt.x }));
+        page.corners = [c[3], c[0], c[1], c[2]];
+      } else {
+        ctx.translate(0, newCanvas.height);
+        ctx.rotate(-Math.PI / 2);
+        const c = page.corners.map((pt) => ({ x: pt.y, y: 1 - pt.x }));
+        page.corners = [c[1], c[2], c[3], c[0]];
+      }
+      ctx.drawImage(oldCanvas, 0, 0);
+      ctx.restore();
+
+      page.sourceCanvas = newCanvas;
+      page.previewProxy = createPreviewProxyData(newCanvas, 1400);
+      selectScanPage(currentPageIdx);
+    }
+
+    // 9. 하단 페이지 썸네일 스트립 관리
+    function renderPageThumbStrip() {
+      const strip = document.getElementById("pageThumbStrip");
+      strip.innerHTML = "";
+      document.getElementById("pageCountLabel").textContent = scanPages.length;
+
+      scanPages.forEach((p, idx) => {
+        const card = document.createElement("div");
+        card.className = `thumb-card rounded-xl p-2 shrink-0 w-28 flex flex-col items-center ${idx === currentPageIdx ? "selected" : ""}`;
+        card.onclick = () => selectScanPage(idx);
+
+        const img = document.createElement("img");
+        img.id = `strip_thumb_${idx}`;
+        img.src = p.thumbDataUrl || "";
+        img.className = "w-20 h-24 object-contain bg-white rounded shadow";
+
+        const label = document.createElement("div");
+        label.className = "mt-1.5 text-[11px] font-extrabold text-slate-200";
+        label.textContent = `${idx + 1} 페이지`;
+
+        card.appendChild(img);
+        card.appendChild(label);
+        strip.appendChild(card);
+      });
+    }
+
+    function updateThumbCardImage(idx, dataUrl) {
+      const img = document.getElementById(`strip_thumb_${idx}`);
+      if (img && dataUrl) img.src = dataUrl;
+    }
+
+    function moveCurrentPageOrder(dir) {
+      const target = currentPageIdx + dir;
+      if (target < 0 || target >= scanPages.length) return;
+      const tmp = scanPages[currentPageIdx];
+      scanPages[currentPageIdx] = scanPages[target];
+      scanPages[target] = tmp;
+      selectScanPage(target);
+    }
+
+    function deleteCurrentScanPage() {
+      if (scanPages.length <= 1) {
+        showToast("최소 1장의 스캔 페이지는 남아 있어야 합니다.", "err");
+        return;
+      }
+      scanPages.splice(currentPageIdx, 1);
+      if (currentPageIdx >= scanPages.length) currentPageIdx = scanPages.length - 1;
+      selectScanPage(currentPageIdx);
+      showToast("선택한 스캔 페이지를 삭제했습니다.");
+    }
+
+    // ============================================================================
+    // 10. 100% 원본 해상도(예: 3000×5000px) 무손실 이미지 및 PDF 내보내기 (Blob 스트림)
+    // ============================================================================
+    function generateFullOriginalSizeScannedCanvas(page) {
+      const fullCanvas = document.createElement("canvas");
+      // isPreview = false 로 호출하여 원본 해상도 100% 그대로 렌더링
+      renderWarpedAndFilteredScan(page, fullCanvas, false);
+      return fullCanvas;
+    }
+
+    function canvasToBlobPromise(canvas, mimeType = "image/jpeg", quality = 0.98) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("이미지 Blob 생성 실패"));
+        }, mimeType, quality);
+      });
+    }
+
+    function triggerBlobDownload(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 8000);
+    }
+
+    function downloadCurrentPagePng() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const dims = getFullExportDimensions(page);
+      setLoading(true, `원본 크기(${dims.width}×${dims.height}px) 무손실 PNG 생성 중...`);
+      setTimeout(async () => {
+        try {
+          const fullCanvas = generateFullOriginalSizeScannedCanvas(page);
+          const blob = await canvasToBlobPromise(fullCanvas, "image/png");
+          triggerBlobDownload(blob, `${page.name || "문서"}_스캔완료_${currentPageIdx + 1}.png`);
+          showToast(`원본 해상도(${fullCanvas.width}×${fullCanvas.height}px) PNG 저장 완료!`, "ok");
+        } catch (e) {
+          showToast("PNG 저장 중 오류가 발생했습니다.", "err");
+        } finally {
+          setLoading(false);
+        }
+      }, 40);
+    }
+
+    function downloadCurrentPageJpg() {
+      const page = scanPages[currentPageIdx];
+      if (!page) return;
+      const dims = getFullExportDimensions(page);
+      setLoading(true, `원본 크기(${dims.width}×${dims.height}px) 초고화질 JPG 생성 중...`);
+      setTimeout(async () => {
+        try {
+          const fullCanvas = generateFullOriginalSizeScannedCanvas(page);
+          // 0.98 최고 화질로 압축 손실 최소화
+          const blob = await canvasToBlobPromise(fullCanvas, "image/jpeg", 0.98);
+          triggerBlobDownload(blob, `${page.name || "문서"}_스캔완료_${currentPageIdx + 1}.jpg`);
+          showToast(`원본 해상도(${fullCanvas.width}×${fullCanvas.height}px) JPG 저장 완료!`, "ok");
+        } catch (e) {
+          showToast("JPG 저장 중 오류가 발생했습니다.", "err");
+        } finally {
+          setLoading(false);
+        }
+      }, 40);
+    }
+
+    async function exportScannedImages() {
+      if (scanPages.length === 0) return;
+      if (scanPages.length === 1) {
+        downloadCurrentPageJpg();
+        return;
+      }
+      setLoading(true, `총 ${scanPages.length}장을 원본 해상도 그대로 압축 중입니다...`);
+      try {
+        const zip = new JSZip();
+        for (let i = 0; i < scanPages.length; i++) {
+          const fullCanvas = generateFullOriginalSizeScannedCanvas(scanPages[i]);
+          const blob = await canvasToBlobPromise(fullCanvas, "image/jpeg", 0.98);
+          const arrayBuffer = await blob.arrayBuffer();
+          zip.file(`스캔문서_${String(i + 1).padStart(2, "0")}.jpg`, arrayBuffer);
+        }
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        triggerBlobDownload(zipBlob, "You-틸리티_원본크기_스캔모음.zip");
+        showToast("전체 스캔 이미지가 원본 해상도 그대로 저장되었습니다!", "ok");
+      } catch (e) {
+        showToast("이미지 저장 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function exportAllAsPdf() {
+      if (scanPages.length === 0) return;
+      setLoading(true, "원본 해상도 그대로 스캔 PDF 파일을 제작하고 있습니다...");
+      try {
+        const pdfDoc = await PDFLib.PDFDocument.create();
+
+        for (let i = 0; i < scanPages.length; i++) {
+          const fullCanvas = generateFullOriginalSizeScannedCanvas(scanPages[i]);
+          const jpgBlob = await canvasToBlobPromise(fullCanvas, "image/jpeg", 0.96);
+          const jpgBytes = new Uint8Array(await jpgBlob.arrayBuffer());
+
+          const embeddedJpg = await pdfDoc.embedJpg(jpgBytes);
+
+          // 원본 픽셀 크기를 PDF 페이지 크기에 그대로 매핑하여 화질 저하 0% 보장
+          const pageW = fullCanvas.width;
+          const pageH = fullCanvas.height;
+
+          const page = pdfDoc.addPage([pageW, pageH]);
+          page.drawImage(embeddedJpg, {
+            x: 0,
+            y: 0,
+            width: pageW,
+            height: pageH
+          });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const firstName = scanPages[0].name || "문서";
+        triggerBlobDownload(blob, `${firstName}_스캔완료.pdf`);
+        showToast("원본 해상도가 그대로 살아있는 초고화질 PDF가 저장되었습니다!", "ok");
+      } catch (err) {
+        console.error(err);
+        showToast("PDF 생성 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ============================================================================
+    // 11. 고해상도 테스트 샘플 계약서 생성기
+    // ============================================================================
+    function loadSampleSkewedDocument() {
+      setLoading(true, "고해상도 테스트 샘플 계약서를 생성하고 있습니다...");
+      setTimeout(() => {
+        const W = 1800;
+        const H = 2400;
+        const c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        const ctx = c.getContext("2d", { willReadFrequently: true });
+
+        const deskGrad = ctx.createLinearGradient(0, 0, W, H);
+        deskGrad.addColorStop(0, "#1e293b");
+        deskGrad.addColorStop(1, "#0f172a");
+        ctx.fillStyle = deskGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        const docW = 1440;
+        const docH = 2016;
+        const docC = document.createElement("canvas");
+        docC.width = docW;
+        docC.height = docH;
+        const dCtx = docC.getContext("2d");
+
+        const paperGrad = dCtx.createLinearGradient(0, 0, docW, docH);
+        paperGrad.addColorStop(0, "#e5e3dc");
+        paperGrad.addColorStop(0.55, "#cecbc2");
+        paperGrad.addColorStop(1, "#9ca3af");
+        dCtx.fillStyle = paperGrad;
+        dCtx.fillRect(0, 0, docW, docH);
+
+        dCtx.fillStyle = "#111827";
+        dCtx.font = "900 66px Pretendard, sans-serif";
+        dCtx.textAlign = "center";
+        dCtx.fillText("물 품 공 급 계 약 서 (견본)", docW / 2, 210);
+
+        dCtx.strokeStyle = "#1f2937";
+        dCtx.lineWidth = 4;
+        dCtx.strokeRect(130, 310, 1180, 430);
+        dCtx.beginPath();
+        dCtx.moveTo(130, 455); dCtx.lineTo(1310, 455);
+        dCtx.moveTo(130, 600); dCtx.lineTo(1310, 600);
+        dCtx.moveTo(440, 310); dCtx.lineTo(440, 740);
+        dCtx.stroke();
+
+        dCtx.textAlign = "left";
+        dCtx.font = "800 40px Pretendard, sans-serif";
+        dCtx.fillText("계 약 건 명", 180, 398);
+        dCtx.fillText("계 약 금 액", 180, 542);
+        dCtx.fillText("납 품 기 한", 180, 686);
+
+        dCtx.font = "700 40px Pretendard, sans-serif";
+        dCtx.fillText("You-틸리티 통합 오피스 솔루션 구축", 490, 398);
+        dCtx.fillStyle = "#dc2626";
+        dCtx.font = "800 42px Pretendard, sans-serif";
+        dCtx.fillText("일금 삼천오백만원정 (₩35,000,000)", 490, 542);
+        dCtx.fillStyle = "#111827";
+        dCtx.font = "700 40px Pretendard, sans-serif";
+        dCtx.fillText("2026년 11월 30일한", 490, 686);
+
+        const bodyLines = [
+          "제1조 (목적) 본 계약은 공급자와 수요자 간의 물품 공급 및",
+          "기술 지원에 관한 제반 권리와 의무를 규정함을 목적으로 한다.",
+          "",
+          "제2조 (검수 및 인도) 공급자는 지정된 장소에 물품을 납품하고",
+          "수요자의 최종 검수가 완료된 시점에 인도가 완료된 것으로 본다.",
+          "",
+          "제3조 (대금지급) 수요자는 검수 완료 후 14일 이내에 공급자가",
+          "지정한 계좌로 계약 금액 전액을 현금으로 지급하기로 한다.",
+          "",
+          "제4조 (비밀유지) 쌍방은 본 계약 수행 중 취득한 상대방의 기밀을",
+          "사전 서면 동의 없이 제3자에게 누설하거나 공개하여서는 아니 된다."
+        ];
+        dCtx.font = "600 37px Pretendard, sans-serif";
+        bodyLines.forEach((line, i) => {
+          dCtx.fillText(line, 135, 875 + i * 67);
+        });
+
+        dCtx.textAlign = "center";
+        dCtx.font = "800 45px Pretendard, sans-serif";
+        dCtx.fillText("2026년   11월   17일", docW / 2, 1690);
+
+        dCtx.textAlign = "left";
+        dCtx.font = "800 48px Pretendard, sans-serif";
+        dCtx.fillText("공급자 대표 :   조   재   성   (인)", 410, 1835);
+
+        dCtx.save();
+        dCtx.strokeStyle = "#dc2626";
+        dCtx.fillStyle = "#dc2626";
+        dCtx.lineWidth = 8;
+        dCtx.beginPath();
+        dCtx.arc(1075, 1818, 70, 0, Math.PI * 2);
+        dCtx.stroke();
+        dCtx.font = "900 40px serif";
+        dCtx.textAlign = "center";
+        dCtx.fillText("조재", 1075, 1804);
+        dCtx.fillText("성인", 1075, 1850);
+        dCtx.restore();
+
+        const quad = [
+          { x: 280, y: 200 },
+          { x: 1530, y: 140 },
+          { x: 1640, y: 2180 },
+          { x: 185, y: 2090 }
+        ];
+
+        const steps = 28;
+        for (let gy = 0; gy < steps; gy++) {
+          const v0 = gy / steps;
+          const v1 = (gy + 1) / steps;
+          for (let gx = 0; gx < steps; gx++) {
+            const u0 = gx / steps;
+            const u1 = (gx + 1) / steps;
+
+            const bilerp = (u, v) => ({
+              x: (1 - u) * (1 - v) * quad[0].x + u * (1 - v) * quad[1].x + u * v * quad[2].x + (1 - u) * v * quad[3].x,
+              y: (1 - u) * (1 - v) * quad[0].y + u * (1 - v) * quad[1].y + u * v * quad[2].y + (1 - u) * v * quad[3].y
+            });
+
+            const p00 = bilerp(u0, v0);
+            const p10 = bilerp(u1, v0);
+            const p11 = bilerp(u1, v1);
+            const p01 = bilerp(u0, v1);
+
+            const sx = u0 * docW, sy = v0 * docH;
+            const sw = (u1 - u0) * docW, sh = (v1 - v0) * docH;
+
+            drawTexturedTriangle(ctx, docC, sx, sy, sx + sw, sy, sx + sw, sy + sh, p00.x, p00.y, p10.x, p10.y, p11.x, p11.y);
+            drawTexturedTriangle(ctx, docC, sx, sy, sx + sw, sy + sh, sx, sy + sh, p00.x, p00.y, p11.x, p11.y, p01.x, p01.y);
+          }
+        }
+
+        const previewProxy = createPreviewProxyData(c, 1400);
+
+        scanPages = [{
+          id: "sample_" + Date.now(),
+          name: "샘플_물품공급계약서",
+          sourceCanvas: c,
+          previewProxy: previewProxy,
+          corners: [
+            { x: quad[0].x / W, y: quad[0].y / H },
+            { x: quad[1].x / W, y: quad[1].y / H },
+            { x: quad[2].x / W, y: quad[2].y / H },
+            { x: quad[3].x / W, y: quad[3].y / H }
+          ],
+          filter: "magic_color",
+          ratioMode: "orig_size",
+          whiteness: 78,
+          contrast: 65,
+          sharpness: 72,
+          margin: 0,
+          thumbDataUrl: ""
+        }];
+
+        activateScannerUI();
+        setTimeout(() => {
+          selectScanPage(0);
+          setLoading(false);
+          showToast(`원본 해상도(${W}×${H}px) 그대로 스캔되었습니다!`, "ok");
+        }, 30);
+      }, 30);
+    }
+
+    function drawTexturedTriangle(ctx, img, u0, v0, u1, v1, u2, v2, x0, y0, x1, y1, x2, y2) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.closePath();
+      ctx.clip();
+
+      const det = u0 * (v1 - v2) - v0 * (u1 - u2) + (u1 * v2 - u2 * v1);
+      if (Math.abs(det) < 1e-6) { ctx.restore(); return; }
+      const invDet = 1 / det;
+
+      const a = (x0 * (v1 - v2) - v0 * (x1 - x2) + (x1 * v2 - x2 * v1)) * invDet;
+      const b = (u0 * (x1 - x2) - x0 * (u1 - u2) + (u2 * x1 - u1 * x2)) * invDet;
+      const c = (u0 * (v2 * x1 - v1 * x2) - v0 * (u2 * x1 - u1 * x2) + x0 * (u1 * v2 - u2 * v1)) * invDet;
+      const d = (y0 * (v1 - v2) - v0 * (y1 - y2) + (y1 * v2 - y2 * v1)) * invDet;
+      const e = (u0 * (y1 - y2) - y0 * (u1 - u2) + (u2 * y1 - u1 * y2)) * invDet;
+      const f = (u0 * (v2 * y1 - v1 * y2) - v0 * (u2 * y1 - u1 * y2) + y0 * (u1 * v2 - u2 * v1)) * invDet;
+
+      ctx.transform(a, d, b, e, c, f);
+      ctx.drawImage(img, 0, 0);
+      ctx.restore();
+    }
+
+    window.addEventListener("resize", () => {
+      if (scanPages.length > 0) {
+        drawSourceStage();
+        applyPreviewCanvasDisplaySize();
+      }
+    });
+  </script>
+</body>
+</html>

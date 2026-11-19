@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 인코딩·해시 만능 복구기 (Data-Chef) | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070A10;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 12%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .op-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 11px;
+      border-radius: 10px;
+      background: rgba(9, 13, 22, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      cursor: pointer;
+      transition: all 0.14s ease;
+      user-select: none;
+    }
+    .op-item:hover {
+      border-color: #38bdf8;
+      background: rgba(15, 23, 42, 0.98);
+      transform: translateX(2px);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.18);
+    }
+    .recipe-step {
+      background: rgba(9, 13, 22, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      border-radius: 12px;
+      padding: 10px 12px;
+      transition: all 0.15s ease;
+    }
+    .recipe-step.disabled-step {
+      opacity: 0.45;
+      border-color: rgba(100, 116, 139, 0.3);
+    }
+    .mono-editor {
+      font-family: 'JetBrains Mono', 'D2Coding', 'Consolas', 'Pretendard', monospace;
+    }
+    .drop-active {
+      border-color: #22d3ee !important;
+      background-color: rgba(15, 23, 42, 0.95) !important;
+      box-shadow: 0 0 28px rgba(34, 211, 238, 0.25) !important;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.7); }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1800px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+
+     <!-- 상단 헤더 (초기화, 샘플 3종, 결과 복사) -->
+    <header class="flex flex-col xl:flex-row items-center justify-between gap-3 mb-3.5">
+      <div class="flex items-center gap-3.5 w-full xl:w-auto justify-between xl:justify-start shrink-0">
+        <a href="./index.html" class="flex items-center gap-3 shrink-0 whitespace-nowrap">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition shrink-0 whitespace-nowrap">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center min-w-0">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white whitespace-nowrap">
+          🧙‍♂️ 인코딩·해시 만능 복구기 <span class="text-xs font-mono text-cyan-400 align-middle"></span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">깨진 한글(외계어) 복구 · Base64/URL/유니코드 해독 · 이메일/연락처 추출 · SHA-256/MD5 해시</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-1.5 shrink-0">
+        <button type="button" onclick="resetChefWorkspace(true)" class="px-3 py-2 rounded-xl bg-rose-950/85 hover:bg-rose-900 border border-rose-500/50 text-xs font-extrabold text-rose-200 transition flex items-center gap-1 whitespace-nowrap">
+          <span>🗑️</span>
+          <span>초기화</span>
+        </button>
+        <button type="button" onclick="loadChefSample('mojibake')" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition whitespace-nowrap">
+          🧪 샘플 깨진한글
+        </button>
+        <button type="button" onclick="loadChefSample('extract')" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition whitespace-nowrap">
+          📇 샘플 연락처추출
+        </button>
+        <button type="button" onclick="loadChefSample('jwt')" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-purple-500/40 text-xs font-bold text-purple-300 transition whitespace-nowrap">
+          🔑 샘플 암호·토큰
+        </button>
+        <button id="topCopyBtn" type="button" onclick="copyChefOutput()" disabled class="px-3 py-2 rounded-xl bg-emerald-950/85 hover:bg-emerald-900 border border-emerald-500/40 text-xs font-extrabold text-emerald-300 transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+          <span>📋</span>
+          <span>결과 복사</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 -->
+    <input type="file" id="chefFileInput" class="hidden" onchange="handleChefFileUpload(this.files)" />
+
+    <!-- 상단 매직 자동 감지 배너 (입력값에서 암호화/인코딩/깨진한글이 감지되면 즉시 알림) -->
+    <div id="magicDetectBanner" class="hidden mb-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-950/90 via-slate-900/95 to-purple-950/90 border border-cyan-400/50 flex-wrap items-center justify-between gap-2 shadow-lg">
+      <div class="flex items-center gap-2 text-xs sm:text-sm">
+        <span class="text-lg">🪄</span>
+        <span class="font-extrabold text-cyan-300">[매직 자동 감지]</span>
+        <span id="magicDetectDesc" class="text-slate-200 font-bold">입력된 데이터에서 인코딩 패턴을 발견했습니다.</span>
+      </div>
+      <button type="button" onclick="applyMagicSuggestion()" class="px-3.5 py-1 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-extrabold transition shadow">
+        ✨ 원클릭 자동 복구 적용하기
+      </button>
+    </div>
+
+    <!-- ==================== 표준 3단 레이아웃 (좌: 도구함 / 중: 레시피 체인 / 우: 입력·출력 대형 워크스페이스) ==================== -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+
+      <!-- [1열: 3칸] 🛠️ 작업 도구함 (Operations Palette) -->
+      <section class="lg:col-span-3 glass-panel rounded-2xl p-3.5 flex flex-col h-[520px] lg:h-[78vh] min-h-[520px]">
+        <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-800 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm font-extrabold text-cyan-300">🛠️ 작업 도구함</span>
+            <span class="text-[11px] text-slate-400">(클릭 시 적용)</span>
+          </div>
+          <!-- 실행 방식 스위치: 단일 즉시 전환 vs 다단계 레시피 누적 -->
+          <label class="flex items-center gap-1 text-[11px] font-bold text-amber-300 cursor-pointer select-none" title="체크 해제 시 클릭한 도구를 레시피에 차곡차곡 쌓아 연속 변환합니다">
+            <input type="checkbox" id="singleOpModeToggle" checked class="accent-amber-400" />
+            <span>원클릭 전환</span>
+          </label>
+        </div>
+
+        <!-- 도구 검색창 -->
+        <div class="mb-2.5 shrink-0">
+          <input
+            type="text"
+            id="opSearchInput"
+            oninput="renderOperationsPalette()"
+            placeholder="🔍 작업 검색 (예: 한글, base64, 해시, 이메일...)"
+            class="w-full bg-slate-950/90 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none"
+          />
+        </div>
+
+        <!-- 카테고리별 작업 리스트 -->
+        <div id="operationsListContainer" class="flex-1 overflow-y-auto pr-1 space-y-3"></div>
+      </section>
+
+      <!-- [2열: 3칸] 🧾 레시피 파이프라인 (Recipe Chain & Bake Control) -->
+      <section class="lg:col-span-3 glass-panel rounded-2xl p-3.5 flex flex-col justify-between h-[420px] lg:h-[78vh] min-h-[420px]">
+        <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-800 shrink-0">
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm font-extrabold text-pink-300">🧾 레시피 파이프라인</span>
+            <span id="recipeCountBadge" class="px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-[11px] font-extrabold text-pink-300">0</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="runMagicWandScan(true)" class="px-2.5 py-1 rounded-lg bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 text-[11px] font-extrabold text-purple-200 transition" title="입력 데이터를 분석해 가장 알맞은 복구 레시피를 자동으로 구성합니다">
+              🪄 자동판별
+            </button>
+            <button type="button" onclick="clearRecipe()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-300 transition">
+              비우기
+            </button>
+          </div>
+        </div>
+
+        <!-- 레시피 단계 목록 -->
+        <div id="recipeStepsContainer" class="flex-1 overflow-y-auto pr-1 space-y-2.5"></div>
+
+        <!-- 하단 Bake(실행) 컨트롤 박스 -->
+        <div class="mt-3 pt-3 border-t border-slate-800 shrink-0 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-1.5 text-xs font-extrabold text-emerald-300 cursor-pointer select-none">
+              <input type="checkbox" id="autoBakeToggle" checked onchange="if(this.checked) bakeRecipe();" class="accent-emerald-400 w-4 h-4" />
+              <span>⚡ 실시간 자동 변환 (Auto-Bake)</span>
+            </label>
+            <span id="bakeTimeLabel" class="text-[11px] font-mono text-slate-400">0 ms</span>
+          </div>
+          <button type="button" onclick="bakeRecipe()" class="btn-primary w-full py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-1.5 shadow-lg">
+            <span>🔥</span>
+            <span>지금 레시피 실행 (BAKE!)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- [3열: 6칸] 📥 입력(Input) & 📤 출력(Output) 대형 워크스페이스 -->
+      <section class="lg:col-span-6 flex flex-col gap-3.5 h-[780px] lg:h-[78vh] min-h-[680px]">
+        
+        <!-- 상단: 📥 입력 (INPUT) 패널 -->
+        <div id="inputDropPanel" class="glass-panel rounded-2xl p-3.5 flex-1 min-h-0 flex flex-col justify-between transition">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800 shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-xs font-extrabold text-cyan-300">📥 입력 (INPUT)</span>
+              <span id="inputFileBadge" class="hidden px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono text-amber-300 truncate max-w-[180px]"></span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="document.getElementById('chefFileInput').click()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+                📂 파일 열기 (TXT/CSV/모든파일)
+              </button>
+              <button type="button" onclick="pasteToChefInput()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+                📋 붙여넣기
+              </button>
+              <button type="button" onclick="clearChefInput()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-400 hover:text-rose-300 transition">
+                지우기
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 min-h-0 bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+            <textarea
+              id="chefInputTextarea"
+              oninput="onChefInputChanged()"
+              placeholder="복구할 깨진 글자(외계어), Base64, URL 주소, JSON, SQL, 혹은 연락처를 추출할 본문을 이곳에 붙여넣거나 파일을 끌어다 놓으세요.&#10;&#10;• 구형 프로그램에서 저장되어 한글이 깨진 .txt / .csv 파일도 끌어다 놓으면 원본 바이트를 분석해 즉시 복구합니다."
+              class="mono-editor w-full h-full flex-1 bg-transparent p-3.5 text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed text-xs sm:text-sm"
+            ></textarea>
+          </div>
+
+          <div class="mt-2 pt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-mono shrink-0">
+            <span id="inputStatsLabel">크기: 0 Bytes · 글자 수: 0자 · 줄 수: 0줄</span>
+            <span class="text-cyan-400">💡 파일 드래그 앤 드롭 지원</span>
+          </div>
+        </div>
+
+        <!-- 하단: 📤 출력 (OUTPUT) 패널 -->
+        <div class="glass-panel rounded-2xl p-3.5 flex-1 min-h-0 flex flex-col justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800 shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-xs font-extrabold text-emerald-300">📤 결과 (OUTPUT)</span>
+              <span id="activeOpSummaryBadge" class="text-xs font-bold text-slate-300 truncate max-w-[210px]">대기 중</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="moveOutputToInput()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition" title="현재 결과값을 위쪽 입력창으로 올려서 추가 변환을 이어갑니다">
+                ⬆️ 결과를 입력창으로 올리기
+              </button>
+              <button type="button" onclick="copyChefOutput()" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-extrabold text-emerald-300 transition">
+                📋 복사
+              </button>
+              <button type="button" onclick="downloadOutputFile('txt')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 transition">
+                💾 .TXT 저장
+              </button>
+              <button type="button" onclick="downloadOutputFile('csv-bom')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-pink-500/40 text-xs font-bold text-pink-300 transition" title="엑셀에서 더블클릭해도 한글이 절대 깨지지 않는 UTF-8 BOM CSV 파일로 저장합니다">
+                📊 엑셀 BOM .CSV 저장
+              </button>
+            </div>
+          </div>
+
+          <div class="flex-1 min-h-0 bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+            <textarea
+              id="chefOutputTextarea"
+              readonly
+              placeholder="좌측 작업 도구함에서 원하는 기능을 클릭하거나 '🪄 자동판별'을 누르면 변환·복구된 결과가 이곳에 표시됩니다."
+              class="mono-editor w-full h-full flex-1 bg-transparent p-3.5 text-emerald-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed text-xs sm:text-sm"
+            ></textarea>
+          </div>
+
+          <div class="mt-2 pt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-mono shrink-0">
+            <span id="outputStatsLabel">크기: 0 Bytes · 글자 수: 0자 · 줄 수: 0줄</span>
+            <span id="encodingStatusLabel" class="text-emerald-400">UTF-8 표준 출력</span>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * [You-틸리티 08. 스마트 인코딩·해시 만능 복구기 핵심 엔진]
+     * - 초기 실행 시 샘플을 로드하지 않고 깨끗한 빈 화면으로 시작합니다.
+     * - 개인정보(지역명, 실명 등)가 일절 없는 'DDP 도련님' 표준 오피스 샘플만 제공합니다.
+     * - 모든 연산은 외부 서버 전송 없이 100% 브라우저 메모리에서 즉시 처리됩니다.
+     */
+    let rawInputBytes = null; // 파일 업로드 시 원본 바이너리 바이트(EUC-KR 무손실 복구용)
+    let uploadedFileName = "";
+    let recipe = [];           // [{ uid, opId, enabled, params }]
+    let magicSuggestionOpId = null;
+
+    // =========================================================================
+    // 1. 핵심 작업(Operation) 카탈로그 정의
+    // =========================================================================
+    const OPERATIONS_CATALOG = [
+      {
+        category: "🇰🇷 깨진 한글·인코딩 복구",
+        items: [
+          {
+            id: "auto_kr_fix",
+            name: "🪄 깨진 한글(외계어) 자동 복구",
+            badge: "강력추천",
+            desc: "ì•ˆë…•í•˜ì„¸ìš”, %EA%B0%80, \\uAC00, EUC-KR 등 깨진 한글을 자동으로 분석해 정상 한글로 복원합니다."
+          },
+          {
+            id: "euckr_to_utf8",
+            name: "📄 EUC-KR(CP949) 파일 → UTF-8 변환",
+            badge: "구형파일",
+            desc: "구형 프로그램에서 내보내어 한글이 깨진 텍스트·CSV 파일의 원본 바이트를 EUC-KR로 읽어 복원합니다."
+          },
+          {
+            id: "latin1_to_utf8",
+            name: "🔤 UTF-8 외계어(ÃªÂ°Â€) → 한글 복구",
+            badge: "복구",
+            desc: "UTF-8 한글 바이트가 서유럽(ISO-8859-1) 문자로 잘못 읽혀 깨진 글자를 원래 한글로 되돌립니다."
+          },
+          {
+            id: "unicode_unescape",
+            name: "🔓 유니코드(\\uXXXX)·HTML 엔티티 해독",
+            badge: "해독",
+            desc: "\\uB3C4\\uB828\\uB2D8 또는 &#46020; 형태의 유니코드/HTML 기호를 읽을 수 있는 한글로 변환합니다."
+          },
+          {
+            id: "unicode_escape",
+            name: "🔒 한글 → 유니코드(\\uXXXX) 변환",
+            badge: "인코딩",
+            desc: "다국어 소스코드나 설정 파일에 넣기 위해 한글을 \\uXXXX 이스케이프 문자열로 변환합니다."
+          }
+        ]
+      },
+      {
+        category: "🔄 웹·데이터 인코딩 변환",
+        items: [
+          {
+            id: "base64_decode",
+            name: "📦 Base64 디코딩 (한글 완벽 지원)",
+            badge: "Decode",
+            desc: "Base64로 인코딩된 문자열을 UTF-8 한글 깨짐 없이 원본 텍스트로 해독합니다."
+          },
+          {
+            id: "base64_encode",
+            name: "📦 Base64 인코딩 (한글 완벽 지원)",
+            badge: "Encode",
+            desc: "텍스트를 안전한 UTF-8 바이트 기반 Base64 문자열로 변환합니다."
+          },
+          {
+            id: "url_decode",
+            name: "🌐 URL 주소 디코딩 (%EA%B0%80 → 가)",
+            badge: "Decode",
+            desc: "인터넷 주소창에서 복사해 %기호로 길게 깨진 한글 주소를 깔끔한 원래 문자로 복원합니다."
+          },
+          {
+            id: "url_encode",
+            name: "🌐 URL 주소 인코딩 (퍼센트 변환)",
+            badge: "Encode",
+            desc: "특수문자와 한글을 안전한 웹 파라미터 전송용 %XX 포맷으로 인코딩합니다."
+          },
+          {
+            id: "hex_decode",
+            name: "🔢 Hex(16진수) → 텍스트 해독",
+            badge: "Hex",
+            desc: "16진수 바이트 코드(예: eb 8f 84 eb a0 a8 eb 8b 98)를 읽을 수 있는 텍스트로 변환합니다."
+          },
+          {
+            id: "hex_encode",
+            name: "🔢 텍스트 → Hex(16진수) 덤프",
+            badge: "Hex",
+            desc: "입력 데이터의 각 글자를 UTF-8 16진수 바이트 코드로 정밀 출력합니다."
+          }
+        ]
+      },
+      {
+        category: "📇 핵심 정보 자동 추출기",
+        items: [
+          {
+            id: "extract_emails",
+            name: "📧 이메일 주소만 싹 뽑아내기",
+            badge: "추출",
+            desc: "긴 문서나 명단에서 이메일 주소만 모두 찾아 중복을 제거하고 한 줄씩 정리합니다."
+          },
+          {
+            id: "extract_phones",
+            name: "📱 전화번호·휴대폰 번호만 뽑아내기",
+            badge: "추출",
+            desc: "본문 속에 섞여 있는 휴대폰(010) 및 일반 전화번호만 빠짐없이 추출합니다."
+          },
+          {
+            id: "extract_urls",
+            name: "🔗 웹사이트 링크(URL)·IP 추출",
+            badge: "추출",
+            desc: "문서 내 모든 http/https 웹사이트 주소와 IPv4 네트워크 주소를 추출합니다."
+          }
+        ]
+      },
+      {
+        category: "🔐 해시 지문·토큰·포맷 정리",
+        items: [
+          {
+            id: "hash_all",
+            name: "🛡️ 파일·텍스트 해시 지문 (MD5 / SHA-256)",
+            badge: "위변조검증",
+            desc: "데이터의 1바이트 위변조 여부를 확인하는 CRC32, MD5, SHA-1, SHA-256 해시값을 한 번에 생성합니다."
+          },
+          {
+            id: "jwt_decode",
+            name: "🔑 JWT 인증 토큰 해독기",
+            badge: "토큰분석",
+            desc: "eyJ...로 시작하는 웹 인증 토큰(JWT)의 헤더·페이로드와 만료일시(한국시간)를 즉시 해독합니다."
+          },
+          {
+            id: "json_beautify",
+            name: "📐 JSON 데이터 자동 정렬 (Beautify)",
+            badge: "포맷터",
+            desc: "한 줄로 뭉쳐진 JSON 데이터를 보기 편한 계층형 들여쓰기 구조로 깔끔하게 정렬합니다."
+          },
+          {
+            id: "sql_beautify",
+            name: "🗄️ SQL 쿼리문 줄바꿈 자동 정렬",
+            badge: "포맷터",
+            desc: "복잡하게 이어진 SELECT / FROM / WHERE / JOIN 쿼리문을 표준 들여쓰기로 정렬합니다."
+          },
+          {
+            id: "lines_dedup_sort",
+            name: "🧹 중복 줄 제거 & 가나다순 정렬",
+            badge: "텍스트정리",
+            desc: "여러 줄의 목록에서 똑같은 중복 행과 빈 줄을 지우고 깔끔하게 가나다/ABC 순으로 정렬합니다."
+          }
+        ]
+      }
+    ];
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2600);
+    }
+
+    function findOpMeta(opId) {
+      for (const group of OPERATIONS_CATALOG) {
+        const found = group.items.find((it) => it.id === opId);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // 2. 좌측 도구함(Operations) 및 중앙 레시피(Recipe) UI 렌더링
+    // =========================================================================
+    function renderOperationsPalette() {
+      const container = document.getElementById("operationsListContainer");
+      const keyword = (document.getElementById("opSearchInput").value || "").trim().toLowerCase();
+      container.innerHTML = "";
+
+      OPERATIONS_CATALOG.forEach((group) => {
+        const filtered = group.items.filter((it) => {
+          if (!keyword) return true;
+          return (
+            it.name.toLowerCase().includes(keyword) ||
+            it.desc.toLowerCase().includes(keyword) ||
+            it.badge.toLowerCase().includes(keyword)
+          );
+        });
+        if (filtered.length === 0) return;
+
+        const sec = document.createElement("div");
+        sec.innerHTML = `<div class="text-[11px] font-extrabold text-slate-400 px-1 mb-1.5">${group.category}</div>`;
+        const list = document.createElement("div");
+        list.className = "space-y-1.5";
+
+        filtered.forEach((op) => {
+          const item = document.createElement("div");
+          item.className = "op-item";
+          item.title = op.desc;
+          item.onclick = () => addOperationToRecipe(op.id);
+          item.innerHTML = `
+            <div class="min-w-0 pr-2">
+              <div class="text-xs font-extrabold text-slate-100 truncate">${op.name}</div>
+              <div class="text-[10.5px] text-slate-400 truncate mt-0.5">${op.desc}</div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/35 text-[10px] font-extrabold text-cyan-300 shrink-0">${op.badge}</span>
+          `;
+          list.appendChild(item);
+        });
+
+        sec.appendChild(list);
+        container.appendChild(sec);
+      });
+    }
+
+    function addOperationToRecipe(opId) {
+      const singleMode = document.getElementById("singleOpModeToggle").checked;
+      if (singleMode) {
+        recipe = [{ uid: Date.now() + Math.random(), opId, enabled: true }];
+      } else {
+        recipe.push({ uid: Date.now() + Math.random(), opId, enabled: true });
+      }
+      renderRecipeSteps();
+      if (document.getElementById("autoBakeToggle").checked) {
+        bakeRecipe();
+      }
+    }
+
+    function renderRecipeSteps() {
+      const container = document.getElementById("recipeStepsContainer");
+      document.getElementById("recipeCountBadge").textContent = recipe.length;
+
+      if (recipe.length === 0) {
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center p-5 border border-dashed border-slate-800 rounded-xl text-slate-400">
+            <div class="text-3xl mb-2">🧪</div>
+            <div class="text-xs font-extrabold text-slate-300 mb-1">선택된 작업 레시피가 없습니다</div>
+            <div class="text-[11px] leading-relaxed">
+              좌측 <strong class="text-cyan-300">작업 도구함</strong>에서 원하는 기능을 클릭하거나 상단 <strong class="text-purple-300">🪄 자동판별</strong> 버튼을 눌러보세요!
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = "";
+      recipe.forEach((step, idx) => {
+        const meta = findOpMeta(step.opId);
+        if (!meta) return;
+
+        const div = document.createElement("div");
+        div.className = `recipe-step ${step.enabled ? "" : "disabled-step"}`;
+        div.innerHTML = `
+          <div class="flex items-center justify-between gap-1.5">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-400/50 text-[10px] font-extrabold text-cyan-300 flex items-center justify-center shrink-0">${idx + 1}</span>
+              <span class="text-xs font-extrabold text-white truncate">${meta.name}</span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" onclick="moveRecipeStep(${idx}, -1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300" title="위로">▲</button>
+              <button type="button" onclick="moveRecipeStep(${idx}, 1)" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300" title="아래로">▼</button>
+              <button type="button" onclick="toggleRecipeStep(${idx})" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] ${step.enabled ? 'text-emerald-300' : 'text-slate-500'}" title="켜기/끄기">${step.enabled ? "ON" : "OFF"}</button>
+              <button type="button" onclick="removeRecipeStep(${idx})" class="px-1.5 py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-[10px] text-rose-300" title="삭제">✕</button>
+            </div>
+          </div>
+          <div class="text-[10.5px] text-slate-400 mt-1 leading-snug">${meta.desc}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function moveRecipeStep(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= recipe.length) return;
+      const tmp = recipe[idx];
+      recipe[idx] = recipe[target];
+      recipe[target] = tmp;
+      renderRecipeSteps();
+      if (document.getElementById("autoBakeToggle").checked) bakeRecipe();
+    }
+
+    function toggleRecipeStep(idx) {
+      if (!recipe[idx]) return;
+      recipe[idx].enabled = !recipe[idx].enabled;
+      renderRecipeSteps();
+      if (document.getElementById("autoBakeToggle").checked) bakeRecipe();
+    }
+
+    function removeRecipeStep(idx) {
+      recipe.splice(idx, 1);
+      renderRecipeSteps();
+      if (document.getElementById("autoBakeToggle").checked) bakeRecipe();
+    }
+
+    function clearRecipe() {
+      recipe = [];
+      renderRecipeSteps();
+      if (document.getElementById("autoBakeToggle").checked) bakeRecipe();
+    }
+
+    // =========================================================================
+    // 3. 화면 전체 초기화 & 입력/파일 처리 (원본 바이트 보존)
+    // =========================================================================
+    function resetChefWorkspace(notify = true) {
+      rawInputBytes = null;
+      uploadedFileName = "";
+      recipe = [];
+      magicSuggestionOpId = null;
+
+      document.getElementById("chefFileInput").value = "";
+      document.getElementById("chefInputTextarea").value = "";
+      document.getElementById("chefOutputTextarea").value = "";
+      document.getElementById("inputFileBadge").classList.add("hidden");
+      document.getElementById("magicDetectBanner").classList.add("hidden");
+      document.getElementById("magicDetectBanner").classList.remove("flex");
+      document.getElementById("activeOpSummaryBadge").textContent = "대기 중";
+      document.getElementById("bakeTimeLabel").textContent = "0 ms";
+
+      document.getElementById("topCopyBtn").disabled = true; 
+
+      renderRecipeSteps();
+      updateChefStats();
+      if (notify) showToast("입력 데이터와 레시피가 모두 초기화되었습니다.");
+    }
+
+    function clearChefInput() {
+      rawInputBytes = null;
+      uploadedFileName = "";
+      document.getElementById("chefInputTextarea").value = "";
+      document.getElementById("chefOutputTextarea").value = "";
+      document.getElementById("inputFileBadge").classList.add("hidden");
+      document.getElementById("magicDetectBanner").classList.add("hidden");
+      document.getElementById("magicDetectBanner").classList.remove("flex");
+      updateChefStats();
+    }
+
+    function onChefInputChanged() {
+      // 사용자가 텍스트창을 직접 수정한 경우 텍스트 기준 바이트로 갱신
+      rawInputBytes = null;
+      document.getElementById("inputFileBadge").classList.add("hidden");
+      runMagicWandScan(false);
+      if (document.getElementById("autoBakeToggle").checked) {
+        bakeRecipe();
+      } else {
+        updateChefStats();
+      }
+    }
+
+    async function handleChefFileUpload(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList[0];
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        rawInputBytes = new Uint8Array(arrayBuf);
+        uploadedFileName = file.name;
+
+        const fileBadge = document.getElementById("inputFileBadge");
+        fileBadge.textContent = `📄 ${file.name} (${rawInputBytes.length.toLocaleString()} B)`;
+        fileBadge.classList.remove("hidden");
+
+        // UTF-8 디코딩 시도 후 깨진 문자(U+FFFD)가 있으면 EUC-KR 자동 복구 레시피 제안 및 적용
+        const utf8Preview = new TextDecoder("utf-8", { fatal: false }).decode(rawInputBytes);
+        document.getElementById("chefInputTextarea").value = utf8Preview;
+
+        if (utf8Preview.includes("\uFFFD")) {
+          addOperationToRecipe("euckr_to_utf8");
+          showToast(`'${file.name}' 파일에서 EUC-KR 한글 인코딩을 감지하여 자동 복구했습니다!`, "ok");
+        } else {
+          runMagicWandScan(false);
+          if (document.getElementById("autoBakeToggle").checked) bakeRecipe();
+          showToast(`'${file.name}' 파일을 불러왔습니다.`, "ok");
+        }
+      } catch (err) {
+        showToast("파일을 읽는 중 오류가 발생했습니다.", "err");
+      } finally {
+        document.getElementById("chefFileInput").value = "";
+      }
+    }
+
+    // 입력창 파일 드래그 앤 드롭 지원
+    const inputDropPanel = document.getElementById("inputDropPanel");
+    ["dragenter", "dragover"].forEach((evt) => {
+      inputDropPanel.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        inputDropPanel.classList.add("drop-active");
+      });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      inputDropPanel.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        inputDropPanel.classList.remove("drop-active");
+      });
+    });
+    inputDropPanel.addEventListener("drop", (e) => {
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleChefFileUpload(e.dataTransfer.files);
+      }
+    });
+
+    async function pasteToChefInput() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          document.getElementById("chefInputTextarea").value = text;
+          onChefInputChanged();
+          showToast("클립보드 텍스트를 붙여넣었습니다!", "ok");
+        } else {
+          showToast("클립보드가 비어 있습니다.", "err");
+        }
+      } catch (e) {
+        document.getElementById("chefInputTextarea").focus();
+        showToast("입력창에서 Ctrl + V 키를 눌러 붙여넣어 주세요.");
+      }
+    }
+
+    function moveOutputToInput() {
+      const outVal = document.getElementById("chefOutputTextarea").value;
+      if (!outVal) {
+        showToast("입력창으로 올릴 결과 데이터가 없습니다.", "err");
+        return;
+      }
+      rawInputBytes = null;
+      document.getElementById("chefInputTextarea").value = outVal;
+      onChefInputChanged();
+      showToast("결과값을 입력창으로 이동했습니다!", "ok");
+    }
+
+    // =========================================================================
+    // 4. 🪄 매직 자동 감지(Magic Wand) 및 레시피 실행(Bake) 엔진
+    // =========================================================================
+    function runMagicWandScan(forceApply = false) {
+      const text = (document.getElementById("chefInputTextarea").value || "").trim();
+      const banner = document.getElementById("magicDetectBanner");
+      const desc = document.getElementById("magicDetectDesc");
+      magicSuggestionOpId = null;
+
+      if (!text) {
+        banner.classList.add("hidden");
+        banner.classList.remove("flex");
+        return;
+      }
+
+      // 1) JWT 토큰 패턴 감지
+      if (/^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(text)) {
+        magicSuggestionOpId = "jwt_decode";
+        desc.textContent = "JWT(JSON Web Token) 인증 토큰이 감지되었습니다.";
+      }
+      // 2) URL 퍼센트 인코딩 감지
+      else if (/(%[0-9A-Fa-f]{2}){3,}/.test(text)) {
+        magicSuggestionOpId = "url_decode";
+        desc.textContent = "URL 퍼센트(%XX) 인코딩 문자열이 감지되었습니다.";
+      }
+      // 3) 유니코드 이스케이프(\uAC00) 또는 HTML 엔티티 감지
+      else if (/(\\u[0-9A-Fa-f]{4}){2,}/.test(text) || /(&#\d{4,5};){2,}/.test(text)) {
+        magicSuggestionOpId = "unicode_unescape";
+        desc.textContent = "유니코드(\\uXXXX) 또는 HTML 엔티티 문자가 감지되었습니다.";
+      }
+      // 4) UTF-8 -> Latin1 깨진 한글 외계어(ì•ˆë…•...) 감지
+      else if (/[\u00C0-\u00FF]{4,}/.test(text) && testLatin1ToUtf8Gain(text)) {
+        magicSuggestionOpId = "auto_kr_fix";
+        desc.textContent = "인코딩 오류로 깨진 한글(외계어) 패턴이 감지되었습니다.";
+      }
+      // 5) Base64 패턴 감지
+      else if (text.length >= 16 && /^[A-Za-z0-9+/=\r\n]+$/.test(text) && !/^[0-9]+$/.test(text) && testBase64Valid(text)) {
+        magicSuggestionOpId = "base64_decode";
+        desc.textContent = "Base64로 인코딩된 텍스트가 감지되었습니다.";
+      }
+      // 6) JSON 데이터 감지
+      else if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+        try {
+          JSON.parse(text);
+          magicSuggestionOpId = "json_beautify";
+          desc.textContent = "JSON 데이터 구조가 감지되었습니다.";
+        } catch (e) {}
+      }
+
+      if (magicSuggestionOpId) {
+        banner.classList.remove("hidden");
+        banner.classList.add("flex");
+        if (forceApply) {
+          applyMagicSuggestion();
+        }
+      } else {
+        banner.classList.add("hidden");
+        banner.classList.remove("flex");
+        if (forceApply) {
+          addOperationToRecipe("auto_kr_fix");
+          showToast("깨진 한글 자동 복구 및 다중 디코딩을 실행했습니다!", "ok");
+        }
+      }
+    }
+
+    function applyMagicSuggestion() {
+      if (!magicSuggestionOpId) return;
+      addOperationToRecipe(magicSuggestionOpId);
+      showToast("🪄 매직 자동 복구 레시피가 적용되었습니다!", "ok");
+    }
+
+    function bakeRecipe() {
+      const t0 = performance.now();
+      const inputStr = document.getElementById("chefInputTextarea").value;
+      const outEl = document.getElementById("chefOutputTextarea");
+      const summaryBadge = document.getElementById("activeOpSummaryBadge");
+
+      if (!inputStr && (!rawInputBytes || rawInputBytes.length === 0)) {
+        outEl.value = "";
+        summaryBadge.textContent = "대기 중";
+        updateChefStats();
+        return;
+      }
+
+      const activeSteps = recipe.filter((s) => s.enabled);
+
+      // 선택된 레시피가 없을 때는 스마트 자동 복구 미리보기 또는 원본 그대로 표시
+      if (activeSteps.length === 0) {
+        outEl.value = inputStr;
+        summaryBadge.textContent = "원본 통과 (좌측 도구를 클릭하세요)";
+        const t1 = performance.now();
+        document.getElementById("bakeTimeLabel").textContent = `${Math.max(1, Math.round(t1 - t0))} ms`;
+        updateChefStats();
+        return;
+      }
+
+      let currentText = inputStr;
+      let currentBytes = rawInputBytes;
+
+      try {
+        activeSteps.forEach((step, idx) => {
+          currentText = executeSingleOperation(step.opId, currentText, idx === 0 ? currentBytes : null);
+        });
+        outEl.value = currentText;
+
+        const names = activeSteps.map((s) => findOpMeta(s.opId)?.name.replace(/^[^\s]+\s/, "") || s.opId);
+        summaryBadge.textContent = names.join(" → ");
+      } catch (err) {
+        outEl.value = `[변환 안내] 선택한 작업으로 해독할 수 없는 형식입니다.\n상세 내용: ${err.message || err}`;
+        summaryBadge.textContent = "형식 확인 필요";
+      }
+
+      const t1 = performance.now();
+      document.getElementById("bakeTimeLabel").textContent = `${Math.max(1, Math.round(t1 - t0))} ms`;
+      updateChefStats();
+    }
+
+    function executeSingleOperation(opId, text, initialBytes) {
+      switch (opId) {
+        case "auto_kr_fix":
+          return autoRecoverBrokenKorean(text, initialBytes);
+        case "euckr_to_utf8":
+          return decodeEucKrToUtf8(text, initialBytes);
+        case "latin1_to_utf8":
+          return fixLatin1MojibakeToUtf8(text);
+        case "unicode_unescape":
+          return unescapeUnicodeAndHtml(text);
+        case "unicode_escape":
+          return escapeToUnicode(text);
+        case "base64_decode":
+          return utf8SafeBase64Decode(text);
+        case "base64_encode":
+          return utf8SafeBase64Encode(text);
+        case "url_decode":
+          return smartUrlDecode(text);
+        case "url_encode":
+          return encodeURIComponent(text);
+        case "hex_decode":
+          return hexToUtf8Text(text);
+        case "hex_encode":
+          return utf8TextToHex(text);
+        case "extract_emails":
+          return extractPatternList(text, /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "이메일 주소");
+        case "extract_phones":
+          return extractPatternList(text, /(?:01[016789]|02|0[3-6][1-5]|070|080|1[568]\d{2})\s*[-.\s]?\s*\d{3,4}\s*[-.\s]?\s*\d{4}/g, "전화번호");
+        case "extract_urls":
+          return extractPatternList(text, /https?:\/\/[^\s"'<>()]+|\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "URL 및 IP 주소");
+        case "hash_all":
+          return computeAllHashesReport(text, initialBytes);
+        case "jwt_decode":
+          return decodeJwtTokenReadable(text);
+        case "json_beautify":
+          return beautifyJsonText(text);
+        case "sql_beautify":
+          return beautifySqlQuery(text);
+        case "lines_dedup_sort":
+          return deduplicateAndSortLines(text);
+        default:
+          return text;
+      }
+    }
+
+    // =========================================================================
+    // 5. 개별 복구·변환·추출·암호화 알고리즘 구현부 (100% 에러 방지 디버깅 완료)
+    // =========================================================================
+
+    function countHangulSyllables(str) {
+      const m = str.match(/[가-힣]/g);
+      return m ? m.length : 0;
+    }
+
+    function testLatin1ToUtf8Gain(str) {
+      const converted = fixLatin1MojibakeToUtf8(str);
+      return countHangulSyllables(converted) > countHangulSyllables(str) + 1;
+    }
+
+    function testBase64Valid(str) {
+      try {
+        const dec = utf8SafeBase64Decode(str);
+        return dec.length > 0 && !dec.includes("\uFFFD");
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // [1] 깨진 한글(외계어) 종합 자동 복구 엔진
+    function autoRecoverBrokenKorean(text, rawBytes) {
+      // 1순위: 업로드된 원본 바이트가 있는 경우 UTF-8 vs EUC-KR(CP949) 비교
+      if (rawBytes && rawBytes.length > 0) {
+        const asUtf8 = new TextDecoder("utf-8", { fatal: false }).decode(rawBytes);
+        const asEucKr = new TextDecoder("euc-kr", { fatal: false }).decode(rawBytes);
+        if (!asUtf8.includes("\uFFFD") && countHangulSyllables(asUtf8) >= countHangulSyllables(asEucKr)) {
+          return asUtf8;
+        }
+        if (countHangulSyllables(asEucKr) > 0) {
+          return asEucKr;
+        }
+      }
+
+      let current = text;
+
+      // 2순위: 유니코드 이스케이프 (\uXXXX) 및 HTML 엔티티 (&#xxxx;) 복원
+      if (/\\u[0-9A-Fa-f]{4}/.test(current) || /&#x?[0-9A-Fa-f]+;/.test(current)) {
+        current = unescapeUnicodeAndHtml(current);
+      }
+
+      // 3순위: URL 퍼센트(%XX) 인코딩 복원
+      if (/(%[0-9A-Fa-f]{2}){2,}/.test(current)) {
+        current = smartUrlDecode(current);
+      }
+
+      // 4순위: UTF-8 바이트가 Latin-1(ISO-8859-1)로 잘못 읽힌 외계어(ì•ˆë…•í•˜ì„¸ìš”) 복원
+      const latinFixed = fixLatin1MojibakeToUtf8(current);
+      if (countHangulSyllables(latinFixed) > countHangulSyllables(current)) {
+        return latinFixed;
+      }
+
+      // 5순위: EUC-KR 바이트가 Latin-1로 잘못 읽힌 경우 복원
+      const eucLatinFixed = fixLatin1MojibakeToEucKr(current);
+      if (countHangulSyllables(eucLatinFixed) > countHangulSyllables(current)) {
+        return eucLatinFixed;
+      }
+
+      // 6순위: Base64 인코딩 문자열인지 확인 후 한글이 나오면 채택
+      if (/^[A-Za-z0-9+/=\r\n]+$/.test(current.trim()) && current.trim().length >= 8) {
+        try {
+          const b64 = utf8SafeBase64Decode(current.trim());
+          if (countHangulSyllables(b64) > 0) return b64;
+        } catch (e) {}
+      }
+
+      return current;
+    }
+
+    function decodeEucKrToUtf8(text, rawBytes) {
+      if (rawBytes && rawBytes.length > 0) {
+        return new TextDecoder("euc-kr", { fatal: false }).decode(rawBytes);
+      }
+      return fixLatin1MojibakeToEucKr(text);
+    }
+
+    function fixLatin1MojibakeToUtf8(str) {
+      const bytes = new Uint8Array(str.length);
+      for (let i = 0; i < str.length; i++) {
+        bytes[i] = str.charCodeAt(i) & 0xff;
+      }
+      return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    }
+
+    function fixLatin1MojibakeToEucKr(str) {
+      const bytes = new Uint8Array(str.length);
+      for (let i = 0; i < str.length; i++) {
+        bytes[i] = str.charCodeAt(i) & 0xff;
+      }
+      return new TextDecoder("euc-kr", { fatal: false }).decode(bytes);
+    }
+
+    function unescapeUnicodeAndHtml(str) {
+      let s = str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      s = s.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      s = s.replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
+      s = s.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+      const entities = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&nbsp;": " " };
+      return s.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (m) => entities[m] || m);
+    }
+
+    function escapeToUnicode(str) {
+      let out = "";
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        if (code > 127) {
+          out += "\\u" + code.toString(16).toUpperCase().padStart(4, "0");
+        } else {
+          out += str[i];
+        }
+      }
+      return out;
+    }
+
+    // 한글 완벽 호환 UTF-8 Base64 인코딩 / 디코딩
+    function utf8SafeBase64Encode(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+
+    function utf8SafeBase64Decode(b64Str) {
+      const clean = b64Str.trim().replace(/-/g, "+").replace(/_/g, "/").replace(/[^A-Za-z0-9+/=]/g, "");
+      const padLen = (4 - (clean.length % 4)) % 4;
+      const padded = clean + "=".repeat(padLen);
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      if (utf8.includes("\uFFFD")) {
+        const euckr = new TextDecoder("euc-kr", { fatal: false }).decode(bytes);
+        if (countHangulSyllables(euckr) > countHangulSyllables(utf8)) return euckr;
+      }
+      return utf8;
+    }
+
+    // UTF-8 및 EUC-KR 퍼센트 주소 모두 지원하는 스마트 URL 디코더
+    function smartUrlDecode(str) {
+      try {
+        return decodeURIComponent(str.replace(/\+/g, " "));
+      } catch (e) {
+        // EUC-KR로 인코딩된 %XX 퍼센트 문자열인 경우 바이트 배열로 변환 후 EUC-KR 해독
+        const bytes = [];
+        for (let i = 0; i < str.length; i++) {
+          if (str[i] === "%" && /^[0-9A-Fa-f]{2}$/.test(str.slice(i + 1, i + 3))) {
+            bytes.push(parseInt(str.slice(i + 1, i + 3), 16));
+            i += 2;
+          } else {
+            bytes.push(str.charCodeAt(i) & 0xff);
+          }
+        }
+        return new TextDecoder("euc-kr", { fatal: false }).decode(new Uint8Array(bytes));
+      }
+    }
+
+    function utf8TextToHex(str) {
+      const bytes = new TextEncoder().encode(str);
+      return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+        .join(" ");
+    }
+
+    function hexToUtf8Text(hexStr) {
+      const clean = hexStr.replace(/0x/gi, "").replace(/[^0-9A-Fa-f]/g, "");
+      if (clean.length === 0 || clean.length % 2 !== 0) {
+        throw new Error("유효한 16진수(Hex) 바이트 문자열이 아닙니다.");
+      }
+      const bytes = new Uint8Array(clean.length / 2);
+      for (let i = 0; i < clean.length; i += 2) {
+        bytes[i / 2] = parseInt(clean.slice(i, i + 2), 16);
+      }
+      return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    }
+
+    // 이메일 / 전화번호 / URL 정규식 추출 및 중복 제거
+    function extractPatternList(text, regex, label) {
+      const matches = text.match(regex) || [];
+      const unique = Array.from(new Set(matches.map((m) => m.trim())));
+      if (unique.length === 0) {
+        return `[추출 결과] 본문에서 발견된 ${label} 항목이 없습니다.`;
+      }
+      return [
+        `# 총 ${unique.length}개의 고유 ${label} 항목을 추출했습니다 (전체 발견: ${matches.length}건 / 중복 자동 제거됨)`,
+        "------------------------------------------------------------",
+        ...unique
+      ].join("\n");
+    }
+
+    // JWT 인증 토큰 해독기
+    function decodeJwtTokenReadable(jwtStr) {
+      const parts = jwtStr.trim().split(".");
+      if (parts.length < 2) {
+        throw new Error("유효한 JWT 토큰 형식(Header.Payload.Signature)이 아닙니다.");
+      }
+      const headerJson = utf8SafeBase64Decode(parts[0]);
+      const payloadJson = utf8SafeBase64Decode(parts[1]);
+      const headerObj = JSON.parse(headerJson);
+      const payloadObj = JSON.parse(payloadJson);
+
+      const timeNotes = [];
+      ["iat", "exp", "nbf"].forEach((key) => {
+        if (typeof payloadObj[key] === "number") {
+          const d = new Date(payloadObj[key] * 1000);
+          const label = key === "iat" ? "발급일시(iat)" : key === "exp" ? "만료일시(exp)" : "유효시작(nbf)";
+          timeNotes.push(`• ${label}: ${d.toLocaleString("ko-KR")} (${payloadObj[key]})`);
+        }
+      });
+
+      return [
+        "=== [1] JWT HEADER (알고리즘 및 타입) ===",
+        JSON.stringify(headerObj, null, 2),
+        "",
+        "=== [2] JWT PAYLOAD (담긴 데이터) ===",
+        JSON.stringify(payloadObj, null, 2),
+        timeNotes.length > 0 ? "\n=== [3] 토큰 시간 정보 (한국 표준시 변환) ===\n" + timeNotes.join("\n") : "",
+        "",
+        `=== [4] SIGNATURE (서명값) ===\n${parts[2] || "(서명 없음)"}`
+      ].filter(Boolean).join("\n");
+    }
+
+    function beautifyJsonText(str) {
+      const parsed = JSON.parse(str.trim());
+      return JSON.stringify(parsed, null, 2);
+    }
+
+    function beautifySqlQuery(sql) {
+      const keywords = [
+        "SELECT", "FROM", "WHERE", "LEFT JOIN", "INNER JOIN", "RIGHT JOIN", "JOIN",
+        "ON", "GROUP BY", "ORDER BY", "HAVING", "LIMIT", "INSERT INTO", "VALUES",
+        "UPDATE", "SET", "DELETE FROM", "UNION ALL", "UNION"
+      ];
+      let formatted = sql.replace(/\s+/g, " ").trim();
+      keywords.forEach((kw) => {
+        const reg = new RegExp(`\\b${kw}\\b`, "gi");
+        formatted = formatted.replace(reg, `\n${kw.toUpperCase()}`);
+      });
+      formatted = formatted
+        .replace(/\b(AND|OR)\b/gi, (m) => `\n  ${m.toUpperCase()}`)
+        .replace(/,\s*/g, ",\n       ");
+      return formatted.trim();
+    }
+
+    function deduplicateAndSortLines(text) {
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      const unique = Array.from(new Set(lines));
+      unique.sort((a, b) => a.localeCompare(b, "ko-KR", { numeric: true }));
+      return unique.join("\n");
+    }
+
+    // =========================================================================
+    // 6. 순수 JS 기반 무결점 해시 엔진 (CRC32 / MD5 / SHA-1 / SHA-256)
+    //    (로컬 file:// 환경이나 오프라인에서도 100% 에러 없이 즉시 작동)
+    // =========================================================================
+    function computeAllHashesReport(text, rawBytes) {
+      const bytes = rawBytes && rawBytes.length > 0 ? rawBytes : new TextEncoder().encode(text);
+      const crc = crc32Pure(bytes);
+      const md5 = md5Pure(bytes);
+      const sha1 = sha1Pure(bytes);
+      const sha256 = sha256Pure(bytes);
+
+      return [
+        "=== 🛡️ 데이터 무결성 해시 지문 (Hash Digest) ===",
+        `• 입력 크기 : ${bytes.length.toLocaleString()} Bytes`,
+        "------------------------------------------------------------",
+        `[CRC-32]  ${crc}`,
+        `[MD5]     ${md5}`,
+        `[SHA-1]   ${sha1}`,
+        `[SHA-256] ${sha256}`,
+        "------------------------------------------------------------",
+        `[대문자 SHA-256]\n${sha256.toUpperCase()}`
+      ].join("\n");
+    }
+
+    function crc32Pure(bytes) {
+      let c = 0xffffffff;
+      for (let i = 0; i < bytes.length; i++) {
+        c ^= bytes[i];
+        for (let k = 0; k < 8; k++) {
+          c = (c >>> 1) ^ (c & 1 ? 0xedb88320 : 0);
+        }
+      }
+      return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, "0");
+    }
+
+    function md5Pure(bytes) {
+      function rotl(x, n) { return (x << n) | (x >>> (32 - n)); }
+      const K = new Uint32Array(64);
+      for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+      const S = [
+        7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+        5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
+        4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+        6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+      ];
+
+      const bitLen = bytes.length * 8;
+      const padLen = (((56 - (bytes.length + 1) % 64) + 64) % 64) + 1 + 8;
+      const buf = new Uint8Array(bytes.length + padLen);
+      buf.set(bytes);
+      buf[bytes.length] = 0x80;
+      const dv = new DataView(buf.buffer);
+      dv.setUint32(buf.length - 8, bitLen >>> 0, true);
+      dv.setUint32(buf.length - 4, Math.floor(bitLen / 4294967296) >>> 0, true);
+
+      let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+
+      for (let offset = 0; offset < buf.length; offset += 64) {
+        let A = a0, B = b0, C = c0, D = d0;
+        for (let i = 0; i < 64; i++) {
+          let F, g;
+          if (i < 16) { F = (B & C) | (~B & D); g = i; }
+          else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+          else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+          else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+          const word = dv.getUint32(offset + g * 4, true);
+          const temp = D;
+          D = C;
+          C = B;
+          B = (B + rotl((A + F + K[i] + word) >>> 0, S[i])) >>> 0;
+          A = temp;
+        }
+        a0 = (a0 + A) >>> 0;
+        b0 = (b0 + B) >>> 0;
+        c0 = (c0 + C) >>> 0;
+        d0 = (d0 + D) >>> 0;
+      }
+
+      const out = new Uint8Array(16);
+      const outDv = new DataView(out.buffer);
+      outDv.setUint32(0, a0, true);
+      outDv.setUint32(4, b0, true);
+      outDv.setUint32(8, c0, true);
+      outDv.setUint32(12, d0, true);
+      return Array.from(out).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function sha1Pure(bytes) {
+      function rotl(n, s) { return (n << s) | (n >>> (32 - s)); }
+      const ml = bytes.length * 8;
+      const padLen = (((56 - (bytes.length + 1) % 64) + 64) % 64) + 1 + 8;
+      const buf = new Uint8Array(bytes.length + padLen);
+      buf.set(bytes);
+      buf[bytes.length] = 0x80;
+      const dv = new DataView(buf.buffer);
+      dv.setUint32(buf.length - 8, Math.floor(ml / 4294967296) >>> 0, false);
+      dv.setUint32(buf.length - 4, ml >>> 0, false);
+
+      let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
+      const w = new Uint32Array(80);
+
+      for (let off = 0; off < buf.length; off += 64) {
+        for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4, false);
+        for (let i = 16; i < 80; i++) w[i] = rotl(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+
+        let a = h0, b = h1, c = h2, d = h3, e = h4;
+        for (let i = 0; i < 80; i++) {
+          let f, k;
+          if (i < 20) { f = (b & c) | (~b & d); k = 0x5a827999; }
+          else if (i < 40) { f = b ^ c ^ d; k = 0x6ed9eba1; }
+          else if (i < 60) { f = (b & c) | (b & d) | (c & d); k = 0x8f1bbcdc; }
+          else { f = b ^ c ^ d; k = 0xca62c1d6; }
+          const temp = (rotl(a, 5) + f + e + k + w[i]) >>> 0;
+          e = d; d = c; c = rotl(b, 30) >>> 0; b = a; a = temp;
+        }
+        h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0; h4 = (h4 + e) >>> 0;
+      }
+
+      return [h0, h1, h2, h3, h4].map((h) => h.toString(16).padStart(8, "0")).join("");
+    }
+
+    function sha256Pure(bytes) {
+      function rotr(n, x) { return (x >>> n) | (x << (32 - n)); }
+      const K = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+      ];
+
+      const ml = bytes.length * 8;
+      const padLen = (((56 - (bytes.length + 1) % 64) + 64) % 64) + 1 + 8;
+      const buf = new Uint8Array(bytes.length + padLen);
+      buf.set(bytes);
+      buf[bytes.length] = 0x80;
+      const dv = new DataView(buf.buffer);
+      dv.setUint32(buf.length - 8, Math.floor(ml / 4294967296) >>> 0, false);
+      dv.setUint32(buf.length - 4, ml >>> 0, false);
+
+      const H = new Uint32Array([
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+      ]);
+      const W = new Uint32Array(64);
+
+      for (let off = 0; off < buf.length; off += 64) {
+        for (let i = 0; i < 16; i++) W[i] = dv.getUint32(off + i * 4, false);
+        for (let i = 16; i < 64; i++) {
+          const s0 = rotr(7, W[i - 15]) ^ rotr(18, W[i - 15]) ^ (W[i - 15] >>> 3);
+          const s1 = rotr(17, W[i - 2]) ^ rotr(19, W[i - 2]) ^ (W[i - 2] >>> 10);
+          W[i] = (W[i - 16] + s0 + W[i - 7] + s1) >>> 0;
+        }
+
+        let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+        for (let i = 0; i < 64; i++) {
+          const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+          const ch = (e & f) ^ (~e & g);
+          const temp1 = (h + S1 + ch + K[i] + W[i]) >>> 0;
+          const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+          const maj = (a & b) ^ (a & c) ^ (b & c);
+          const temp2 = (S0 + maj) >>> 0;
+
+          h = g; g = f; f = e; e = (d + temp1) >>> 0;
+          d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+        }
+
+        H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+        H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+      }
+
+      return Array.from(H).map((v) => v.toString(16).padStart(8, "0")).join("");
+    }
+
+    // =========================================================================
+    // 7. 통계 카운터, 클립보드 복사, 파일 저장 (엑셀 UTF-8 BOM 지원)
+    // =========================================================================
+    function updateChefStats() {
+      const inStr = document.getElementById("chefInputTextarea").value;
+      const outStr = document.getElementById("chefOutputTextarea").value;
+
+      const inBytes = rawInputBytes ? rawInputBytes.length : new TextEncoder().encode(inStr).length;
+      const inLines = inStr ? inStr.split(/\r?\n/).length : 0;
+      document.getElementById("inputStatsLabel").textContent =
+        `크기: ${inBytes.toLocaleString()} Bytes · 글자 수: ${inStr.length.toLocaleString()}자 · 줄 수: ${inLines.toLocaleString()}줄`;
+
+      const outBytes = new TextEncoder().encode(outStr).length;
+      const outLines = outStr ? outStr.split(/\r?\n/).length : 0;
+      document.getElementById("outputStatsLabel").textContent =
+        `크기: ${outBytes.toLocaleString()} Bytes · 글자 수: ${outStr.length.toLocaleString()}자 · 줄 수: ${outLines.toLocaleString()}줄`;
+
+      const hasOut = outStr.trim().length > 0;
+      document.getElementById("topCopyBtn").disabled = !hasOut;
+ 
+    }
+
+    function copyChefOutput() {
+      const outStr = document.getElementById("chefOutputTextarea").value;
+      if (!outStr) {
+        showToast("복사할 결과 텍스트가 없습니다.", "err");
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(outStr).then(() => {
+          showToast("변환된 결과가 클립보드에 복사되었습니다!", "ok");
+        });
+      } else {
+        const ta = document.getElementById("chefOutputTextarea");
+        ta.select();
+        document.execCommand("copy");
+        showToast("변환된 결과가 클립보드에 복사되었습니다!", "ok");
+      }
+    }
+
+    function downloadOutputFile(mode) {
+      const outStr = document.getElementById("chefOutputTextarea").value;
+      if (!outStr) {
+        showToast("저장할 결과 데이터가 없습니다.", "err");
+        return;
+      }
+
+      const baseName = (uploadedFileName || "You-틸리티_복구결과").replace(/\.[^.]+$/, "");
+      if (mode === "csv-bom") {
+        // 엑셀 한글 깨짐 방지용 UTF-8 BOM(\uFEFF) 바이트 삽입
+        const bomBlob = new Blob(["\uFEFF" + outStr], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(bomBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${baseName}_엑셀호환(BOM).csv`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast("엑셀에서 한글이 절대 깨지지 않는 UTF-8 BOM .csv 파일로 저장했습니다!", "ok");
+      } else {
+        const txtBlob = new Blob([outStr], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(txtBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${baseName}_변환결과.txt`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast("변환된 결과를 .txt 파일로 저장했습니다!", "ok");
+      }
+    }
+
+    // =========================================================================
+    // 8. 개인정보가 완전히 배제된 실무 테스트 샘플 3종 (DDP 도련님 적용)
+    // =========================================================================
+    function loadChefSample(kind) {
+      rawInputBytes = null;
+      document.getElementById("inputFileBadge").classList.add("hidden");
+
+      if (kind === "mojibake") {
+        // UTF-8 한글이 Latin-1로 잘못 읽힌 외계어 + URL 퍼센트 인코딩 + 유니코드 이스케이프 복합 샘플
+        const originalSample = [
+          "[You-틸리티 데이터 복구 테스트]",
+          "1. 담당 총괄 아키텍트 : DDP 도련님",
+          "2. 프로젝트명 : 차세대 웹 오피스 클라우드 플랫폼",
+          "3. 문서 보안 등급 : 대외비 (100% 브라우저 로컬 처리)"
+        ].join("\n");
+
+        // 의도적으로 UTF-8 바이트를 Latin-1 문자로 깨뜨린 외계어 생성
+        const utf8Bytes = new TextEncoder().encode(originalSample);
+        let garbled = "";
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          garbled += String.fromCharCode(utf8Bytes[i]);
+        }
+
+        document.getElementById("chefInputTextarea").value = garbled;
+        addOperationToRecipe("auto_kr_fix");
+        showToast("깨진 한글(외계어) 샘플을 불러와 정상 한글로 즉시 복원했습니다!", "ok");
+      } else if (kind === "extract") {
+        document.getElementById("chefInputTextarea").value = [
+          "=== 2026년 협력사 비상연락망 및 서버 접속 안내 (작성: DDP 도련님) ===",
+          "1. 총괄 아키텍트실 : ddp.master@you-tility.kr / 직통 010-7788-9900",
+          "2. 클라우드 인프라팀 : infra_support@cloud-office.co.kr (대표전화 02-555-1234)",
+          "3. 보안 관제 센터 : security@you-tility.kr / 비상연락 010-3322-4455",
+          "4. 중복 입력 테스트 : ddp.master@you-tility.kr / 010-7788-9900",
+          "5. 배포 페이지 주소 : https://ddp-doryeonnim.github.io/you-tility/ (게이트웨이 192.168.10.254)"
+        ].join("\n");
+        addOperationToRecipe("extract_emails");
+        showToast("문서 속 이메일 주소를 중복 없이 추출했습니다! 좌측에서 '전화번호'나 '링크 추출'도 클릭해 보세요.", "ok");
+      } else if (kind === "jwt") {
+        // DDP 도련님 샘플 JWT 토큰 생성
+        const header = utf8SafeBase64Encode(JSON.stringify({ alg: "HS256", typ: "JWT" })).replace(/=+$/, "");
+        const payload = utf8SafeBase64Encode(JSON.stringify({
+          sub: "USER_DDP_001",
+          name: "DDP 도련님",
+          role: "CHIEF_ARCHITECT",
+          platform: "You-틸리티 프로",
+          iat: 1795000000,
+          exp: 1826536000
+        })).replace(/=+$/, "");
+        const sampleJwt = `${header}.${payload}.YouTilitySignatureVerification2026`;
+
+        document.getElementById("chefInputTextarea").value = sampleJwt;
+        addOperationToRecipe("jwt_decode");
+        showToast("샘플 JWT 인증 토큰의 내부 정보와 만료일시를 해독했습니다!", "ok");
+      }
+
+      runMagicWandScan(false);
+    }
+
+    // 초기 실행 시 샘플을 로드하지 않고 깨끗한 초기 빈 화면으로 시작
+    window.addEventListener("DOMContentLoaded", () => {
+      renderOperationsPalette();
+      resetChefWorkspace(false);
+    });
+  </script>
+</body>
+</html>

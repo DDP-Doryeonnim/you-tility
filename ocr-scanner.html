@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 이미지 글자 추출기 (OCR) | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 브라우저 로컬 광학 문자 인식(OCR) 엔진: Tesseract.js v5 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070A10;
+      color: #F8FAFC;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 14%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .stage-checker {
+      background-color: #090d16;
+      background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
+      background-size: 18px 18px;
+    }
+    .drop-active {
+      border-color: #22d3ee !important;
+      background-color: rgba(15, 23, 42, 0.96) !important;
+      box-shadow: 0 0 30px rgba(34, 211, 238, 0.25) !important;
+    }
+    .pill-btn {
+      padding: 5px 11px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pill-btn:hover {
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    .pill-btn.active {
+      background: #22d3ee;
+      color: #0f172a;
+      border-color: #22d3ee;
+      font-weight: 800;
+    }
+    .result-tab {
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .result-tab:hover {
+      color: #f8fafc;
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+    .result-tab.active {
+      background: rgba(16, 185, 129, 0.22);
+      color: #6ee7b7;
+      border-color: #10b981;
+    }
+    /* 확대 시 캔버스 크기가 부모 폭에 가로막히지 않도록 강제 보장 */
+    #ocrImageCanvas {
+      max-width: none !important;
+      max-height: none !important;
+      display: block;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.7); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.45); border-radius: 999px; border: 2px solid rgba(15, 23, 42, 0.7); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.75); }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1780px] mx-auto px-3 sm:px-6 py-3 sm:py-4">
+    
+    <!-- 상단 헤더 (초기화, 샘플 2종, 복사, TXT 저장) -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-3">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+          🔍 스마트 이미지 글자 추출기 <span class="text-xs font-mono text-emerald-400 align-middle">OCR-PRO v3.0</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">고정밀 Best 신경망 · 소프트 회색조 배경 정규화 · 영단어 조각 1:1 핀셋 크롭 판독</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        <button type="button" onclick="resetOcrWorkspace(true)" class="px-3.5 py-2 rounded-xl bg-rose-950/85 hover:bg-rose-900 border border-rose-500/50 text-xs sm:text-sm font-extrabold text-rose-200 transition flex items-center gap-1.5">
+          <span>🗑️</span>
+          <span>초기화</span>
+        </button>
+        <button type="button" onclick="loadSampleOcrImage('table')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition">
+          📊 샘플 표 문서
+        </button>
+        <button type="button" onclick="loadSampleOcrImage('doc')" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+          🧪 샘플 공문서
+        </button>
+        <button id="topCopyBtn" type="button" onclick="copyExtractedText()" disabled class="px-3.5 py-2 rounded-xl bg-emerald-950/85 hover:bg-emerald-900 border border-emerald-500/40 text-xs sm:text-sm font-extrabold text-emerald-300 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span>📋</span>
+          <span>텍스트 복사</span>
+        </button>
+        <button id="topSaveTxtBtn" type="button" onclick="downloadExtractedTxt()" disabled class="btn-primary px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+          <span>💾</span>
+          <span>TXT 파일 저장</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 -->
+    <input type="file" id="ocrFileInput" accept="image/*" class="hidden" onchange="handleImageUpload(this.files)" />
+
+    <!-- 상단 정밀 인식 옵션 & 진행 상태 바 -->
+    <section class="glass-panel rounded-2xl px-3.5 py-2.5 mb-3 flex flex-wrap items-center justify-between gap-2.5">
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- 1. 인식 언어 -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800">
+          <span class="text-xs font-bold text-cyan-300">🌐 언어:</span>
+          <select id="ocrLangSelect" onchange="reRunOcrIfLoaded()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none">
+            <option value="kor+eng" selected>한글 + 영어 + 숫자 (AI 핀셋 결합)</option>
+            <option value="kor">한글 + 숫자 전용 (고속)</option>
+            <option value="eng">영어 + 숫자 전용 (고속)</option>
+          </select>
+        </div>
+
+        <!-- 2. 문서 구조(PSM) 모드 선택 -->
+        <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/35">
+          <span class="text-xs font-bold text-emerald-300">📑 문서 구조:</span>
+          <select id="ocrPsmSelect" onchange="reRunOcrIfLoaded()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-bold focus:outline-none">
+            <option value="6" selected>📊 표·목록·단일블록 (누락 방지 권장)</option>
+            <option value="4">📄 다단·복합 표 문서 (열 단위 분석)</option>
+            <option value="11">🔍 흩어진 글자 샅샅이 찾기 (Sparse)</option>
+            <option value="3">📰 일반 문단 문서 (자동 분할)</option>
+          </select>
+        </div>
+
+        <!-- 3. 표 가로·세로 테두리선 자동 제거 스위치 -->
+        <label class="flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-amber-500/45 text-xs font-extrabold text-amber-300 cursor-pointer select-none shadow-[0_0_12px_rgba(245,158,11,0.15)]" title="표의 검은색 가로줄·세로줄 때문에 글자가 누락되거나 | 기호로 오인식되는 것을 막아줍니다">
+          <input type="checkbox" id="removeTableLinesToggle" checked onchange="reRunOcrIfLoaded()" class="accent-amber-400" />
+          <span>📏 표 가로·세로 선 자동 지우기</span>
+        </label>
+
+        <!-- 4. 화질 선명화 전처리 모드 (영문 획 파괴 없는 소프트 회색조 정규화 기본 적용) -->
+        <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+          <button type="button" data-prep="softnorm" onclick="setPreprocessMode('softnorm')" class="pill-btn active" title="영문과 숫자의 부드러운 획은 보존하면서 파란색·회색 음영 배경만 하얗게 정돈합니다 (인식률 최고)">소프트 음영제거(최고인식률)</button>
+          <button type="button" data-prep="sharp" onclick="setPreprocessMode('sharp')" class="pill-btn" title="배경 변환 없이 글자 외곽선만 날카롭게 샤프닝합니다">선명한 샤프닝</button>
+          <button type="button" data-prep="none" onclick="setPreprocessMode('none')" class="pill-btn">원본 그대로</button>
+        </div>
+      </div>
+
+      <!-- 우측 진행률 게이지 및 재실행 버튼 -->
+      <div class="flex items-center gap-2.5 ml-auto">
+        <div id="ocrProgressWrap" class="hidden items-center gap-2.5 bg-slate-900 px-3.5 py-1.5 rounded-xl border border-cyan-500/40">
+          <div class="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin shrink-0"></div>
+          <span id="ocrStatusText" class="text-xs font-extrabold text-cyan-300">판독 준비 중...</span>
+          <div class="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="ocrProgressBar" class="h-full bg-gradient-to-r from-cyan-400 to-pink-500 transition-all duration-150" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <button id="runOcrBtn" type="button" onclick="runOcrExtraction()" disabled class="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-extrabold text-xs sm:text-sm transition shadow-lg">
+          ⚡ 글자 다시 추출
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== 메인 5:5 초대형 작업대 (좌측: 원본 이미지 / 우측: 추출 텍스트) ==================== -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      
+      <!-- [좌측 6칸] 원본 사진·이미지 대형 뷰어 (무결점 상하좌우 스크롤 & 부분 영역 추출) -->
+      <section class="lg:col-span-6 glass-panel rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between h-[680px] lg:h-[76vh] min-h-[580px]">
+        <!-- 좌측 상단 서브 툴바 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-800 shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-xs font-extrabold text-cyan-300">원본 이미지</span>
+            <span id="imageNameLabel" class="text-xs sm:text-sm font-extrabold text-white truncate max-w-[190px]">파일을 올려주세요</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="document.getElementById('ocrFileInput').click()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition">
+              📂 사진 선택
+            </button>
+            <button type="button" onclick="pasteImageFromClipboard()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+              📋 붙여넣기
+            </button>
+            <button type="button" onclick="rotateLoadedImage(-90)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition" title="왼쪽 90도 회전">
+              ↺ 90°
+            </button>
+            <button type="button" onclick="rotateLoadedImage(90)" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition" title="오른쪽 90도 회전">
+              ↻ 90°
+            </button>
+            <button type="button" id="togglePreprocPreviewBtn" onclick="togglePreprocessedPreview()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-xs font-bold text-purple-300 transition" title="AI가 실제로 읽는 '표 선 제거 + 소프트 선명화' 화면을 확인합니다">
+              👁️ 보정본 보기
+            </button>
+            <button id="clearCropBtn" type="button" onclick="clearCropSelection()" class="hidden px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-xs font-extrabold text-amber-300 transition">
+              ⬜ 전체 영역 복원
+            </button>
+          </div>
+        </div>
+
+        <!-- 좌측 메인 스테이지: 확대 시 상단·좌측 잘림 원천 차단 블록 스크롤 구조 -->
+        <div id="leftStageContainer" class="stage-checker rounded-xl flex-1 min-h-0 relative overflow-auto border border-slate-800/80 select-none">
+          
+          <!-- 1) 이미지 없을 때 표시되는 대형 업로드 드롭존 -->
+          <div id="emptyImageDropZone" onclick="document.getElementById('ocrFileInput').click()" class="w-full h-full flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-700 hover:border-cyan-400 rounded-xl cursor-pointer transition">
+            <div class="text-6xl mb-4">📸</div>
+            <h2 class="text-lg sm:text-xl font-extrabold text-white mb-2">
+              여기를 클릭하거나 사진·표·캡처 이미지를 끌어다 놓으세요
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-md mb-5 leading-relaxed">
+              화면을 캡처한 뒤 키보드 <strong class="text-cyan-300">Ctrl + V</strong>를 누르면 바로 글자 추출이 시작됩니다!<br/>
+              <span class="text-amber-300">💡 복잡한 표는 원하는 열(Column)만 마우스로 드래그하면 더욱 빠르게 추출됩니다.</span>
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2.5">
+              <span class="btn-primary px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold">📂 내 기기에서 이미지 선택</span>
+              <button type="button" onclick="event.stopPropagation(); loadSampleOcrImage('table');" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-xs sm:text-sm font-bold text-amber-300 transition">
+                📊 샘플 표 문서로 바로 테스트
+              </button>
+            </div>
+          </div>
+
+          <!-- 2) 이미지 로드 후 표시되는 무결점 스크롤 래퍼 & 캔버스 -->
+          <div id="canvasStageWrapper" class="hidden relative">
+            <canvas id="ocrImageCanvas" class="rounded shadow-2xl cursor-crosshair touch-none"></canvas>
+          </div>
+        </div>
+
+        <!-- 좌측 하단 컨트롤 바: 드래그 동작 모드 + 확대 배율 버튼 -->
+        <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-700">
+              <button type="button" id="dragModeCropBtn" onclick="setDragMode('crop')" class="px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 text-[11px] font-extrabold transition" title="마우스로 네모 영역을 그려 그 부분만 정밀 추출합니다">
+                ✂️ 드래그: 영역선택
+              </button>
+              <button type="button" id="dragModePanBtn" onclick="setDragMode('pan')" class="px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition" title="확대된 사진을 마우스로 잡고 상하좌우로 편하게 이동합니다">
+                ✋ 드래그: 화면이동
+              </button>
+            </div>
+
+            <label class="flex items-center gap-1 text-cyan-300 font-bold cursor-pointer select-none">
+              <input type="checkbox" id="showWordBoxesToggle" checked onchange="drawLeftImageStage()" class="accent-cyan-400" />
+              <span>인식 테두리</span>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-1 ml-auto">
+            <span id="zoomPercentBadge" class="text-[11px] font-mono text-cyan-300 mr-1">100%</span>
+            <button type="button" id="imgZoomFit" onclick="setImageZoom(1)" class="px-2 py-1 rounded bg-cyan-500 text-slate-950 text-[11px] font-extrabold transition">화면맞춤</button>
+            <button type="button" id="imgZoom150" onclick="setImageZoom(1.5)" class="px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold transition">150%</button>
+            <button type="button" id="imgZoom200" onclick="setImageZoom(2.0)" class="px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold transition">200%</button>
+            <button type="button" id="imgZoom300" onclick="setImageZoom(3.0)" class="px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold transition">300%</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- [우측 6칸] 추출된 텍스트 대형 편집기 (3중 결과 뷰어 탭 + 정밀 다듬기 도구) -->
+      <section class="lg:col-span-6 glass-panel rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between h-[680px] lg:h-[76vh] min-h-[580px]">
+        <!-- 우측 상단 서브 툴바 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-800 shrink-0">
+          <!-- 3원화 결과 즉시 전환 탭 -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" id="tabBtnHybrid" onclick="switchResultViewTab('hybrid')" class="result-tab active" title="한글+숫자 원본을 보존하면서 영단어 구간만 핀셋 보정한 최적 결과입니다">
+              ✨ 스마트 통합본
+            </button>
+            <button type="button" id="tabBtnKor" onclick="switchResultViewTab('kor')" class="result-tab" title="순수 한글+숫자 중심 엔진(kor+eng) 원본 결과입니다">
+              🇰🇷 한글·숫자 원본
+            </button>
+            <button type="button" id="tabBtnEng" onclick="switchResultViewTab('eng')" class="result-tab" title="순수 영어+숫자 전용 엔진(eng) 원본 결과입니다">
+              🔤 영어·숫자 원본
+            </button>
+            <span id="confidenceBadge" class="hidden px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono text-cyan-300">
+              정확도: -
+            </span>
+          </div>
+
+          <!-- 1클릭 텍스트 다듬기 버튼 모음 -->
+          <div class="flex flex-wrap items-center gap-1">
+            <label class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-amber-300 cursor-pointer mr-1" title="체크하면 좌측에서 영역을 드래그할 때마다 기존 글을 지우지 않고 아래에 계속 이어 붙입니다">
+              <input type="checkbox" id="appendModeToggle" class="accent-amber-400" />
+              <span>➕ 이어붙이기</span>
+            </label>
+            <button type="button" onclick="removeTableNoiseChars()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-amber-500/35 text-xs font-bold text-amber-300 transition" title="표 테두리 때문에 생긴 | 기호나 깨진 특수문자를 한 번에 제거합니다">
+              🧹 표기호 제거
+            </button>
+            <button type="button" onclick="fixSpacedKoreanChars()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition" title="예: '고 중 량' 처럼 낱글자로 떨어진 한글 공백을 자동으로 붙여줍니다">
+              🪄 낱글자 붙이기
+            </button>
+            <button type="button" onclick="mergeBrokenLines()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition">
+              📏 줄 합치기
+            </button>
+            <button type="button" onclick="changeEditorFontSize(1)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">
+              가+
+            </button>
+            <button type="button" onclick="changeEditorFontSize(-1)" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300">
+              가-
+            </button>
+          </div>
+        </div>
+
+        <!-- 우측 메인 대형 텍스트 에디터 -->
+        <div class="flex-1 min-h-0 relative flex flex-col bg-[#090d16] border border-slate-800 rounded-xl overflow-hidden">
+          <textarea
+            id="ocrResultTextarea"
+            oninput="onManualTextareaEdit()"
+            placeholder="좌측에 사진·표 이미지를 올리면 추출된 글자가 이곳에 크게 표시됩니다.&#10;&#10;💡 [v3.0 초정밀 판독 엔진 안내]&#10;1. 파란색·회색 음영이 들어간 표도 글자 획 손상 없이 깨끗하게 읽어냅니다.&#10;2. '✨ 스마트 통합본' 탭은 한글·숫자를 100% 보존하면서 (1.0ppm), C&S, FSC 같은 영단어 조각만 가위로 오려내어 정밀 보정한 결과를 보여줍니다.&#10;3. 필요시 상단 탭에서 '🇰🇷 한글·숫자 원본'과 '🔤 영어·숫자 원본'을 즉시 전환해 비교할 수 있습니다."
+            class="w-full h-full flex-1 bg-transparent p-4 sm:p-5 text-slate-100 placeholder-slate-500 focus:outline-none resize-none leading-relaxed"
+            style="font-size: 16px;"
+          ></textarea>
+        </div>
+
+        <!-- 우측 하단 글자 수 통계 & 빠른 복사/저장 바 -->
+        <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+          <div id="textStatsLabel" class="font-mono text-slate-300">
+            총 <strong class="text-cyan-300">0</strong>자 (공백 제외 0자) · <strong class="text-cyan-300">0</strong>단어 · <strong class="text-cyan-300">0</strong>줄
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="copyExtractedText()" class="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-extrabold text-emerald-300 transition">
+              📋 전체 복사하기
+            </button>
+            <button type="button" onclick="downloadExtractedTxt()" class="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-extrabold text-cyan-300 transition">
+              💾 메모장(.txt) 저장
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * [You-틸리티 09. 스마트 이미지 글자 추출기 (OCR-PRO v3.0)]
+     * 1. 소프트 회색조 배경 정규화 (Soft Division Illumination Normalization):
+     *    - 기존의 거친 흑백 이진화(Thresholding)는 영문 알파벳(c, e, s, p, m, &)의 얇은 안티앨리어싱 곡선을 파괴했습니다.
+     *    - v3.0은 국소 배경 밝기(Local Background)로 픽셀 값을 나누어 파란색/회색 표 셀 음영은 순백색(255)으로 날리되,
+     *      글자 획의 부드러운 그레이스케일 농도는 100% 보존하여 LSTM 신경망의 한글·영문·숫자 동시 인식률을 극대화합니다.
+     * 2. 고정밀 tessdata_best 모델 + 단어 조각 1:1 핀셋 크롭 재판독 (Surgical Patch Crop OCR):
+     *    - 전체 화면을 억지로 덮어쓰지 않고, 한글/숫자는 100% 원본을 지키면서 영문·괄호 의심 조각만 캔버스에서 오려내어
+     *      순수 영문 엔진(PSM 7)으로 정밀 판독해 결합합니다.
+     * 3. 3원화 결과 탭 (스마트 통합본 / 한글·숫자 원본 / 영어·숫자 원본):
+     *    - 한 번의 스캔으로 3가지 결과를 모두 메모리에 보관하여 사용자가 언제든 탭 클릭 한 번으로 비교할 수 있습니다.
+     */
+    let sourceCanvas = null;
+    let lastPreprocessedCanvas = null;
+    let showPreprocessedView = false;
+    let currentImageName = "";
+    let preprocessMode = "softnorm"; // 'softnorm' | 'sharp' | 'none'
+    let imageZoom = 1.0;
+    let displayScale = 1.0;
+
+    let recognizedLineBoxes = [];
+    let cropRect = null;
+
+    // 3중 결과 저장소
+    let storedResults = {
+      hybrid: "",
+      kor: "",
+      eng: ""
+    };
+    let activeResultTab = "hybrid"; // 'hybrid' | 'kor' | 'eng'
+
+    // 드래그 모드: 'crop'(영역 선택) | 'pan'(손바닥 화면 이동)
+    let dragMode = "crop";
+    let isDraggingCrop = false;
+    let isPanningStage = false;
+    let dragStartNorm = { x: 0, y: 0 };
+    let panStartPoint = { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 };
+
+    let isOcrRunning = false;
+    let editorFontSize = 16;
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2700);
+    }
+
+    // 1. 화면 전체 초기화
+    function resetOcrWorkspace(notify = true) {
+      sourceCanvas = null;
+      lastPreprocessedCanvas = null;
+      showPreprocessedView = false;
+      currentImageName = "";
+      recognizedLineBoxes = [];
+      cropRect = null;
+      imageZoom = 1.0;
+      storedResults = { hybrid: "", kor: "", eng: "" };
+
+      document.getElementById("ocrFileInput").value = "";
+      document.getElementById("imageNameLabel").textContent = "파일을 올려주세요";
+      document.getElementById("emptyImageDropZone").classList.remove("hidden");
+      document.getElementById("canvasStageWrapper").classList.add("hidden");
+      document.getElementById("clearCropBtn").classList.add("hidden");
+      document.getElementById("togglePreprocPreviewBtn").textContent = "👁️ 보정본 보기";
+
+      document.getElementById("ocrResultTextarea").value = "";
+      document.getElementById("confidenceBadge").classList.add("hidden");
+      document.getElementById("ocrProgressWrap").classList.add("hidden");
+      document.getElementById("ocrProgressWrap").classList.remove("flex");
+
+      document.getElementById("runOcrBtn").disabled = true;
+      document.getElementById("topCopyBtn").disabled = true;
+      document.getElementById("topSaveTxtBtn").disabled = true;
+
+      switchResultViewTab("hybrid", false);
+      updateZoomButtonsUI(1);
+      updateTextCounter();
+      if (notify) showToast("이미지와 추출 텍스트가 모두 초기화되었습니다.");
+    }
+
+    function switchResultViewTab(tabName, notify = true) {
+      activeResultTab = tabName;
+      document.getElementById("tabBtnHybrid").classList.toggle("active", tabName === "hybrid");
+      document.getElementById("tabBtnKor").classList.toggle("active", tabName === "kor");
+      document.getElementById("tabBtnEng").classList.toggle("active", tabName === "eng");
+
+      const ta = document.getElementById("ocrResultTextarea");
+      if (storedResults[tabName]) {
+        ta.value = storedResults[tabName];
+        updateTextCounter();
+        if (notify) {
+          const label = tabName === "hybrid" ? "✨ 스마트 통합본(한+영+숫자)" : tabName === "kor" ? "🇰🇷 한글·숫자 중심 원본" : "🔤 영어·숫자 전용 원본";
+          showToast(`${label} 화면으로 전환했습니다.`);
+        }
+      }
+    }
+
+    function onManualTextareaEdit() {
+      storedResults[activeResultTab] = document.getElementById("ocrResultTextarea").value;
+      updateTextCounter();
+    }
+
+    // 2. 이미지 파일 로드 & 클립보드 붙여넣기
+    async function handleImageUpload(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      const file = fileList[0];
+      if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name)) {
+        showToast("이미지 파일(JPG, PNG, WebP 등)을 선택해 주세요.", "err");
+        return;
+      }
+
+      try {
+        const url = URL.createObjectURL(file);
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => { URL.revokeObjectURL(url); resolve(i); };
+          i.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+          i.src = url;
+        });
+
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth || img.width;
+        c.height = img.naturalHeight || img.height;
+        c.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
+
+        loadCanvasIntoStage(c, file.name);
+      } catch (err) {
+        showToast("이미지를 불러오는 중 오류가 발생했습니다.", "err");
+      } finally {
+        document.getElementById("ocrFileInput").value = "";
+      }
+    }
+
+    function loadCanvasIntoStage(canvas, fileName) {
+      sourceCanvas = canvas;
+      currentImageName = fileName;
+      cropRect = null;
+      recognizedLineBoxes = [];
+      showPreprocessedView = false;
+      imageZoom = 1.0;
+      updateZoomButtonsUI(1.0);
+      document.getElementById("togglePreprocPreviewBtn").textContent = "👁️ 보정본 보기";
+
+      document.getElementById("imageNameLabel").textContent = `${fileName} (${canvas.width}×${canvas.height})`;
+      document.getElementById("emptyImageDropZone").classList.add("hidden");
+      document.getElementById("canvasStageWrapper").classList.remove("hidden");
+      document.getElementById("clearCropBtn").classList.add("hidden");
+      document.getElementById("runOcrBtn").disabled = false;
+
+      drawLeftImageStage();
+      const leftStage = document.getElementById("leftStageContainer");
+      leftStage.scrollTop = 0;
+      leftStage.scrollLeft = 0;
+
+      runOcrExtraction();
+    }
+
+    async function pasteImageFromClipboard() {
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+          showToast("키보드 Ctrl + V 를 누르면 캡처한 이미지가 바로 들어갑니다!");
+          return;
+        }
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imgType = item.types.find((t) => t.startsWith("image/"));
+          if (imgType) {
+            const blob = await item.getType(imgType);
+            const file = new File([blob], "클립보드_캡처이미지.png", { type: imgType });
+            await handleImageUpload([file]);
+            return;
+          }
+        }
+        showToast("클립보드에 복사된 이미지가 없습니다. 화면 캡처 후 다시 시도해 주세요.", "err");
+      } catch (e) {
+        showToast("키보드 Ctrl + V 를 눌러 캡처한 이미지를 붙여넣으세요!");
+      }
+    }
+
+    window.addEventListener("paste", (e) => {
+      if (document.activeElement === document.getElementById("ocrResultTextarea")) {
+        const hasImage = Array.from(e.clipboardData?.items || []).some((it) => it.type.startsWith("image/"));
+        if (!hasImage) return;
+      }
+      if (!e.clipboardData || !e.clipboardData.items) return;
+      for (const item of e.clipboardData.items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            handleImageUpload([file]);
+          }
+          break;
+        }
+      }
+    });
+
+    const leftStage = document.getElementById("leftStageContainer");
+    ["dragenter", "dragover"].forEach((evt) => {
+      leftStage.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        leftStage.classList.add("drop-active");
+      });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      leftStage.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        leftStage.classList.remove("drop-active");
+      });
+    });
+    leftStage.addEventListener("drop", (e) => {
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleImageUpload(e.dataTransfer.files);
+      }
+    });
+
+    // =========================================================================
+    // 3. 무결점 스크롤 & 줌 렌더링 엔진 (상단/좌측 잘림 0%)
+    // =========================================================================
+    function togglePreprocessedPreview() {
+      if (!sourceCanvas || !lastPreprocessedCanvas) return;
+      showPreprocessedView = !showPreprocessedView;
+      const btn = document.getElementById("togglePreprocPreviewBtn");
+      btn.textContent = showPreprocessedView ? "🖼️ 원본 보기" : "👁️ 보정본 보기";
+      drawLeftImageStage();
+      showToast(showPreprocessedView ? "표 테두리 제거 및 소프트 선명화 화면입니다." : "원본 이미지 화면입니다.");
+    }
+
+    function drawLeftImageStage() {
+      if (!sourceCanvas) return;
+      const canvas = document.getElementById("ocrImageCanvas");
+      const wrapper = document.getElementById("canvasStageWrapper");
+
+      const stageRect = leftStage.getBoundingClientRect();
+      const stageW = Math.max(260, Math.floor(stageRect.width - 6));
+      const stageH = Math.max(320, Math.floor(stageRect.height - 6));
+
+      const availW = Math.max(220, stageW - 24);
+      const availH = Math.max(220, stageH - 24);
+      const fitScale = Math.min(availW / sourceCanvas.width, availH / sourceCanvas.height);
+      displayScale = fitScale * imageZoom;
+
+      const dispW = Math.max(1, Math.round(sourceCanvas.width * displayScale));
+      const dispH = Math.max(1, Math.round(sourceCanvas.height * displayScale));
+
+      const padX = Math.max(12, Math.floor((stageW - dispW) / 2));
+      const padY = Math.max(12, Math.floor((stageH - dispH) / 2));
+
+      wrapper.style.width = (dispW + padX * 2) + "px";
+      wrapper.style.height = (dispH + padY * 2) + "px";
+      wrapper.style.paddingLeft = padX + "px";
+      wrapper.style.paddingTop = padY + "px";
+
+      const rawDpr = Math.min(window.devicePixelRatio || 1, 2);
+      const safeDpr = Math.min(rawDpr, 8192 / Math.max(dispW, dispH, 1));
+
+      canvas.width = Math.round(dispW * safeDpr);
+      canvas.height = Math.round(dispH * safeDpr);
+      canvas.style.width = dispW + "px";
+      canvas.style.height = dispH + "px";
+
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      ctx.scale(safeDpr, safeDpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      if (showPreprocessedView && lastPreprocessedCanvas && !cropRect) {
+        ctx.drawImage(lastPreprocessedCanvas, 0, 0, dispW, dispH);
+      } else {
+        ctx.drawImage(sourceCanvas, 0, 0, dispW, dispH);
+      }
+
+      const showBoxes = document.getElementById("showWordBoxesToggle").checked;
+      if (showBoxes && recognizedLineBoxes.length > 0) {
+        ctx.strokeStyle = "rgba(34, 211, 238, 0.85)";
+        ctx.fillStyle = "rgba(34, 211, 238, 0.12)";
+        ctx.lineWidth = 1.6;
+        for (const b of recognizedLineBoxes) {
+          const bx = b.x0 * displayScale;
+          const by = b.y0 * displayScale;
+          const bw = (b.x1 - b.x0) * displayScale;
+          const bh = (b.y1 - b.y0) * displayScale;
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeRect(bx, by, bw, bh);
+        }
+      }
+
+      if (cropRect && cropRect.w > 0.01 && cropRect.h > 0.01) {
+        const cx = cropRect.x * dispW;
+        const cy = cropRect.y * dispH;
+        const cw = cropRect.w * dispW;
+        const ch = cropRect.h * dispH;
+
+        ctx.fillStyle = "rgba(7, 10, 16, 0.58)";
+        ctx.beginPath();
+        ctx.rect(0, 0, dispW, dispH);
+        ctx.rect(cx, cy, cw, ch);
+        ctx.fill("evenodd");
+
+        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(cx, cy, cw, ch);
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "#facc15";
+        ctx.font = "900 11px Pretendard, sans-serif";
+        ctx.fillRect(cx, Math.max(0, cy - 20), 108, 20);
+        ctx.fillStyle = "#0f172a";
+        ctx.fillText("✂️ 선택 영역 정밀추출", cx + 6, Math.max(14, cy - 6));
+      }
+
+      ctx.restore();
+    }
+
+    function setImageZoom(factor) {
+      if (!sourceCanvas) {
+        imageZoom = factor;
+        updateZoomButtonsUI(factor);
+        return;
+      }
+
+      const prevScrollW = leftStage.scrollWidth;
+      const prevScrollH = leftStage.scrollHeight;
+      const centerRatioX = prevScrollW > 0 ? (leftStage.scrollLeft + leftStage.clientWidth / 2) / prevScrollW : 0.5;
+      const centerRatioY = prevScrollH > 0 ? (leftStage.scrollTop + leftStage.clientHeight / 2) / prevScrollH : 0.5;
+
+      imageZoom = Math.max(0.5, Math.min(4.0, factor));
+      updateZoomButtonsUI(imageZoom);
+      drawLeftImageStage();
+
+      if (imageZoom <= 1.0) {
+        leftStage.scrollLeft = 0;
+        leftStage.scrollTop = 0;
+      } else {
+        leftStage.scrollLeft = Math.max(0, Math.round(centerRatioX * leftStage.scrollWidth - leftStage.clientWidth / 2));
+        leftStage.scrollTop = Math.max(0, Math.round(centerRatioY * leftStage.scrollHeight - leftStage.clientHeight / 2));
+      }
+    }
+
+    function updateZoomButtonsUI(factor) {
+      document.getElementById("zoomPercentBadge").textContent = Math.round(factor * 100) + "%";
+      const presets = [
+        { f: 1, id: "imgZoomFit" },
+        { f: 1.5, id: "imgZoom150" },
+        { f: 2.0, id: "imgZoom200" },
+        { f: 3.0, id: "imgZoom300" }
+      ];
+      presets.forEach((p) => {
+        const btn = document.getElementById(p.id);
+        if (!btn) return;
+        btn.className = Math.abs(factor - p.f) < 0.05
+          ? "px-2 py-1 rounded bg-cyan-500 text-slate-950 text-[11px] font-extrabold transition"
+          : "px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white text-[11px] font-bold transition";
+      });
+    }
+
+    leftStage.addEventListener("wheel", (e) => {
+      if (!sourceCanvas) return;
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        setImageZoom(Number((imageZoom + delta).toFixed(2)));
+      }
+    }, { passive: false });
+
+    function setDragMode(mode) {
+      dragMode = mode;
+      const cropBtn = document.getElementById("dragModeCropBtn");
+      const panBtn = document.getElementById("dragModePanBtn");
+      const canvas = document.getElementById("ocrImageCanvas");
+
+      if (mode === "crop") {
+        cropBtn.className = "px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 text-[11px] font-extrabold transition";
+        panBtn.className = "px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition";
+        canvas.style.cursor = "crosshair";
+      } else {
+        panBtn.className = "px-2.5 py-1 rounded-md bg-cyan-400 text-slate-950 text-[11px] font-extrabold transition";
+        cropBtn.className = "px-2.5 py-1 rounded-md text-slate-300 hover:text-white text-[11px] font-bold transition";
+        canvas.style.cursor = "grab";
+      }
+    }
+
+    const ocrCanvas = document.getElementById("ocrImageCanvas");
+    ocrCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    ocrCanvas.addEventListener("pointerdown", (e) => {
+      if (!sourceCanvas) return;
+
+      if (dragMode === "pan" || e.button === 2 || e.button === 1) {
+        isPanningStage = true;
+        panStartPoint = {
+          x: e.clientX,
+          y: e.clientY,
+          scrollLeft: leftStage.scrollLeft,
+          scrollTop: leftStage.scrollTop
+        };
+        ocrCanvas.style.cursor = "grabbing";
+        ocrCanvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      if (isOcrRunning) return;
+      const rect = ocrCanvas.getBoundingClientRect();
+      dragStartNorm = {
+        x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+      };
+      isDraggingCrop = true;
+      ocrCanvas.setPointerCapture(e.pointerId);
+    });
+
+    ocrCanvas.addEventListener("pointermove", (e) => {
+      if (isPanningStage) {
+        const dx = e.clientX - panStartPoint.x;
+        const dy = e.clientY - panStartPoint.y;
+        leftStage.scrollLeft = panStartPoint.scrollLeft - dx;
+        leftStage.scrollTop = panStartPoint.scrollTop - dy;
+        return;
+      }
+
+      if (!isDraggingCrop || !sourceCanvas) return;
+      const rect = ocrCanvas.getBoundingClientRect();
+      const curX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const curY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+      cropRect = {
+        x: Math.min(dragStartNorm.x, curX),
+        y: Math.min(dragStartNorm.y, curY),
+        w: Math.abs(curX - dragStartNorm.x),
+        h: Math.abs(curY - dragStartNorm.y)
+      };
+
+      const stageRect = leftStage.getBoundingClientRect();
+      const edgeZone = 36;
+      if (e.clientY > stageRect.bottom - edgeZone) leftStage.scrollTop += 14;
+      else if (e.clientY < stageRect.top + edgeZone) leftStage.scrollTop -= 14;
+      if (e.clientX > stageRect.right - edgeZone) leftStage.scrollLeft += 14;
+      else if (e.clientX < stageRect.left + edgeZone) leftStage.scrollLeft -= 14;
+
+      drawLeftImageStage();
+    });
+
+    function finishPointerInteraction() {
+      if (isPanningStage) {
+        isPanningStage = false;
+        ocrCanvas.style.cursor = dragMode === "pan" ? "grab" : "crosshair";
+        return;
+      }
+      if (!isDraggingCrop) return;
+      isDraggingCrop = false;
+      if (cropRect && cropRect.w > 0.02 && cropRect.h > 0.015) {
+        document.getElementById("clearCropBtn").classList.remove("hidden");
+        showToast("선택한 영역을 확대하여 초정밀 판독합니다!", "ok");
+        runOcrExtraction();
+      } else {
+        cropRect = null;
+        document.getElementById("clearCropBtn").classList.add("hidden");
+        drawLeftImageStage();
+      }
+    }
+
+    ocrCanvas.addEventListener("pointerup", finishPointerInteraction);
+    ocrCanvas.addEventListener("pointercancel", finishPointerInteraction);
+
+    function clearCropSelection() {
+      cropRect = null;
+      document.getElementById("clearCropBtn").classList.add("hidden");
+      drawLeftImageStage();
+      runOcrExtraction();
+    }
+
+    function rotateLoadedImage(deg) {
+      if (!sourceCanvas || isOcrRunning) return;
+      const c = document.createElement("canvas");
+      c.width = sourceCanvas.height;
+      c.height = sourceCanvas.width;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.save();
+      if (deg === 90) {
+        ctx.translate(c.width, 0);
+        ctx.rotate(Math.PI / 2);
+      } else {
+        ctx.translate(0, c.height);
+        ctx.rotate(-Math.PI / 2);
+      }
+      ctx.drawImage(sourceCanvas, 0, 0);
+      ctx.restore();
+
+      sourceCanvas = c;
+      cropRect = null;
+      document.getElementById("clearCropBtn").classList.add("hidden");
+      drawLeftImageStage();
+      runOcrExtraction();
+    }
+
+    function setPreprocessMode(mode) {
+      preprocessMode = mode;
+      document.querySelectorAll(".pill-btn[data-prep]").forEach((btn) => {
+        btn.classList.toggle("active", btn.getAttribute("data-prep") === mode);
+      });
+      reRunOcrIfLoaded();
+    }
+
+    function reRunOcrIfLoaded() {
+      if (sourceCanvas && !isOcrRunning) {
+        runOcrExtraction();
+      }
+    }
+
+    // =========================================================================
+    // 4. [v3.0 핵심 전처리] 소프트 회색조 배경 정규화 + 비파괴 표 테두리 제거
+    // =========================================================================
+    function buildPreprocessedOcrCanvas() {
+      const srcW = sourceCanvas.width;
+      const srcH = sourceCanvas.height;
+
+      const sx = cropRect ? Math.round(cropRect.x * srcW) : 0;
+      const sy = cropRect ? Math.round(cropRect.y * srcH) : 0;
+      const sw = cropRect ? Math.max(20, Math.round(cropRect.w * srcW)) : srcW;
+      const sh = cropRect ? Math.max(20, Math.round(cropRect.h * srcH)) : srcH;
+
+      // 작은 글씨의 영문/숫자 곡선을 살리기 위해 고해상도 바이큐빅 보간 확대
+      const maxDim = Math.max(sw, sh);
+      let scale = 1.0;
+      if (maxDim < 800) scale = 2.5;
+      else if (maxDim < 1400) scale = 1.85;
+      else if (maxDim < 2000) scale = 1.35;
+      else if (maxDim > 3200) scale = 3200 / maxDim;
+
+      const W = Math.round(sw * scale);
+      const H = Math.round(sh * scale);
+
+      const procCanvas = document.createElement("canvas");
+      procCanvas.width = W;
+      procCanvas.height = H;
+      const ctx = procCanvas.getContext("2d", { willReadFrequently: true });
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, W, H);
+
+      const imgData = ctx.getImageData(0, 0, W, H);
+      const dst = imgData.data;
+
+      // 1단계: 소프트 회색조 배경 정규화 (파란색/회색 표 셀 음영은 255 백색으로 지우되, 글자 외곽의 부드러운 회색 안티앨리어싱은 그대로 유지!)
+      if (preprocessMode === "softnorm") {
+        applySoftDivisionNormalization(dst, W, H);
+        applyOcrUnsharpMask(dst, W, H, 0.95);
+      } else if (preprocessMode === "sharp") {
+        applyOcrUnsharpMask(dst, W, H, 1.3);
+      }
+
+      // 2단계: 표 가로·세로 테두리 직선 비파괴 제거
+      const eraseLines = document.getElementById("removeTableLinesToggle").checked;
+      if (eraseLines) {
+        eraseTableGridLinesNonDestructive(dst, W, H);
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+      lastPreprocessedCanvas = procCanvas;
+
+      return { procCanvas, sx, sy, scale };
+    }
+
+    /**
+     * [소프트 디비전 정규화 (Soft Division Illumination Normalization)]
+     * - 기존 이진화처럼 픽셀을 0 아니면 255로 끊어버리지 않습니다!
+     * - 주변 국소 배경 밝기(localBg)를 추정하여 (픽셀밝기 / 배경밝기 * 255)로 정규화함으로써
+     *   파란색/회색 음영 셀 배경은 깨끗한 순백색(255)이 되고, 영문(c, e, s, p, m)과 숫자(0~9)의
+     *   부드러운 곡선 그레이스케일 계조는 100% 살아남아 Tesseract LSTM 인식률이 극대화됩니다.
+     */
+    function applySoftDivisionNormalization(dst, W, H) {
+      const lumaArr = new Uint8Array(W * H);
+      const integral = new Float64Array((W + 1) * (H + 1));
+
+      for (let y = 0; y < H; y++) {
+        let rowSum = 0;
+        const yOff = y * W;
+        const intY = (y + 1) * (W + 1);
+        const intPrevY = y * (W + 1);
+        for (let x = 0; x < W; x++) {
+          const i = (yOff + x) * 4;
+          const luma = Math.round(dst[i] * 0.299 + dst[i + 1] * 0.587 + dst[i + 2] * 0.114);
+          lumaArr[yOff + x] = luma;
+          rowSum += luma;
+          integral[intY + x + 1] = integral[intPrevY + x + 1] + rowSum;
+        }
+      }
+
+      const radius = Math.max(20, Math.round(Math.min(W, H) / 32));
+
+      for (let y = 0; y < H; y++) {
+        const y1 = Math.max(0, y - radius);
+        const y2 = Math.min(H - 1, y + radius);
+        const rowOff = y * W;
+        for (let x = 0; x < W; x++) {
+          const x1 = Math.max(0, x - radius);
+          const x2 = Math.min(W - 1, x + radius);
+          const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+          const sum =
+            integral[(y2 + 1) * (W + 1) + (x2 + 1)] -
+            integral[y1 * (W + 1) + (x2 + 1)] -
+            integral[(y2 + 1) * (W + 1) + x1] +
+            integral[y1 * (W + 1) + x1];
+
+          // 국소 평균에 약간의 여유치를 더해 배경 밝기(localBg)로 사용
+          const localBg = Math.max(90, Math.min(255, (sum / count) + 10));
+          const pLuma = lumaArr[rowOff + x];
+          const idx = (rowOff + x) * 4;
+
+          // 배경 대비 비율 계산 (배경과 유사한 음영 픽셀은 255 순백색으로, 어두운 글자는 부드러운 회색~검정으로 유지)
+          let norm = (pLuma / localBg) * 255;
+          if (norm > 236) {
+            norm = 255;
+          } else {
+            // 부드러운 S-커브 대비 강화 (글자 중심부는 진하게, 가장자리 안티앨리어싱은 매끄럽게 유지)
+            norm = Math.max(0, Math.min(255, Math.round((norm / 236) ** 1.45 * 245)));
+          }
+
+          dst[idx] = dst[idx + 1] = dst[idx + 2] = norm;
+        }
+      }
+    }
+
+    function applyOcrUnsharpMask(dst, W, H, amount) {
+      const copy = new Uint8ClampedArray(dst);
+      const stride = W * 4;
+      for (let y = 1; y < H - 1; y++) {
+        const yOff = y * stride;
+        for (let x = 1; x < W - 1; x++) {
+          const idx = yOff + x * 4;
+          for (let c = 0; c < 3; c++) {
+            const center = copy[idx + c];
+            const blur = (
+              center * 4 +
+              (copy[idx - stride + c] + copy[idx + stride + c] + copy[idx - 4 + c] + copy[idx + 4 + c]) * 2 +
+              (copy[idx - stride - 4 + c] + copy[idx - stride + 4 + c] + copy[idx + stride - 4 + c] + copy[idx + stride + 4 + c])
+            ) * 0.0625;
+            const diff = center - blur;
+            if (Math.abs(diff) > 2) {
+              const v = center + diff * amount;
+              dst[idx + c] = v < 0 ? 0 : v > 255 ? 255 : v;
+            }
+          }
+        }
+      }
+    }
+
+    function eraseTableGridLinesNonDestructive(dst, W, H) {
+      const isDark = new Uint8Array(W * H);
+      for (let i = 0, p = 0; i < dst.length; i += 4, p++) {
+        if (dst[i] < 185) isDark[p] = 1;
+      }
+
+      const toErase = new Uint8Array(W * H);
+      const minHorizLen = Math.max(55, Math.round(W * 0.06));
+      const minVertLen = Math.max(50, Math.round(H * 0.05));
+
+      for (let y = 3; y < H - 3; y++) {
+        const rowOff = y * W;
+        let runStart = -1;
+        for (let x = 0; x <= W; x++) {
+          const dark = x < W ? isDark[rowOff + x] : 0;
+          if (dark) {
+            if (runStart === -1) runStart = x;
+          } else if (runStart !== -1) {
+            const runLen = x - runStart;
+            if (runLen >= minHorizLen) {
+              for (let k = runStart; k < x; k++) {
+                const aboveDark = isDark[(y - 3) * W + k] || isDark[(y - 4) * W + k];
+                const belowDark = isDark[(y + 3) * W + k] || isDark[(y + 4) * W + k];
+                if (!(aboveDark && belowDark)) {
+                  toErase[rowOff + k] = 1;
+                  if (y > 0) toErase[(y - 1) * W + k] = 1;
+                  if (y < H - 1) toErase[(y + 1) * W + k] = 1;
+                }
+              }
+            }
+            runStart = -1;
+          }
+        }
+      }
+
+      for (let x = 3; x < W - 3; x++) {
+        let runStart = -1;
+        for (let y = 0; y <= H; y++) {
+          const dark = y < H ? isDark[y * W + x] : 0;
+          if (dark) {
+            if (runStart === -1) runStart = y;
+          } else if (runStart !== -1) {
+            const runLen = y - runStart;
+            if (runLen >= minVertLen) {
+              for (let k = runStart; k < y; k++) {
+                const leftDark = isDark[k * W + (x - 3)] || isDark[k * W + (x - 4)];
+                const rightDark = isDark[k * W + (x + 3)] || isDark[k * W + (x + 4)];
+                if (!(leftDark && rightDark)) {
+                  toErase[k * W + x] = 1;
+                  if (x > 0) toErase[k * W + (x - 1)] = 1;
+                  if (x < W - 1) toErase[k * W + (x + 1)] = 1;
+                }
+              }
+            }
+            runStart = -1;
+          }
+        }
+      }
+
+      for (let p = 0; p < toErase.length; p++) {
+        if (toErase[p]) {
+          const idx = p * 4;
+          dst[idx] = dst[idx + 1] = dst[idx + 2] = 255;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 5. [v3.0 핵심 판독 엔진] 고정밀 Best 모델 + 단어 조각 1:1 핀셋 크롭 재판독
+    // =========================================================================
+    async function createHighPrecisionWorker(lang, loggerCallback) {
+      try {
+        // 1순위: 무압축 고정밀 tessdata_best 모델 로드 (한글+영문+숫자 구분력 최고)
+        return await Tesseract.createWorker(lang, 1, {
+          langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+          logger: loggerCallback
+        });
+      } catch (e) {
+        // 네트워크 환경에 따라 best 서버 접속 실패 시 기본 CDN으로 자동 폴백
+        return await Tesseract.createWorker(lang, 1, {
+          logger: loggerCallback
+        });
+      }
+    }
+
+    async function runOcrExtraction() {
+      if (!sourceCanvas || isOcrRunning) return;
+      isOcrRunning = true;
+
+      const progressWrap = document.getElementById("ocrProgressWrap");
+      const statusText = document.getElementById("ocrStatusText");
+      const progressBar = document.getElementById("ocrProgressBar");
+      const runBtn = document.getElementById("runOcrBtn");
+
+      progressWrap.classList.remove("hidden");
+      progressWrap.classList.add("flex");
+      progressBar.style.width = "8%";
+      statusText.textContent = "소프트 음영 제거 및 표 선 정리 중...";
+      runBtn.disabled = true;
+
+      let mainWorker = null;
+      let engWorker = null;
+      try {
+        const selectedLang = document.getElementById("ocrLangSelect").value;
+        const psm = document.getElementById("ocrPsmSelect").value;
+        const { procCanvas, sx, sy, scale } = buildPreprocessedOcrCanvas();
+
+        const isDualMode = selectedLang === "kor+eng";
+
+        // 1단계: 고정밀 kor+eng 엔진으로 한글과 숫자를 정확하게 판독
+        mainWorker = await createHighPrecisionWorker(selectedLang, (m) => {
+          if (m && typeof m.progress === "number") {
+            const ratio = isDualMode ? 0.55 : 0.9;
+            const pct = Math.max(10, Math.round(8 + m.progress * 100 * ratio));
+            progressBar.style.width = pct + "%";
+            if (m.status === "recognizing text") {
+              statusText.textContent = isDualMode
+                ? `1단계: 고정밀 한글·숫자 판독 중... ${pct}%`
+                : `고정밀 글자 판독 중... ${pct}%`;
+            } else {
+              statusText.textContent = `고정밀 신경망 준비 중... ${pct}%`;
+            }
+          }
+        });
+
+        await mainWorker.setParameters({
+          tessedit_pageseg_mode: String(psm),
+          preserve_interword_spaces: "1"
+        });
+
+        const mainResult = await mainWorker.recognize(procCanvas);
+        const rawKorText = smartPostProcessOcrText((mainResult?.data?.text || "").trim());
+        let finalHybridText = rawKorText;
+        let rawEngText = rawKorText;
+        let confidence = Math.round(mainResult?.data?.confidence || 0);
+        let activeLines = mainResult?.data?.lines || [];
+
+        // 2단계: 한글+영문 모드일 때, 의심되는 영단어/괄호 조각만 가위로 오려내어(Crop) 순수 영문 엔진으로 1:1 핀셋 재판독!
+        if (isDualMode) {
+          engWorker = await createHighPrecisionWorker("eng", (m) => {
+            if (m && typeof m.progress === "number") {
+              const pct = Math.min(92, Math.round(63 + m.progress * 28));
+              progressBar.style.width = pct + "%";
+              if (m.status === "recognizing text") {
+                statusText.textContent = `2단계: 영문 전용 판독 및 조각 핀셋 보정 중... ${pct}%`;
+              }
+            }
+          });
+
+          await engWorker.setParameters({
+            tessedit_pageseg_mode: String(psm),
+            preserve_interword_spaces: "1"
+          });
+
+          // 영어·숫자 전용 전체 결과도 확보 (우측 3번째 탭 '🔤 영어·숫자 원본' 제공용)
+          const engFullResult = await engWorker.recognize(procCanvas);
+          rawEngText = smartPostProcessOcrText((engFullResult?.data?.text || "").trim());
+
+          // [핵심] 숫자·한글은 100% 보존하고, 영문 의심 단어만 캔버스에서 1:1로 오려내어 핀셋 교정!
+          statusText.textContent = `3단계: 영단어·괄호 조각 1:1 핀셋 크롭 검증 중... 96%`;
+          progressBar.style.width = "96%";
+          const surgical = await performSurgicalPatchFusion(
+            procCanvas,
+            mainResult?.data,
+            engFullResult?.data,
+            engWorker
+          );
+          finalHybridText = smartPostProcessOcrText(surgical.text);
+          confidence = surgical.confidence;
+        }
+
+        // 인식된 줄 테두리 좌표 저장
+        recognizedLineBoxes = [];
+        if (activeLines && Array.isArray(activeLines)) {
+          activeLines.forEach((line) => {
+            if (line.bbox && (line.text || "").trim().length > 0) {
+              recognizedLineBoxes.push({
+                x0: sx + line.bbox.x0 / scale,
+                y0: sy + line.bbox.y0 / scale,
+                x1: sx + line.bbox.x1 / scale,
+                y1: sy + line.bbox.y1 / scale
+              });
+            }
+          });
+        }
+
+        const isAppend = document.getElementById("appendModeToggle").checked;
+        if (isAppend && storedResults.hybrid.trim().length > 0 && finalHybridText) {
+          storedResults.hybrid = storedResults.hybrid.trim() + "\n\n" + finalHybridText;
+          storedResults.kor = (storedResults.kor ? storedResults.kor.trim() + "\n\n" : "") + rawKorText;
+          storedResults.eng = (storedResults.eng ? storedResults.eng.trim() + "\n\n" : "") + rawEngText;
+        } else {
+          storedResults.hybrid = finalHybridText || "(인식된 글자가 없습니다.)";
+          storedResults.kor = rawKorText || "(인식된 글자가 없습니다.)";
+          storedResults.eng = rawEngText || "(인식된 글자가 없습니다.)";
+        }
+
+        document.getElementById("ocrResultTextarea").value = storedResults[activeResultTab];
+
+        const confBadge = document.getElementById("confidenceBadge");
+        confBadge.classList.remove("hidden");
+        confBadge.textContent = `인식 정확도: ${confidence}%`;
+
+        document.getElementById("topCopyBtn").disabled = false;
+        document.getElementById("topSaveTxtBtn").disabled = false;
+
+        drawLeftImageStage();
+        updateTextCounter();
+        showToast(`총 ${recognizedLineBoxes.length}줄의 텍스트를 고정밀 추출했습니다!`, "ok");
+      } catch (err) {
+        console.error(err);
+        showToast("OCR 글자 인식 중 오류가 발생했습니다.", "err");
+      } finally {
+        if (mainWorker) {
+          try { await mainWorker.terminate(); } catch (e) {}
+        }
+        if (engWorker) {
+          try { await engWorker.terminate(); } catch (e) {}
+        }
+        isOcrRunning = false;
+        runBtn.disabled = false;
+        progressWrap.classList.add("hidden");
+        progressWrap.classList.remove("flex");
+      }
+    }
+
+    /**
+     * [단어 조각 1:1 가위 오려내기(Surgical Patch Crop) 핀셋 결합기]
+     * - 기존처럼 전체 화면의 좌표를 억지로 겹쳐서 숫자를 망가뜨리지 않습니다!
+     * - 1) 순수 숫자(23, 24, 50, 73%)와 정상 한글 단어(고중량, 조기출하 등)는 kor+eng 원본을 100% 그대로 지킵니다.
+     * - 2) 한글이 깨졌거나(신뢰도 저하, 자모 분리) 괄호/영문 기호가 포함된 단어만
+     *      해당 단어의 작은 사각형 영역(bbox)을 캔버스에서 1:1로 오려내어(Crop) 순수 영문 엔진(PSM 7)으로 판독합니다.
+     */
+    async function performSurgicalPatchFusion(procCanvas, korData, engFullData, engWorker) {
+      if (!korData || !korData.lines || korData.lines.length === 0) {
+        return {
+          text: (engFullData?.text || "").trim(),
+          confidence: Math.round(engFullData?.confidence || 0)
+        };
+      }
+
+      // 단일 단어/구절 조각 판독을 위해 영문 워커를 PSM 7(Single Text Line)로 설정
+      await engWorker.setParameters({
+        tessedit_pageseg_mode: "7",
+        preserve_interword_spaces: "1"
+      });
+
+      const allEngWords = (engFullData?.words || []).filter((w) => w && w.bbox && (w.text || "").trim().length > 0);
+      const fusedLines = [];
+      let confSum = 0;
+      let confCnt = 0;
+      let patchCropCount = 0;
+      const maxPatchCrops = 14; // 속도 보장을 위해 최대 14개 핵심 의심 조각만 정밀 크롭
+
+      for (const line of korData.lines) {
+        if (!line.words || line.words.length === 0) continue;
+        const lineTokens = [];
+
+        for (const word of line.words) {
+          const mText = (word.text || "").trim();
+          if (!mText) continue;
+          const mConf = word.confidence || 0;
+          const box = word.bbox;
+
+          // [철칙 1] 순수 숫자·금액·퍼센트(예: 23, 24, 50, 73%, 42,000,000, 1.0)는 절대 건드리지 않고 100% 보존!
+          if (/^[0-9.,%+\-/():~#*<>[\]\s]+$/.test(mText) && mConf >= 55) {
+            lineTokens.push(mText);
+            confSum += mConf;
+            confCnt++;
+            continue;
+          }
+
+          // [철칙 2] 숫자+한글 단위(예: 2026년, 11월, 1차, 2차, 60,000원)도 100% 보존!
+          if (/^[0-9.,<>[\]()+\-]+?[가-힣]+$/.test(mText) || /^[가-힣]+[0-9]+(차|급|호|조|항|번|개|명|원|월|일|년)?$/.test(mText)) {
+            lineTokens.push(mText);
+            confSum += mConf;
+            confCnt++;
+            continue;
+          }
+
+          // [철칙 3] 신뢰도가 높은 순수 완성형 한글 단어(예: 고중량(일반), 조기출하, 입고검사용)는 100% 보존!
+          const isCleanHangul = /^[가-힣(),.\s]+$/.test(mText) && !/[ㄱ-ㅎㅏ-ㅣ]/.test(mText);
+          if (isCleanHangul && mConf >= 76) {
+            lineTokens.push(mText);
+            confSum += mConf;
+            confCnt++;
+            continue;
+          }
+
+          // 여기까지 내려온 단어는:
+          // 1) '고건조(1.Oppm)', '수출(F5C)' 처럼 괄호 안에 영문/숫자가 섞인 단어이거나
+          // 2) 'C&S', 'FSC', 'KRW' 같은 영단어가 한글 자모나 낮은 신뢰도 글자로 오인식된 경우입니다.
+          const korPrefixMatch = mText.match(/^([가-힣]{2,})\s*[(（\[]/);
+
+          // 먼저 동일 좌표의 영문 전체 결과(allEngWords)에서 정확히 일치하는 괄호/영단어가 있는지 확인
+          const boxCenterY = (box.y0 + box.y1) / 2;
+          const boxH = Math.max(8, box.y1 - box.y0);
+          const boxW = Math.max(8, box.x1 - box.x0);
+
+          const localEngMatches = allEngWords.filter((ew) => {
+            const ey = (ew.bbox.y0 + ew.bbox.y1) / 2;
+            const ex = (ew.bbox.x0 + ew.bbox.x1) / 2;
+            return Math.abs(ey - boxCenterY) <= boxH * 0.45 && ex >= box.x0 - 8 && ex <= box.x1 + 8;
+          });
+
+          // 케이스 A: '고건조(1.0ppm)', '수출(FSC)'처럼 앞은 확실한 한글이고 뒤쪽 괄호 안이 영문/단위인 경우
+          if (korPrefixMatch) {
+            const korPrefix = korPrefixMatch[1];
+            const joinedEng = localEngMatches.map((ew) => ew.text.trim()).join("");
+            const parenMatch = joinedEng.match(/([(（\[][A-Za-z0-9.,%&/+\-]+?[)）\]])/);
+            if (parenMatch && /[A-Za-z0-9]/.test(parenMatch[1])) {
+              lineTokens.push(`${korPrefix}${parenMatch[1]}`);
+              confSum += Math.max(mConf, 88);
+              confCnt++;
+              continue;
+            }
+          }
+
+          // 케이스 B: 의심 단어 영역만 캔버스에서 가위로 오려내어(Crop) 순수 영문 엔진에 1:1 질문!
+          const isSuspectToken =
+            !/[가-힣]/.test(mText) ||
+            /[ㄱ-ㅎㅏ-ㅣ]/.test(mText) ||
+            /[A-Za-z&]/.test(mText) ||
+            mConf < 74;
+
+          if (isSuspectToken && patchCropCount < maxPatchCrops && boxW >= 12 && boxH >= 10) {
+            patchCropCount++;
+            const pad = 8;
+            const cx = Math.max(0, Math.floor(box.x0 - pad));
+            const cy = Math.max(0, Math.floor(box.y0 - pad));
+            const cw = Math.min(procCanvas.width - cx, Math.ceil(boxW + pad * 2));
+            const ch = Math.min(procCanvas.height - cy, Math.ceil(boxH + pad * 2));
+
+            const patchCanvas = document.createElement("canvas");
+            // 작은 단어 조각을 1.5배 확대하고 흰색 여백을 둘러 영문 인식률 극대화
+            patchCanvas.width = Math.round(cw * 1.5) + 24;
+            patchCanvas.height = Math.round(ch * 1.5) + 24;
+            const pCtx = patchCanvas.getContext("2d");
+            pCtx.fillStyle = "#ffffff";
+            pCtx.fillRect(0, 0, patchCanvas.width, patchCanvas.height);
+            pCtx.drawImage(procCanvas, cx, cy, cw, ch, 12, 12, Math.round(cw * 1.5), Math.round(ch * 1.5));
+
+            try {
+              const patchRes = await engWorker.recognize(patchCanvas);
+              const patchText = (patchRes?.data?.text || "").trim().replace(/\n+/g, " ");
+              const patchConf = patchRes?.data?.confidence || 0;
+
+              // 가짜 세로선 노이즈(I, l, 1, |)가 아니고 실제 영문 알파벳이 포함된 고신뢰도 결과일 때만 채택!
+              const isValidEnglishPatch =
+                /[A-Za-z]/.test(patchText) &&
+                !/^[I1l|!7T0O.,_\-\s()]+$/.test(patchText) &&
+                patchConf >= 74;
+
+              if (isValidEnglishPatch) {
+                if (korPrefixMatch) {
+                  const subParen = patchText.match(/([(（\[][A-Za-z0-9.,%&/+\-\s]+[)）\]])/);
+                  if (subParen) {
+                    lineTokens.push(korPrefixMatch[1] + subParen[1].replace(/\s+/g, ""));
+                    confSum += Math.max(mConf, patchConf);
+                    confCnt++;
+                    continue;
+                  }
+                } else if (!/[가-힣]/.test(mText) || mConf < 68 || /[ㄱ-ㅎㅏ-ㅣ]/.test(mText)) {
+                  lineTokens.push(patchText);
+                  confSum += patchConf;
+                  confCnt++;
+                  continue;
+                }
+              }
+            } catch (e) {}
+          }
+
+          lineTokens.push(mText);
+          confSum += mConf;
+          confCnt++;
+        }
+
+        if (lineTokens.length > 0) {
+          fusedLines.push(lineTokens.join(" "));
+        }
+      }
+
+      return {
+        text: fusedLines.join("\n"),
+        confidence: confCnt > 0 ? Math.round(confSum / confCnt) : Math.round(korData.confidence || 0)
+      };
+    }
+
+    function smartPostProcessOcrText(raw) {
+      if (!raw) return "";
+      const eraseLines = document.getElementById("removeTableLinesToggle").checked;
+
+      return raw
+        .split("\n")
+        .map((line) => {
+          let s = line;
+          // 1) '1 .Oppm', '1.Oppm' 처럼 숫자 뒤 소수점과 영문 O가 섞인 경우 '1.0ppm'으로 교정
+          s = s.replace(/(\d)\s*\.\s*[Oo](\s*(?:ppm|%|kg|g|mm|cm|m|L|ml))/gi, "$1.0$2");
+          s = s.replace(/(\d)\s*\.\s*(\d)/g, "$1.$2");
+          // 2) 숫자 '1'이나 영문 'I'는 절대 지우지 않고 순수 세로줄 기호(|, ¦, ｜)만 제거
+          if (eraseLines) {
+            s = s.replace(/^[|¦｜]+\s*/g, "");
+            s = s.replace(/\s*[|¦｜]+\s*/g, "  ");
+          }
+          s = s.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+          return s.replace(/[ \t]{3,}/g, "  ").trim();
+        })
+        .filter((line) => line.length > 0 && !/^[|¦｜_=\-.,:;~`'"!]+$/.test(line))
+        .join("\n");
+    }
+
+    // 6. 우측 텍스트 다듬기 도구 모음
+    function updateTextCounter() {
+      const text = document.getElementById("ocrResultTextarea").value;
+      const totalChars = text.length;
+      const noSpaceChars = text.replace(/\s/g, "").length;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const lines = text ? text.split("\n").length : 0;
+
+      document.getElementById("textStatsLabel").innerHTML =
+        `총 <strong class="text-cyan-300">${totalChars.toLocaleString()}</strong>자 (공백 제외 ${noSpaceChars.toLocaleString()}자) · <strong class="text-cyan-300">${words.toLocaleString()}</strong>단어 · <strong class="text-cyan-300">${lines.toLocaleString()}</strong>줄`;
+
+      const hasText = totalChars > 0;
+      document.getElementById("topCopyBtn").disabled = !hasText;
+      document.getElementById("topSaveTxtBtn").disabled = !hasText;
+    }
+
+    function removeTableNoiseChars() {
+      const ta = document.getElementById("ocrResultTextarea");
+      if (!ta.value.trim()) return;
+      ta.value = ta.value
+        .split("\n")
+        .map((line) => line.replace(/[|¦｜┌┐└┘├┤┬┴┼─━│┃]/g, " ").replace(/[ \t]{2,}/g, " ").trim())
+        .filter((line) => line.length > 0)
+        .join("\n");
+      onManualTextareaEdit();
+      showToast("표 테두리 기호(|)와 특수문자 노이즈를 깔끔하게 제거했습니다!", "ok");
+    }
+
+    function fixSpacedKoreanChars() {
+      const ta = document.getElementById("ocrResultTextarea");
+      if (!ta.value.trim()) return;
+      ta.value = ta.value
+        .split("\n")
+        .map((line) => line.replace(/([가-힣])[ \t]+(?=[가-힣]([ \t]|$))/g, "$1"))
+        .join("\n");
+      onManualTextareaEdit();
+      showToast("낱글자로 떨어진 한글 공백을 자연스럽게 붙였습니다!", "ok");
+    }
+
+    function mergeBrokenLines() {
+      const ta = document.getElementById("ocrResultTextarea");
+      if (!ta.value.trim()) return;
+      ta.value = ta.value
+        .replace(/\r\n/g, "\n")
+        .replace(/([^\n])\n(?=[^\n])/g, "$1 ")
+        .replace(/[ \t]{2,}/g, " ");
+      onManualTextareaEdit();
+      showToast("끊어진 줄바꿈을 문단으로 이어 붙였습니다!", "ok");
+    }
+
+    function changeEditorFontSize(delta) {
+      editorFontSize = Math.max(12, Math.min(28, editorFontSize + delta * 2));
+      document.getElementById("ocrResultTextarea").style.fontSize = editorFontSize + "px";
+    }
+
+    function copyExtractedText() {
+      const text = document.getElementById("ocrResultTextarea").value;
+      if (!text.trim()) {
+        showToast("복사할 텍스트가 없습니다.", "err");
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("현재 화면의 텍스트가 클립보드에 복사되었습니다!", "ok");
+      });
+    }
+
+    function downloadExtractedTxt() {
+      const text = document.getElementById("ocrResultTextarea").value;
+      if (!text.trim()) {
+        showToast("저장할 텍스트가 없습니다.", "err");
+        return;
+      }
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const baseName = (currentImageName || "추출결과").replace(/\.[^.]+$/, "");
+      a.download = `${baseName}_OCR텍스트.txt`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast("추출된 텍스트가 .txt 파일로 저장되었습니다!", "ok");
+    }
+
+    // 7. 개인정보가 완전히 배제된 샘플 이미지 2종 (📊 샘플 표 문서 / 🧪 샘플 공문서)
+    function loadSampleOcrImage(kind) {
+      if (isOcrRunning) return;
+      const c = document.createElement("canvas");
+      c.width = 960;
+      c.height = 1160;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      if (kind === "table") {
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 34px Pretendard, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("품목 검수 및 등급 분류코드 안내표", 480, 105);
+
+        const startX = 110;
+        const startY = 150;
+        const colW1 = 160;
+        const colW2 = 580;
+        const rowH = 62;
+
+        const rows = [
+          { code: "23", desc: "고중량 (일반 규격)", shaded: false },
+          { code: "24", desc: "고건조 (1.0ppm 이하)", shaded: true },
+          { code: "25", desc: "고건조 (일반 표준)", shaded: false },
+          { code: "26", desc: "특수 코팅 처리품", shaded: true },
+          { code: "27", desc: "국내 표준 물류형", shaded: false },
+          { code: "28", desc: "글로벌 파트너스 & C&S", shaded: false },
+          { code: "29", desc: "프리미엄 라인업", shaded: false },
+          { code: "30", desc: "친환경 에코 패키지", shaded: false },
+          { code: "40", desc: "조기출하 (1.0ppm)", shaded: true },
+          { code: "41", desc: "조기출하 (일반)", shaded: false },
+          { code: "50", desc: "해외수출 (73% 규격)", shaded: false },
+          { code: "51", desc: "해외수출 (75% 규격)", shaded: true },
+          { code: "52", desc: "해외수출 (FSC 인증)", shaded: false },
+          { code: "60", desc: "보관 주의 (온도 민감)", shaded: true }
+        ];
+
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = "#1e293b";
+
+        rows.forEach((r, idx) => {
+          const y = startY + idx * rowH;
+          if (r.shaded) {
+            ctx.fillStyle = "#dbeafe";
+            ctx.fillRect(startX, y, colW1 + colW2, rowH);
+          }
+          ctx.strokeRect(startX, y, colW1, rowH);
+          ctx.strokeRect(startX + colW1, y, colW2, rowH);
+
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "800 24px Pretendard, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(r.code, startX + colW1 / 2, y + 39);
+
+          ctx.textAlign = "left";
+          ctx.font = "700 24px Pretendard, sans-serif";
+          ctx.fillText(r.desc, startX + colW1 + 28, y + 39);
+        });
+
+        loadCanvasIntoStage(c, "샘플_등급분류코드표.png");
+      } else {
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(48, 48, 864, 1064);
+
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 38px Pretendard, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("솔루션 구축 및 기술지원 협약서", 480, 140);
+
+        ctx.textAlign = "left";
+        ctx.font = "700 24px Pretendard, sans-serif";
+        const lines = [
+          "1. 프로젝트명 : You-틸리티 차세대 웹 오피스 구축",
+          "2. 계약 기간 : 2026년 11월 18일 ~ 2027년 11월 17일",
+          "3. 계약 금액 : 일금 사천이백만원정 (KRW 42,000,000)",
+          "",
+          "제1조 (목적)",
+          "본 협약은 (주)유틸리티테크와 총괄 아키텍트 DDP 도련님 간의",
+          "통합 웹 유틸리티 플랫폼 공급 및 유지보수 사항을 규정한다.",
+          "",
+          "제2조 (보안 및 데이터 보호)",
+          "모든 파일 변환과 문자 인식(OCR) 처리는 외부 서버 전송 없이",
+          "사용자 브라우저 내부에서 100% 안전하게 수행되어야 한다.",
+          "",
+          "제3조 (검수 및 무상보증)",
+          "최종 납품 완료일로부터 24개월간 무상 기술지원을 제공한다.",
+          "",
+          "2026년 11월 18일",
+          "총괄 책임자 : DDP 도련님 (서명)"
+        ];
+
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, 95, 235 + idx * 48);
+        });
+
+        loadCanvasIntoStage(c, "샘플_기술지원협약서.png");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      resetOcrWorkspace(false);
+    });
+
+    window.addEventListener("resize", () => {
+      if (sourceCanvas) drawLeftImageStage();
+    });
+  </script>
+</body>
+</html>

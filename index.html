@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>You-틸리티 | 당신의 일상 만능 도구함</title>
+  <!-- Tailwind CSS CDN (무빌드 GitHub Pages 배포용) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Pretendard & Inter 웹폰트 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    :root {
+      --bg-deep: #070A10;
+      --card-bg: rgba(20, 24, 34, 0.82);
+      --card-hover-bg: rgba(26, 32, 46, 0.92);
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-deep);
+      color: #F8FAFC;
+      overflow-x: hidden;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* 상단 중앙 네온 오로라 배경 광원 */
+    .aurora-backdrop {
+      position: fixed;
+      top: -160px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 960px;
+      height: 540px;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 22% 35%, rgba(0, 240, 255, 0.28) 0%, transparent 48%),
+        radial-gradient(circle at 78% 35%, rgba(244, 63, 94, 0.28) 0%, transparent 48%),
+        radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.32) 0%, transparent 58%),
+        radial-gradient(circle at 50% 68%, rgba(236, 72, 153, 0.22) 0%, transparent 55%);
+      filter: blur(45px);
+    }
+
+    .aurora-ring {
+      position: fixed;
+      top: -190px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 680px;
+      height: 460px;
+      border-radius: 9999px;
+      pointer-events: none;
+      z-index: 0;
+      border: 3px solid transparent;
+      background: linear-gradient(135deg, rgba(34,211,238,0.5), rgba(168,85,247,0.45), rgba(244,63,94,0.55)) border-box;
+      -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      filter: blur(16px);
+      opacity: 0.85;
+    }
+
+    /* 검색창 네온 그라데이션 테두리 */
+    .search-neon-box {
+      position: relative;
+      background: rgba(13, 17, 26, 0.88);
+      border-radius: 12px;
+      z-index: 1;
+      transition: all 0.25s ease;
+    }
+    .search-neon-box::before {
+      content: "";
+      position: absolute;
+      inset: -1.5px;
+      border-radius: 13.5px;
+      padding: 1.5px;
+      background: linear-gradient(90deg, #22D3EE 0%, #818CF8 50%, #F43F5E 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      box-shadow: 0 0 24px rgba(34, 211, 238, 0.2), 0 0 24px rgba(244, 63, 94, 0.2);
+    }
+    .search-neon-box:focus-within {
+      box-shadow: 0 0 28px rgba(56, 189, 248, 0.28), 0 0 28px rgba(244, 114, 182, 0.25);
+    }
+
+    /* 기본 카드 스타일 */
+    .tool-card {
+      position: relative;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s ease, background 0.24s ease;
+      overflow: hidden;
+      cursor: pointer;
+      min-height: 196px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 20px;
+      user-select: none;
+    }
+    .tool-card:hover {
+      transform: translateY(-4px);
+      background: var(--card-hover-bg);
+      box-shadow: 0 14px 32px -10px rgba(0, 0, 0, 0.7);
+    }
+    .tool-card:active {
+      transform: translateY(-1px) scale(0.992);
+    }
+
+    /* LIVE 네온 시안-핑크 그라데이션 테두리 */
+    .card-neon-cyan-pink {
+      border: none;
+      box-shadow: 0 0 22px -4px rgba(34, 211, 238, 0.28), 0 0 22px -4px rgba(244, 114, 182, 0.28);
+    }
+    .card-neon-cyan-pink::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 2px;
+      background: linear-gradient(125deg, #22D3EE 0%, #38BDF8 35%, #E879F9 70%, #F43F5E 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .card-neon-cyan-pink:hover {
+      box-shadow: 0 0 30px -2px rgba(34, 211, 238, 0.45), 0 0 30px -2px rgba(244, 63, 94, 0.4);
+    }
+
+    /* 11번 NAS LIVE 네온 레드-오렌지 테두리 */
+    .card-neon-red {
+      border: none;
+      box-shadow: 0 0 26px -4px rgba(239, 68, 68, 0.42);
+    }
+    .card-neon-red::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 2px;
+      background: linear-gradient(135deg, #EF4444 0%, #F97316 55%, #DC2626 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .card-neon-red:hover {
+      box-shadow: 0 0 36px -2px rgba(239, 68, 68, 0.6);
+    }
+
+    /* 12번 새 기능 제안하기 점선 테두리 */
+    .card-dashed {
+      background: rgba(15, 19, 28, 0.55);
+      border: 1.5px dashed rgba(148, 163, 184, 0.25);
+    }
+    .card-dashed:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(20, 26, 38, 0.75);
+    }
+
+    /* 뱃지 스타일 */
+    .badge-live {
+      background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%);
+      color: #FFFFFF;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      box-shadow: 0 2px 10px rgba(225, 29, 72, 0.5);
+    }
+    .badge-soon {
+      background: rgba(30, 37, 54, 0.9);
+      color: #94A3B8;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 9px;
+      border-radius: 9999px;
+    }
+
+    /* 카테고리 탭 버튼 */
+    .cat-btn {
+      padding: 7px 18px;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #94A3B8;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .cat-btn:hover {
+      color: #E2E8F0;
+    }
+    .cat-btn.active {
+      background: rgba(30, 41, 59, 0.95);
+      color: #FFFFFF;
+      border-color: rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.22);
+    }
+
+    /* 드래그 앤 드롭 영역 애니메이션 */
+    .drop-zone-active {
+      border-color: #38BDF8 !important;
+      background: rgba(56, 189, 248, 0.08) !important;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- 배경 네온 오로라 효과 -->
+  <div class="aurora-backdrop"></div>
+  <div class="aurora-ring"></div>
+
+  <!-- 메인 컨테이너 -->
+  <div class="relative z-10 max-w-[1360px] mx-auto px-4 sm:px-8 pt-6 pb-16">
+
+    <!-- ==================== 상단 헤더 영역 ==================== -->
+    <header class="grid grid-cols-1 lg:grid-cols-12 items-start gap-4 mb-7">
+      
+      <!-- 좌측: 브랜드 로고 & 서브타이틀 -->
+      <div class="lg:col-span-3 flex items-center justify-between lg:block">
+        <a href="#dashboard" onclick="closeEmptyShell(event)" class="inline-block group focus:outline-none">
+          <h1 class="text-3xl sm:text-[34px] font-extrabold tracking-tight leading-none">
+            <span class="text-[#38BDF8] drop-shadow-[0_0_12px_rgba(56,189,248,0.35)]">You-</span><span class="text-[#F472B6] drop-shadow-[0_0_12px_rgba(244,114,182,0.35)]">틸리티</span>
+          </h1>
+          <p class="text-[#94A3B8] text-xs sm:text-sm font-medium mt-1.5 tracking-tight">
+            당신의 일상 만능 도구함
+          </p>
+        </a>
+
+        <!-- 모바일 전용 우측 NAS 상태 버튼 -->
+        <div class="flex lg:hidden items-center gap-2">
+          <button onclick="openNasModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141926]/90 border border-slate-700/70 text-xs font-semibold text-slate-200">
+            <span id="nasDotMobile" class="w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_8px_#22C55E]"></span>
+            <span id="nasTextMobile">NAS Online</span>
+          </button>
+          <button onclick="openNasModal()" aria-label="NAS 설정" class="p-2 rounded-lg bg-[#141926]/90 border border-slate-700/70 text-slate-300 hover:text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 중앙: 검색창 + 카테고리 필터 탭 -->
+      <div class="lg:col-span-6 flex flex-col items-center w-full">
+        <!-- 네온 검색바 -->
+        <div class="search-neon-box w-full max-w-[490px] flex items-center px-4 py-2.5">
+          <svg class="w-5 h-5 text-slate-400 mr-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="기능을 검색하세요"
+            autocomplete="off"
+            class="w-full bg-transparent text-slate-100 placeholder-slate-400 text-sm sm:text-base focus:outline-none"
+          />
+          <button id="clearSearchBtn" onclick="clearSearch()" class="hidden text-slate-400 hover:text-slate-200 text-xs ml-2 px-1.5 py-0.5 rounded bg-slate-800">
+            초기화
+          </button>
+        </div>
+
+        <!-- 5대 카테고리 필터 탭 -->
+        <nav aria-label="카테고리 필터" class="mt-4 inline-flex flex-wrap items-center justify-center gap-1 p-1.5 rounded-full bg-[#111520]/90 border border-slate-800/90 backdrop-blur-md">
+          <button type="button" data-category="all" class="cat-btn active" onclick="filterCategory('all')">전체</button>
+          <button type="button" data-category="image" class="cat-btn" onclick="filterCategory('image')">이미지</button>
+          <button type="button" data-category="media" class="cat-btn" onclick="filterCategory('media')">오디오/영상</button>
+          <button type="button" data-category="pdf" class="cat-btn" onclick="filterCategory('pdf')">PDF</button>
+          <button type="button" data-category="ai" class="cat-btn" onclick="filterCategory('ai')">AI/기타</button>
+        </nav>
+      </div>
+
+      <!-- 우측: 시놀로지 NAS 연결 상태등 & 환경설정 버튼 (데스크톱) -->
+      <div class="hidden lg:flex lg:col-span-3 items-center justify-end gap-2.5 pt-1">
+        <button
+          onclick="openNasModal()"
+          title="시놀로지 NAS 연동 설정 열기"
+          class="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-[#151A26]/90 hover:bg-[#1C2333] border border-slate-700/70 transition shadow-sm"
+        >
+          <span id="nasStatusDot" class="w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_10px_#22C55E]"></span>
+          <span id="nasStatusText" class="text-sm font-semibold text-slate-200 tracking-tight">NAS Online</span>
+        </button>
+        <button
+          onclick="openNasModal()"
+          aria-label="시놀로지 NAS 및 API 설정"
+          title="시놀로지 NAS 및 API 설정"
+          class="p-2.5 rounded-xl bg-[#151A26]/90 hover:bg-[#1C2333] border border-slate-700/70 text-slate-300 hover:text-white transition shadow-sm"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== 뷰 1: 4x3 메인 대시보드 그리드 ==================== -->
+    <main id="dashboardView">
+      <div id="toolsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <!-- JS(renderToolsGrid)를 통해 12개 카드가 렌더링됩니다 -->
+      </div>
+
+      <!-- 검색 결과가 없을 때 표시되는 안내 -->
+      <div id="emptySearchState" class="hidden text-center py-16 bg-[#121622]/70 rounded-2xl border border-slate-800 mt-4">
+        <p class="text-slate-300 text-lg font-semibold mb-2">일치하는 유틸리티 도구가 없습니다.</p>
+        <p class="text-slate-500 text-sm mb-4">다른 검색어를 입력하거나 전체 카테고리를 확인해 보세요.</p>
+        <button onclick="clearSearch()" class="px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-sm font-semibold hover:bg-cyan-500/30 transition">
+          전체 도구 보기
+        </button>
+      </div>
+    </main>
+
+    <!-- ==================== 뷰 2: 빈 껍데기(Empty Shell) 실행 화면 ==================== -->
+    <section id="shellView" class="hidden">
+      <div class="bg-[#121723]/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-5 sm:p-8 shadow-2xl">
+        
+        <!-- 상단 내비게이션 & 도구 메타 정보 -->
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-5 mb-6 border-b border-slate-800">
+          <div class="flex items-center gap-3">
+            <button
+              onclick="closeEmptyShell()"
+              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-600/60 transition"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              대시보드로 돌아가기
+            </button>
+            <span id="shellBadge" class="badge-live">LIVE</span>
+          </div>
+
+          <div class="text-right">
+            <span class="text-xs text-slate-400 block">모듈 연결 경로 (GitHub Pages 구조)</span>
+            <code id="shellPath" class="text-xs sm:text-sm text-cyan-300 font-mono bg-slate-900/90 px-2.5 py-1 rounded border border-slate-800 inline-block mt-0.5">
+              ./image-converter.html
+            </code>
+          </div>
+        </div>
+
+        <!-- 도구 타이틀 & 아키텍처 요약 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- 좌측 5칸: 선택된 도구의 일러스트 미리보기 및 스펙 명세 -->
+          <div class="lg:col-span-5 bg-[#0D111A] border border-slate-800/90 rounded-2xl p-5">
+            <div id="shellIllustrationBox" class="h-40 flex items-center justify-center bg-[#141926] rounded-xl border border-slate-800/70 mb-4 overflow-hidden relative">
+              <!-- 선택된 카드의 SVG 아이콘 복제 렌더링 -->
+            </div>
+
+            <h2 id="shellTitle" class="text-xl sm:text-2xl font-bold text-white mb-2">
+              1. 이미지 포맷·크기 변환
+            </h2>
+            <p id="shellDesc" class="text-slate-400 text-sm leading-relaxed mb-5">
+              외부 서버 업로드 없이 브라우저 Canvas API를 활용해 JPG, PNG, WebP 포맷 변환과 해상도 리사이징을 즉시 처리합니다.
+            </p>
+
+            <div class="space-y-2.5 text-xs sm:text-sm bg-slate-900/75 p-4 rounded-xl border border-slate-800/80">
+              <div class="flex justify-between">
+                <span class="text-slate-400">실행 상태</span>
+                <span class="text-amber-300 font-semibold">빈 껍데기 (Empty Shell 모드)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">연산 파이프라인</span>
+                <span id="shellEngine" class="text-cyan-300 font-mono">Canvas API + JSZip</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">로컬 입력 포맷</span>
+                <span id="shellInputSpec" class="text-slate-200">JPG, PNG, WebP, BMP (다중)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">로컬 저장 출력</span>
+                <span id="shellOutputSpec" class="text-emerald-300 font-semibold">변환 이미지 또는 .zip</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측 7칸: 빈 껍데기 인터랙티브 워크스페이스 (유형별 자동 전환) -->
+          <div class="lg:col-span-7 bg-[#0D111A] border border-slate-800/90 rounded-2xl p-5 sm:p-6">
+            
+            <!-- [유형 A] 로컬 파일 기반 유틸리티 빈 껍데기 -->
+            <div id="shellLocalWorkspace">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  1단계: 내 단말기(PC·스마트폰) 로컬 파일 불러오기
+                </h3>
+                <span class="text-xs text-slate-400">서버 전송 0% · 브라우저 메모리 직결</span>
+              </div>
+
+              <!-- 파일 드래그 앤 드롭 영역 -->
+              <label
+                id="dropZoneLabel"
+                for="shellFileInput"
+                class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-cyan-400/70 rounded-2xl p-8 text-center cursor-pointer transition bg-[#121724]/70"
+              >
+                <svg class="w-12 h-12 text-cyan-400 mb-3" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p class="text-slate-200 font-semibold text-sm sm:text-base mb-1">
+                  여기를 클릭하거나 로컬 파일을 드래그하여 올려주세요
+                </p>
+                <p id="dropZoneAcceptHint" class="text-slate-400 text-xs">
+                  빈 껍데기 테스트: 어떤 파일이든 선택하면 브라우저 메모리 로드 상태를 검증합니다.
+                </p>
+                <input id="shellFileInput" type="file" multiple class="hidden" onchange="handleShellFiles(this.files)" />
+              </label>
+
+              <!-- 로드된 로컬 파일 목록 및 빈 껍데기 출력 테스트 -->
+              <div id="loadedFilesContainer" class="mt-5 hidden">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-semibold text-cyan-300">브라우저 메모리에 적재된 로컬 파일</span>
+                  <button onclick="resetShellFiles()" class="text-xs text-slate-400 hover:text-rose-400">목록 비우기</button>
+                </div>
+                <ul id="loadedFilesList" class="space-y-2 max-h-44 overflow-y-auto pr-1 text-xs sm:text-sm"></ul>
+
+                <div class="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div class="text-xs text-slate-400">
+                    추후 이 자리에 <strong id="shellFutureLogicName" class="text-slate-200">실제 변환 모듈</strong> 코드가 삽입됩니다.
+                  </div>
+                  <button
+                    onclick="triggerDummyLocalSave()"
+                    class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-400 hover:to-pink-400 text-slate-950 font-extrabold text-sm shadow-lg transition shrink-0"
+                  >
+                    빈 껍데기 로컬 저장 테스트
+                  </button>
+                </div>
+              </div>
+
+              <!-- 파일 미선택 시 안내 박스 -->
+              <div id="shellEmptyGuide" class="mt-5 p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs text-slate-400 leading-relaxed">
+                💡 <strong class="text-slate-200">빈 껍데기 동작 확인:</strong> 위 영역을 눌러 내 PC나 스마트폰의 파일(이미지, 오디오, PDF 등)을 선택해 보세요. 실제 기능 개발 전이라도 <span class="text-cyan-300">로컬 파일 읽기 → 메모리 적재 → 내 기기로 결과 파일 다운로드</span>까지의 전체 뼈대가 정상 동작함을 바로 테스트할 수 있습니다.
+              </div>
+            </div>
+
+            <!-- [유형 B] 11번 유튜브 MP3 추출 (시놀로지 NAS 연동) 빈 껍데기 -->
+            <div id="shellNasWorkspace" class="hidden">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                  시놀로지 NAS Docker (yt-dlp + FFmpeg) 연동 껍데기
+                </h3>
+                <button onclick="openNasModal()" class="text-xs text-cyan-400 hover:underline">NAS 주소/키 변경</button>
+              </div>
+
+              <div class="space-y-4 bg-[#121724] p-4 sm:p-5 rounded-xl border border-slate-800">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1.5">유튜브 영상 또는 Shorts 주소 (URL)</label>
+                  <input
+                    id="ytUrlInput"
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=... 또는 https://youtu.be/..."
+                    class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:border-rose-500 focus:outline-none"
+                  />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">오디오 추출 포맷 / 음질</label>
+                    <select id="ytQualitySelect" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-slate-200 focus:outline-none">
+                      <option value="mp3-320">MP3 - 320kbps (최고 음질)</option>
+                      <option value="mp3-192">MP3 - 192kbps (표준 용량)</option>
+                      <option value="m4a">M4A / AAC (아이폰 친화)</option>
+                      <option value="wav">WAV (무손실 원본)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">연결된 시놀로지 NAS 엔드포인트</label>
+                    <div id="shellNasEndpointDisplay" class="px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-emerald-400 font-mono truncate">
+                      https://yt.my-synology.synology.me
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onclick="triggerDummyNasExtract()"
+                  class="w-full py-3 rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 hover:from-rose-500 hover:to-orange-400 text-white font-bold text-sm shadow-lg transition"
+                >
+                  빈 껍데기 NAS MP3 추출 파이프라인 테스트
+                </button>
+              </div>
+
+              <div class="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 leading-relaxed">
+                ⚡ <strong class="text-slate-200">나스 연동 구조 안내:</strong> 추후 시놀로지 Container Manager에 Python FastAPI(`yt-dlp`) 컨테이너를 올리면, 위 버튼 클릭 시 나스가 음원을 추출하여 내 PC·스마트폰으로 즉시 스트리밍 다운로드합니다.
+              </div>
+            </div>
+
+            <!-- [유형 C] 12번 + 새 기능 제안하기 (모듈 슬롯 추가기) -->
+            <div id="shellSuggestWorkspace" class="hidden">
+              <h3 class="text-base sm:text-lg font-bold text-slate-100 mb-3">
+                새 유틸리티 슬롯 추가 테스트 (플러그인 확장 구조)
+              </h3>
+              <p class="text-xs text-slate-400 mb-4">
+                도련님이 새로운 아이디어가 떠올랐을 때 아래 항목을 입력하면 대시보드에 즉시 새 카드가 추가되며, <code class="text-cyan-300">TOOLS_CONFIG</code> 배열에 붙여넣을 수 있는 코드가 생성됩니다.
+              </p>
+
+              <div class="space-y-3 bg-[#121724] p-4 rounded-xl border border-slate-800">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-300 mb-1">새 도구 이름</label>
+                    <input id="newToolTitle" type="text" placeholder="예: 12. AI 보컬·MR 분리" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-300 mb-1">카테고리 분류</label>
+                    <select id="newToolCategory" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-slate-200 focus:outline-none">
+                      <option value="image">이미지</option>
+                      <option value="media">오디오/영상</option>
+                      <option value="pdf">PDF</option>
+                      <option value="ai" selected>AI/기타</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-300 mb-1">사용할 핵심 엔진 또는 설명</label>
+                  <input id="newToolEngine" type="text" placeholder="예: WebGPU / Demucs Docker" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm text-white focus:outline-none" />
+                </div>
+                <button
+                  onclick="addCustomToolSlot()"
+                  class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm transition"
+                >
+                  현재 대시보드에 새 카드 즉시 추가하기
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==================== 시놀로지 NAS 연결 설정 모달 ==================== -->
+  <div id="nasModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-[#121724] border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-[#22C55E] shadow-[0_0_8px_#22C55E]"></span>
+          <h3 class="text-lg font-bold text-white">시놀로지(헤놀로지) NAS 연동 설정</h3>
+        </div>
+        <button onclick="closeNasModal()" class="text-slate-400 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed mb-4">
+        11번 <strong class="text-slate-200">유튜브 MP3 추출(NAS)</strong> 도구에서 호출할 개인 나스 HTTPS 역방향 프록시 주소와 보안 토큰을 브라우저(<code class="text-cyan-300">localStorage</code>)에 저장합니다.
+      </p>
+
+      <div class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">NAS HTTPS 도메인 주소</label>
+          <input
+            id="nasUrlInput"
+            type="url"
+            placeholder="https://yt.mydomain.synology.me"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:border-cyan-400 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">개인 전용 보안 키 (X-API-Key)</label>
+          <input
+            id="nasKeyInput"
+            type="password"
+            placeholder="나스 Docker에 설정한 비밀번호 입력"
+            class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white focus:border-cyan-400 focus:outline-none"
+          />
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-xs text-slate-300">상단 NAS Online 상태 표시등</span>
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="nasOnlineToggle" type="checkbox" checked class="sr-only peer" />
+            <div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:bg-emerald-500 relative transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:w-4 after:h-4 after:rounded-full after:transition-all peer-checked:after:translate-x-5"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-800">
+        <button onclick="closeNasModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">
+          취소
+        </button>
+        <button onclick="saveNasSettings()" class="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-xs font-bold hover:bg-cyan-400">
+          설정 저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 커스텀 토스트 알림창 ==================== -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== 애플리케이션 자바스크립트 로직 ==================== -->
+  <script>
+    /**
+     * 1. 12개 카드 전용 고해상도 인라인 SVG 일러스트 사전
+     */
+    const CARD_SVGS = {
+      // 01. 이미지 포맷·크기 변환
+      "01": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 상단 3개 파일 (RAW, WEBP, SVG) -->
+          <g transform="translate(18, 8) rotate(-6)">
+            <rect width="34" height="42" rx="5" fill="#EF4444" stroke="#FCA5A5" stroke-width="1"/>
+            <path d="M24 0L34 10H24V0Z" fill="#FCA5A5"/>
+            <rect x="6" y="13" width="16" height="10" rx="2" fill="#FEE2E2" opacity="0.85"/>
+            <text x="17" y="35" fill="#FFF" font-size="7.5" font-weight="800" text-anchor="middle">RAW</text>
+          </g>
+          <g transform="translate(74, 6)">
+            <rect width="34" height="42" rx="5" fill="#10B981" stroke="#6EE7B7" stroke-width="1"/>
+            <rect x="7" y="10" width="20" height="13" rx="2" fill="#D1FAE5" opacity="0.85"/>
+            <text x="17" y="35" fill="#FFF" font-size="7" font-weight="800" text-anchor="middle">WEBP</text>
+          </g>
+          <g transform="translate(128, 8) rotate(5)">
+            <rect width="34" height="42" rx="5" fill="#3B82F6" stroke="#93C5FD" stroke-width="1"/>
+            <circle cx="17" cy="17" r="6" fill="#DBEAFE" opacity="0.9"/>
+            <text x="17" y="35" fill="#FFF" font-size="7.5" font-weight="800" text-anchor="middle">SVG</text>
+          </g>
+          <!-- 하단 2개 파일 (PNG, HEIC) -->
+          <g transform="translate(42, 46) rotate(-3)">
+            <rect width="36" height="44" rx="5" fill="#F59E0B" stroke="#FDE68A" stroke-width="1"/>
+            <rect x="7" y="11" width="22" height="14" rx="2" fill="#FEF3C7" opacity="0.9"/>
+            <text x="18" y="37" fill="#FFF" font-size="8" font-weight="800" text-anchor="middle">PNG</text>
+          </g>
+          <g transform="translate(100, 46) rotate(3)">
+            <rect width="36" height="44" rx="5" fill="#A855F7" stroke="#E9D5FF" stroke-width="1"/>
+            <path d="M12 22L18 13L24 22H12Z" fill="#F3E8FF"/>
+            <text x="18" y="37" fill="#FFF" font-size="7" font-weight="800" text-anchor="middle">HEIC</text>
+          </g>
+          <!-- 우측 변환 화살표 -->
+          <path d="M148 72 C 162 76, 174 74, 184 66" stroke="#94A3B8" stroke-width="3" stroke-linecap="round"/>
+          <path d="M179 62 L 187 64 L 183 72" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 최종 변환된 풍경 이미지 아이콘 -->
+          <g transform="translate(192, 34)">
+            <rect width="46" height="54" rx="7" fill="#22D3EE" stroke="#E0F2FE" stroke-width="1.5"/>
+            <circle cx="15" cy="18" r="5" fill="#FDE047"/>
+            <path d="M4 44 L18 26 L30 38 L37 30 L44 44 Z" fill="#15803D"/>
+            <path d="M18 44 L31 28 L44 44 Z" fill="#22C55E"/>
+            <rect x="9" y="6" width="12" height="6" rx="2" fill="#0284C7"/>
+          </g>
+        </svg>
+      `,
+
+      // 02. 초간단 QR 파일 전송
+      "02": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <defs>
+            <linearGradient id="beamGrad02" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#22D3EE"/>
+              <stop offset="50%" stop-color="#A855F7"/>
+              <stop offset="100%" stop-color="#F472B6"/>
+            </linearGradient>
+          </defs>
+          <!-- 좌측 스마트폰 (QR 표시) -->
+          <g transform="translate(22, 14)">
+            <rect width="48" height="82" rx="9" fill="#1E293B" stroke="#38BDF8" stroke-width="2"/>
+            <rect x="5" y="9" width="38" height="64" rx="4" fill="#0F172A"/>
+            <rect x="17" y="4" width="14" height="2.5" rx="1.2" fill="#475569"/>
+            <!-- 미니 QR 코드 그래픽 -->
+            <g transform="translate(11, 22)" fill="#22D3EE">
+              <path d="M0 0 H10 V10 H0 Z M2 2 V8 H8 V2 Z"/>
+              <rect x="3.5" y="3.5" width="3" height="3"/>
+              <path d="M16 0 H26 V10 H16 Z M18 2 V8 H24 V2 Z"/>
+              <rect x="19.5" y="3.5" width="3" height="3"/>
+              <path d="M0 16 H10 V26 H0 Z M2 18 V24 H8 V18 Z"/>
+              <rect x="3.5" y="19.5" width="3" height="3"/>
+              <rect x="12" y="2" width="2.5" height="6"/>
+              <rect x="12" y="11" width="6" height="3"/>
+              <rect x="2" y="12" width="6" height="2.5"/>
+              <rect x="14" y="16" width="5" height="5" fill="#F472B6"/>
+              <rect x="21" y="14" width="5" height="12"/>
+              <rect x="12" y="23" width="7" height="3"/>
+            </g>
+            <!-- 스캔 라인 -->
+            <line x1="8" y1="35" x2="40" y2="35" stroke="#F43F5E" stroke-width="2" stroke-linecap="round"/>
+          </g>
+
+          <!-- 중앙 초고속 양방향 전송 궤적 & 날아가는 파일 -->
+          <path d="M78 38 C 102 18, 134 18, 156 36" stroke="url(#beamGrad02)" stroke-width="3.5" stroke-dasharray="5 4" stroke-linecap="round"/>
+          <path d="M151 30 L 158 37 L 149 40" stroke="#F472B6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <path d="M156 76 C 134 94, 102 94, 78 74" stroke="url(#beamGrad02)" stroke-width="3.5" stroke-dasharray="5 4" stroke-linecap="round"/>
+          <path d="M84 80 L 76 73 L 85 70" stroke="#22D3EE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- 중앙 날아가는 사진/파일 카드 -->
+          <g transform="translate(100, 36) rotate(-8)">
+            <rect width="36" height="42" rx="6" fill="#3B82F6" stroke="#E0F2FE" stroke-width="1.5"/>
+            <circle cx="12" cy="14" r="3.5" fill="#FDE047"/>
+            <path d="M4 34 L14 21 L23 30 L28 24 L33 34 Z" fill="#34D399"/>
+          </g>
+          <!-- 번개 터보 배지 -->
+          <path d="M122 24 L113 40 H121 L117 54 L130 36 H121 Z" fill="#FACC15" stroke="#FEF08A" stroke-width="0.8"/>
+
+          <!-- 우측 PC / 노트북 모니터 -->
+          <g transform="translate(164, 24)">
+            <rect x="6" y="0" width="68" height="48" rx="6" fill="#1E293B" stroke="#F472B6" stroke-width="2"/>
+            <rect x="11" y="5" width="58" height="38" rx="3" fill="#0F172A"/>
+            <!-- 화면 속 수신 완료 체크 & 폴더 -->
+            <rect x="24" y="13" width="32" height="22" rx="3" fill="#10B981" opacity="0.22"/>
+            <path d="M33 24 L38 29 L48 19" stroke="#34D399" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- 노트북 하단 받침대 -->
+            <path d="M0 50 H80 L74 57 H6 Z" fill="#475569"/>
+            <rect x="32" y="50" width="16" height="2.5" rx="1" fill="#94A3B8"/>
+          </g>
+        </svg>
+      `,
+
+      // 03. 만능 PDF 에디터
+      "03": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 뒷배경 서브 문서 (병합/분할 상징) -->
+          <g transform="translate(46, 12) rotate(-7)">
+            <rect width="62" height="78" rx="6" fill="#1E293B" stroke="#38BDF8" stroke-width="1.5" opacity="0.75"/>
+            <rect x="10" y="16" width="36" height="4" rx="2" fill="#475569"/>
+            <rect x="10" y="25" width="28" height="4" rx="2" fill="#475569"/>
+          </g>
+          <!-- 메인 PDF 문서 -->
+          <g transform="translate(82, 10)">
+            <rect width="74" height="88" rx="7" fill="#0F172A" stroke="#22D3EE" stroke-width="2"/>
+            <!-- 상단 PDF 레드 배지 -->
+            <rect x="10" y="10" width="28" height="13" rx="3.5" fill="#EF4444"/>
+            <text x="24" y="19.5" fill="#FFFFFF" font-size="8" font-weight="900" text-anchor="middle">PDF</text>
+            <!-- 문서 본문 라인 -->
+            <rect x="10" y="30" width="52" height="4" rx="2" fill="#64748B"/>
+            <!-- 인라인 텍스트 클릭 수정 하이라이트 박스 -->
+            <rect x="8" y="39" width="56" height="14" rx="3" fill="#22D3EE" fill-opacity="0.16" stroke="#38BDF8" stroke-width="1.4" stroke-dasharray="3 2"/>
+            <text x="13" y="49" fill="#E0F2FE" font-size="8.5" font-weight="800">TEXT 수정</text>
+            <line x1="57" y1="41" x2="57" y2="51" stroke="#F43F5E" stroke-width="1.8"/>
+            <rect x="10" y="59" width="44" height="4" rx="2" fill="#64748B"/>
+            <rect x="10" y="68" width="32" height="4" rx="2" fill="#64748B"/>
+            <!-- 우측 하단 결재 인감 도장 -->
+            <g transform="translate(44, 56)">
+              <circle cx="11" cy="11" r="10" fill="#EF4444" fill-opacity="0.2" stroke="#F43F5E" stroke-width="2"/>
+              <text x="11" y="14" fill="#FB7185" font-size="8" font-weight="900" text-anchor="middle">인</text>
+            </g>
+          </g>
+          <!-- 우측 네온 에디터 펜 -->
+          <g transform="translate(174, 16) rotate(32)">
+            <rect x="0" y="0" width="13" height="52" rx="3" fill="#A855F7" stroke="#F3E8FF" stroke-width="1.5"/>
+            <rect x="0" y="0" width="13" height="11" rx="2" fill="#F43F5E"/>
+            <path d="M0 52 L6.5 65 L13 52 Z" fill="#FDE047"/>
+            <path d="M4.5 60 L6.5 65 L8.5 60 Z" fill="#0F172A"/>
+          </g>
+        </svg>
+      `,
+
+      // 04. 벨소리·알람 메이커
+      "04": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <defs>
+            <linearGradient id="waveGrad4" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#8B5CF6"/>
+              <stop offset="50%" stop-color="#A855F7"/>
+              <stop offset="100%" stop-color="#6366F1"/>
+            </linearGradient>
+          </defs>
+          <!-- 오디오 파형 바 -->
+          <g fill="url(#waveGrad4)">
+            <circle cx="18" cy="56" r="2.5"/><rect x="26" y="48" width="3.5" height="16" rx="1.75"/>
+            <rect x="34" y="38" width="3.5" height="36" rx="1.75"/><rect x="42" y="28" width="3.5" height="56" rx="1.75"/>
+            <rect x="50" y="42" width="3.5" height="28" rx="1.75"/><rect x="58" y="20" width="3.5" height="72" rx="1.75"/>
+            <rect x="66" y="34" width="3.5" height="44" rx="1.75"/><rect x="74" y="46" width="3.5" height="20" rx="1.75"/>
+            <rect x="82" y="30" width="3.5" height="52" rx="1.75"/><rect x="90" y="38" width="3.5" height="36" rx="1.75"/>
+            <rect x="98" y="22" width="3.5" height="68" rx="1.75"/><rect x="106" y="34" width="3.5" height="44" rx="1.75"/>
+            <rect x="114" y="44" width="3.5" height="24" rx="1.75"/><rect x="122" y="32" width="3.5" height="48" rx="1.75"/>
+            <rect x="168" y="30" width="3.5" height="52" rx="1.75"/><rect x="176" y="20" width="3.5" height="72" rx="1.75"/>
+            <rect x="184" y="38" width="3.5" height="36" rx="1.75"/><rect x="192" y="26" width="3.5" height="60" rx="1.75"/>
+            <rect x="200" y="40" width="3.5" height="32" rx="1.75"/><rect x="208" y="48" width="3.5" height="16" rx="1.75"/>
+            <rect x="216" y="36" width="3.5" height="40" rx="1.75"/><rect x="224" y="46" width="3.5" height="20" rx="1.75"/>
+            <circle cx="234" cy="56" r="2.5"/><circle cx="242" cy="56" r="2"/>
+          </g>
+          <!-- 구간 편집 가위 -->
+          <g transform="translate(122, 16)">
+            <path d="M12 6 L34 46" stroke="#CBD5E1" stroke-width="6" stroke-linecap="round"/>
+            <path d="M40 6 L18 46" stroke="#94A3B8" stroke-width="6" stroke-linecap="round"/>
+            <circle cx="26" cy="34" r="3" fill="#475569"/>
+            <circle cx="14" cy="62" r="11" stroke="#A78BFA" stroke-width="5.5" fill="none"/>
+            <circle cx="38" cy="62" r="11" stroke="#A78BFA" stroke-width="5.5" fill="none"/>
+          </g>
+        </svg>
+      `,
+
+      // 05. 스마트 문서 스캐너
+      "05": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 좌측: 비스듬히 찍힌 원본 문서 & 4꼭짓점 네온 타겟 -->
+          <g transform="translate(18, 12)">
+            <polygon points="14,10 74,4 84,78 4,72" fill="#1E293B" stroke="#22D3EE" stroke-width="2" stroke-dasharray="4 3"/>
+            <line x1="22" y1="24" x2="64" y2="20" stroke="#64748B" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="20" y1="36" x2="66" y2="32" stroke="#64748B" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="18" y1="48" x2="54" y2="45" stroke="#64748B" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- 4꼭짓점 포인트 핸들 -->
+            <circle cx="14" cy="10" r="5" fill="#22D3EE" stroke="#FFFFFF" stroke-width="1.5"/>
+            <circle cx="74" cy="4" r="5" fill="#A855F7" stroke="#FFFFFF" stroke-width="1.5"/>
+            <circle cx="84" cy="78" r="5" fill="#F43F5E" stroke="#FFFFFF" stroke-width="1.5"/>
+            <circle cx="4" cy="72" r="5" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
+          </g>
+
+          <!-- 중앙: 원근 보정 화살표 -->
+          <path d="M116 54 H142" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M135 47 L144 54 L135 61" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- 우측: 반듯하게 펴진 순백색 고화질 스캔 문서 + 레이저 스캔 빔 -->
+          <g transform="translate(158, 12)">
+            <rect x="0" y="0" width="66" height="84" rx="6" fill="#F8FAFC" stroke="#38BDF8" stroke-width="2"/>
+            <rect x="11" y="14" width="32" height="5" rx="2" fill="#0F172A"/>
+            <rect x="11" y="26" width="44" height="3.5" rx="1.5" fill="#334155"/>
+            <rect x="11" y="35" width="44" height="3.5" rx="1.5" fill="#334155"/>
+            <rect x="11" y="44" width="36" height="3.5" rx="1.5" fill="#334155"/>
+            <circle cx="47" cy="65" r="8" fill="#EF4444" fill-opacity="0.2" stroke="#EF4444" stroke-width="2"/>
+            <circle cx="47" cy="65" r="3" fill="#EF4444"/>
+            <rect x="-5" y="49" width="76" height="12" fill="#22D3EE" opacity="0.22"/>
+            <line x1="-6" y1="49" x2="72" y2="49" stroke="#F43F5E" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </svg>
+      `,
+
+      // 06. 텍스트·코드 비교기
+      "06": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 좌측: 원본 A 문서 -->
+          <g transform="translate(22, 12)">
+            <rect width="78" height="86" rx="7" fill="#0F172A" stroke="#F43F5E" stroke-width="2"/>
+            <rect x="10" y="12" width="26" height="9" rx="2.5" fill="#F43F5E" fill-opacity="0.25"/>
+            <text x="23" y="19" fill="#FDA4AF" font-size="6.5" font-weight="800" text-anchor="middle">BEFORE</text>
+            <rect x="10" y="29" width="54" height="4" rx="2" fill="#475569"/>
+            <rect x="8" y="39" width="62" height="13" rx="3" fill="#F43F5E" fill-opacity="0.28" stroke="#FB7185" stroke-width="1"/>
+            <text x="14" y="48" fill="#FFE4E6" font-size="8" font-weight="900">− 3,500만원</text>
+            <rect x="10" y="58" width="48" height="4" rx="2" fill="#475569"/>
+            <rect x="10" y="68" width="36" height="4" rx="2" fill="#475569"/>
+          </g>
+
+          <!-- 중앙: 돋보기 & 양방향 대조 아이콘 -->
+          <g transform="translate(113, 38)">
+            <circle cx="17" cy="17" r="15" fill="#1E293B" stroke="#38BDF8" stroke-width="2.5"/>
+            <path d="M11 17 H23 M14 13 L10 17 L14 21 M20 13 L24 17 L20 21" stroke="#22D3EE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+
+          <!-- 우측: 변경본 B 문서 -->
+          <g transform="translate(160, 12)">
+            <rect width="78" height="86" rx="7" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+            <rect x="10" y="12" width="26" height="9" rx="2.5" fill="#10B981" fill-opacity="0.25"/>
+            <text x="23" y="19" fill="#6EE7B7" font-size="6.5" font-weight="800" text-anchor="middle">AFTER</text>
+            <rect x="10" y="29" width="54" height="4" rx="2" fill="#475569"/>
+            <rect x="8" y="39" width="62" height="13" rx="3" fill="#10B981" fill-opacity="0.28" stroke="#34D399" stroke-width="1"/>
+            <text x="14" y="48" fill="#D1FAE5" font-size="8" font-weight="900">+ 4,200만원</text>
+            <rect x="10" y="58" width="48" height="4" rx="2" fill="#475569"/>
+            <rect x="8" y="66" width="54" height="10" rx="2.5" fill="#10B981" fill-opacity="0.22"/>
+            <rect x="12" y="69" width="42" height="4" rx="2" fill="#34D399"/>
+          </g>
+        </svg>
+      `,
+
+      // 07. 사진·문서 비교기
+      "07": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 좌측: 이미지 A 영역 -->
+          <g transform="translate(24, 14)">
+            <rect width="84" height="82" rx="7" fill="#0F172A" stroke="#38BDF8" stroke-width="2"/>
+            <circle cx="24" cy="26" r="7" fill="#38BDF8" opacity="0.8"/>
+            <path d="M10 68 L30 44 L48 60 L62 46 L76 68 Z" fill="#334155"/>
+            <rect x="12" y="10" width="16" height="8" rx="2" fill="#0284C7"/>
+            <text x="20" y="16" fill="#FFF" font-size="6" font-weight="900" text-anchor="middle">A</text>
+          </g>
+
+          <!-- 우측: 이미지 B & 형광펜 차이점 타겟 검출 영역 -->
+          <g transform="translate(152, 14)">
+            <rect width="84" height="82" rx="7" fill="#0F172A" stroke="#F43F5E" stroke-width="2"/>
+            <rect x="44" y="14" width="26" height="24" rx="4" fill="#F43F5E" fill-opacity="0.25" stroke="#FACC15" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <circle cx="57" cy="26" r="7" fill="#F43F5E"/>
+            <rect x="44" y="8" width="14" height="8" rx="2" fill="#F43F5E"/>
+            <text x="51" y="14" fill="#FFF" font-size="5.5" font-weight="900" text-anchor="middle">#1</text>
+            <path d="M10 68 L30 44 L48 60 L62 46 L76 68 Z" fill="#334155"/>
+            <circle cx="28" cy="58" r="8" fill="#10B981" fill-opacity="0.35" stroke="#34D399" stroke-width="1.8"/>
+            <rect x="12" y="10" width="16" height="8" rx="2" fill="#E11D48"/>
+            <text x="20" y="16" fill="#FFF" font-size="6" font-weight="900" text-anchor="middle">B</text>
+          </g>
+
+          <!-- 중앙: 슬라이더 커튼 & 비교 배지 -->
+          <line x1="130" y1="8" x2="130" y2="102" stroke="#22D3EE" stroke-width="2.5" stroke-dasharray="4 3"/>
+          <circle cx="130" cy="55" r="13" fill="#1E293B" stroke="#22D3EE" stroke-width="2.5"/>
+          <path d="M123 55 H137 M126 51 L122 55 L126 59 M134 51 L138 55 L134 59" stroke="#F8FAFC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `,
+
+      // 08. 인코딩·해시 만능 복구기
+      "08": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 좌측: 깨진 글자(외계어/Base64) 입력 카드 -->
+          <g transform="translate(20, 18)">
+            <rect width="82" height="74" rx="8" fill="#0F172A" stroke="#F43F5E" stroke-width="2"/>
+            <rect x="10" y="10" width="42" height="10" rx="2" fill="#F43F5E" fill-opacity="0.25"/>
+            <text x="31" y="17.5" fill="#FDA4AF" font-size="6.5" font-weight="900" text-anchor="middle">GARBLED</text>
+            <text x="12" y="36" fill="#94A3B8" font-size="8.5" font-weight="800" font-family="monospace">ì•ˆë…•%EA</text>
+            <text x="12" y="50" fill="#64748B" font-size="8" font-weight="700" font-family="monospace">\\uB3C4\\uB828</text>
+            <text x="12" y="64" fill="#FB7185" font-size="8" font-weight="800" font-family="monospace">aGVsbG8=</text>
+          </g>
+
+          <!-- 중앙: 마법 변환 기어 배지 -->
+          <path d="M108 55 H152" stroke="#22D3EE" stroke-width="2.5" stroke-dasharray="4 3"/>
+          <circle cx="130" cy="55" r="15" fill="#1E293B" stroke="#22D3EE" stroke-width="2.5"/>
+          <text x="130" y="59" fill="#38BDF8" font-size="12" font-weight="900" text-anchor="middle">⚡</text>
+
+          <!-- 우측: 복구된 한글 & SHA-256 해시 결과 카드 -->
+          <g transform="translate(158, 18)">
+            <rect width="82" height="74" rx="8" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+            <rect x="10" y="10" width="46" height="10" rx="2" fill="#10B981" fill-opacity="0.25"/>
+            <text x="33" y="17.5" fill="#6EE7B7" font-size="6.5" font-weight="900" text-anchor="middle">UTF-8 OK</text>
+            <text x="12" y="37" fill="#F8FAFC" font-size="10" font-weight="900">한글완벽복구</text>
+            <rect x="10" y="46" width="62" height="18" rx="4" fill="#064E3B"/>
+            <text x="41" y="58" fill="#34D399" font-size="7.5" font-weight="900" text-anchor="middle" font-family="monospace">SHA256·BOM</text>
+          </g>
+        </svg>
+      `,
+
+      // 09. 이미지 글자 추출 (OCR)
+      "09": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 좌측 스캐너 본체 -->
+          <g transform="translate(26, 16)">
+            <path d="M12 6 L72 6 L64 42 L20 42 Z" fill="#64748B" stroke="#94A3B8" stroke-width="1.5"/>
+            <ellipse cx="42" cy="44" rx="28" ry="8" fill="#38BDF8" opacity="0.75"/>
+            <rect x="14" y="42" width="56" height="4" rx="2" fill="#E0F2FE"/>
+            <path d="M8 46 L76 46 L86 72 L-2 72 Z" fill="#334155" stroke="#64748B" stroke-width="1.5"/>
+            <rect x="-2" y="72" width="88" height="8" rx="3" fill="#1E293B"/>
+            <circle cx="8" cy="76" r="2" fill="#38BDF8"/>
+          </g>
+          <!-- 화살표 -->
+          <path d="M126 56 H142" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+          <path d="M138 51 L145 56 L138 61" stroke="#38BDF8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- 우측 Text 문서 -->
+          <g transform="translate(158, 16)">
+            <rect width="62" height="78" rx="6" fill="#94A3B8"/>
+            <path d="M44 0 L62 18 H44 Z" fill="#CBD5E1"/>
+            <text x="31" y="48" fill="#1E293B" font-size="18" font-weight="800" text-anchor="middle">Text</text>
+          </g>
+        </svg>
+      `,
+
+      // 10. 실시간 화면 공유 및 레이저 포인터
+      "10": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <!-- 공유 모니터 프레임 -->
+          <g transform="translate(38, 12)">
+            <rect width="184" height="84" rx="10" fill="#0F172A" stroke="#38BDF8" stroke-width="2.2"/>
+            <rect x="8" y="8" width="168" height="20" rx="4" fill="#1E293B"/>
+            <circle cx="18" cy="18" r="3" fill="#F43F5E"/>
+            <circle cx="28" cy="18" r="3" fill="#FACC15"/>
+            <circle cx="38" cy="18" r="3" fill="#10B981"/>
+            <text x="158" y="21" fill="#38BDF8" font-size="7" font-weight="900" text-anchor="end" font-family="monospace">LIVE P2P</text>
+
+            <!-- 화면 내부 버튼 & 노란색 강조 동그라미 -->
+            <rect x="24" y="38" width="76" height="10" rx="3" fill="#334155"/>
+            <rect x="24" y="54" width="52" height="10" rx="3" fill="#1E293B"/>
+            <rect x="112" y="46" width="44" height="20" rx="5" fill="#0284C7"/>
+            <ellipse cx="134" cy="56" rx="28" ry="15" stroke="#FACC15" stroke-width="2.5" stroke-dasharray="4 2"/>
+
+            <!-- 빨간 레이저 포인터 글로우 -->
+            <circle cx="96" cy="52" r="12" fill="#F43F5E" fill-opacity="0.35"/>
+            <circle cx="96" cy="52" r="6" fill="#F43F5E"/>
+            <circle cx="96" cy="52" r="2.5" fill="#FFFFFF"/>
+          </g>
+        </svg>
+      `,
+
+      // 11. 유튜브 MP3 추출 (NAS)
+      "11": `
+        <svg viewBox="0 0 260 110" class="w-52 h-28 overflow-visible" fill="none">
+          <g transform="translate(14, 18)">
+            <rect width="106" height="72" rx="8" fill="#272D3D" stroke="#475569" stroke-width="2"/>
+            <rect x="6" y="6" width="94" height="50" rx="4" fill="#1E2433"/>
+            <circle cx="53" cy="31" r="14" fill="#EF4444"/>
+            <path d="M49 24 L60 31 L49 38 Z" fill="#FFFFFF"/>
+            <rect x="12" y="62" width="82" height="3" rx="1.5" fill="#64748B"/>
+            <rect x="12" y="62" width="28" height="3" rx="1.5" fill="#EF4444"/>
+            <circle cx="40" cy="63.5" r="3.5" fill="#EF4444"/>
+          </g>
+          <line x1="120" y1="54" x2="178" y2="54" stroke="#EF4444" stroke-width="2.5"/>
+          <path d="M153 30 L139 54 H151 L145 78 L163 50 H150 Z" fill="#FACC15" stroke="#FEF08A" stroke-width="1"/>
+          <g transform="translate(178, 16)">
+            <rect x="0" y="8" width="44" height="70" rx="4" fill="#334155" stroke="#64748B" stroke-width="1.5"/>
+            <path d="M44 10 L62 2 L62 68 L44 78 Z" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+            <path d="M2 8 L20 0 L62 2 L44 10 Z" fill="#475569"/>
+            <rect x="7" y="18" width="30" height="8" rx="2" fill="#1E293B"/>
+            <rect x="7" y="32" width="30" height="8" rx="2" fill="#1E293B"/>
+            <circle cx="13" cy="56" r="2.8" fill="#38BDF8"/>
+            <circle cx="24" cy="56" r="2.8" fill="#38BDF8"/>
+          </g>
+        </svg>
+      `,
+
+      // 12. + 새 기능 제안하기
+      "12": `
+        <svg viewBox="0 0 260 110" class="w-48 h-28 overflow-visible" fill="none">
+          <path d="M115 38 H141 M128 25 V51" stroke="#94A3B8" stroke-width="3" stroke-linecap="round"/>
+          <text x="128" y="76" fill="#64748B" font-size="14" font-weight="700" letter-spacing="0.06em" text-anchor="middle">SUGGEST NEW</text>
+          <path d="M214 30 Q214 58 242 58 Q214 58 214 86 Q214 58 186 58 Q214 58 214 30 Z" fill="#334155" opacity="0.65"/>
+        </svg>
+      `
+    };
+
+    /**
+     * 2. 전체 12개 유틸리티 도구 설정 배열 (TOOLS_CONFIG)
+     */
+    const TOOLS_CONFIG = [
+      {
+        id: "01",
+        title: "01. 이미지 포맷·크기 변환",
+        category: "image",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./image-converter.html",
+        engine: "Canvas API + JSZip",
+        inputSpec: "JPG, PNG, WebP, BMP (다중 선택)",
+        outputSpec: "변환된 이미지 또는 단일 .zip",
+        desc: "외부 서버에 사진을 업로드하지 않고 브라우저 Canvas API만으로 포맷(JPG/PNG/WebP), 해상도, 품질을 일괄 변환하여 내 기기에 즉시 저장합니다."
+      },
+      {
+        id: "02",
+        title: "02. 초간단 QR 파일 전송",
+        category: "ai",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./snapdrop-share.html",
+        engine: "WebRTC P2P Turbo + Multi-WSS Tunnel",
+        inputSpec: "사진, 동영상, 문서 등 모든 로컬 파일",
+        outputSpec: "아이폰·갤럭시·PC 양방향 즉시 저장",
+        desc: "QR 스캔 한 번 또는 4자리 번호 입력만으로 아이폰, 갤럭시, PC 간에 방화벽 제약 없이 사진과 대용량 파일을 초고속으로 주고받습니다."
+      },
+      {
+        id: "03",
+        title: "03. 만능 PDF 에디터",
+        category: "pdf",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./pdf-editor.html",
+        engine: "PDF.js + pdf-lib + Sejda 인라인 엔진",
+        inputSpec: "단일/다중 PDF 문서 및 이미지 파일",
+        outputSpec: "내용 수정·서명·병합·분할된 PDF 및 PNG",
+        desc: "서버 전송 없이 기존 PDF 글자를 클릭해 즉시 수정·복사하고, 윈도우 로컬 폰트 연동, 1초 자동 도장·서명, 병합·분할까지 한 번에 처리합니다."
+      },
+      {
+        id: "04",
+        title: "04. 벨소리·알람 메이커",
+        category: "media",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./ringtone-maker.html",
+        engine: "Wavesurfer.js + Web Audio API",
+        inputSpec: "MP3, WAV, M4A, FLAC 오디오 파일",
+        outputSpec: "안드로이드 벨소리(MP3) / 아이폰(M4R)",
+        desc: "오디오 파형을 눈으로 보면서 0.1초 단위로 원하는 하이라이트 구간만 자르고 페이드 인/아웃 효과를 넣어 스마트폰 벨소리로 저장합니다."
+      },
+      {
+        id: "05",
+        title: "05. 스마트 문서 스캐너",
+        category: "image",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./doc-scanner.html",
+        engine: "4-Point Homography + USM 샤프닝 엔진",
+        inputSpec: "비뚤게 찍힌 문서·영수증·계약서·신분증 사진",
+        outputSpec: "1:1 원본 해상도 스캔 이미지(JPG/PNG) 및 PDF",
+        desc: "스마트폰으로 비스듬히 찍은 문서의 4꼭짓점을 자동 인식해 반듯하게 펴주고, 조명 그림자를 순백색으로 제거해 복합기 스캔 품질로 저장합니다."
+      },
+      {
+        id: "06",
+        title: "06. 텍스트·코드 비교기",
+        category: "ai",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./text-diff.html",
+        engine: "Myers Diff + 2단계 글자 형광펜 엔진",
+        inputSpec: "텍스트/코드 파일(.txt, .cs, .sql 등) 및 클립보드",
+        outputSpec: "형광펜 정밀 비교 뷰 및 HTML 리포트 저장",
+        desc: "수정 전/후 계약서, 보고서, 소스코드를 불러오거나 붙여넣으면 바뀐 줄과 글자 단위를 빨강·초록 형광펜으로 1초 만에 정밀 마킹합니다."
+      },
+      {
+        id: "07",
+        title: "07. 사진·문서 비교기",
+        category: "image",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./image-diff.html",
+        engine: "Pixel Diff + 자동 클러스터 타겟 엔진",
+        inputSpec: "비교할 사진·스캔 계약서·도면 2장 (또는 Ctrl+V)",
+        outputSpec: "형광펜 차이점 마킹 이미지 및 3단 비교표",
+        desc: "두 장의 스캔 문서, 도면, 사진을 겹쳐서 달라진 글자·도장·그림 위치를 형광펜과 번호 박스(#1, #2)로 1초 만에 찾아냅니다."
+      },
+      {
+        id: "08",
+        title: "08. 인코딩·해시 만능 복구기",
+        category: "pdf",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./data-decoder.html",
+        engine: "멀티 인코딩 파이프라인 + 무손실 디코더",
+        inputSpec: "깨진 한글 파일(EUC-KR/외계어), Base64, JWT, 본문",
+        outputSpec: "복구된 텍스트, 이메일·연락처 목록, 엑셀 BOM CSV",
+        desc: "알 수 없는 외계어로 깨진 한글(EUC-KR/UTF-8/URL/유니코드)을 1초 만에 복구하고, 본문 속 이메일·전화번호 추출과 해시 검증, 엑셀 한글 깨짐 방지(BOM) 저장을 지원합니다."
+      },
+      {
+        id: "09",
+        title: "09. 이미지 글자 추출 (OCR)",
+        category: "ai",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./ocr-scanner.html",
+        engine: "Tesseract.js v5 + 자동 선명화 전처리",
+        inputSpec: "문서 사진, 화면 캡처(Ctrl+V), 영수증 이미지",
+        outputSpec: "추출 텍스트 실시간 편집·복사 및 .txt 저장",
+        desc: "사진·스캔 문서·화면 캡처 속 한글과 영문, 숫자를 브라우저에서 즉시 판독해 복사 가능한 텍스트로 뽑아내며 부분 영역 지정도 지원합니다."
+      },
+      {
+        id: "10",
+        title: "10. 실시간 화면 공유 및 레이저 포인터",
+        category: "ai",
+        status: "LIVE",
+        cardStyle: "cyan-pink",
+        path: "./screen-laser.html",
+        engine: "WebRTC P2P 스트리밍 + 양방향 레이저 캔버스",
+        inputSpec: "PC 화면, 모바일 카메라, 캡처 이미지 (URL/QR 자동연결)",
+        outputSpec: "실시간 전체화면 뷰어 + 레이저·형광펜·동그라미 원격 지시",
+        desc: "프로그램 설치 없이 초대 링크나 QR 스캔 한 번으로 내 화면을 실시간 공유하고, 화면 위에 빨간 레이저 포인터와 동그라미를 그려 정확한 클릭 위치를 안내합니다."
+      },
+      {
+        id: "11",
+        title: "11. 유튜브 MP3 추출 (NAS)",
+        category: "media",
+        status: "NAS_LIVE",
+        cardStyle: "red-nas",
+        path: "./tools/11-youtube-mp3/index.html",
+        engine: "시놀로지 NAS Docker (FastAPI + yt-dlp + FFmpeg)",
+        inputSpec: "유튜브 일반 영상 및 Shorts URL 주소",
+        outputSpec: "최대 320kbps MP3 로컬 직결 다운로드",
+        desc: "브라우저 보안 정책 한계를 넘어, 집의 시놀로지(헤놀로지) 나스 컨테이너가 유튜브 음원을 추출해 내 PC나 스마트폰으로 즉시 전달합니다."
+      },
+      {
+        id: "12",
+        title: "+ 새 기능 제안하기",
+        category: "ai",
+        status: "READY",
+        cardStyle: "dashed",
+        path: "./tools/new-plugin-slot/",
+        engine: "플러그인 모듈 확장 슬롯",
+        inputSpec: "새로운 유틸리티 아이디어 설정",
+        outputSpec: "대시보드 카드 자동 추가 및 설정 코드 생성",
+        desc: "You-틸리티는 언제든 새로운 도구를 레고 블록처럼 끼워 넣을 수 있는 모듈형 구조입니다. 이곳에서 새 카드 슬롯을 바로 추가해 보세요."
+      }
+    ];
+
+    // 현재 선택된 필터 및 활성 도구 상태
+    let currentCategory = "all";
+    let currentSearchQuery = "";
+    let activeTool = null;
+    let selectedShellFiles = [];
+
+    /**
+     * 3. 대시보드 12개 카드 그리드 렌더링
+     */
+    function renderToolsGrid() {
+      const grid = document.getElementById("toolsGrid");
+      const emptyState = document.getElementById("emptySearchState");
+      const query = currentSearchQuery.trim().toLowerCase();
+
+      const filtered = TOOLS_CONFIG.filter((tool) => {
+        const matchCategory = currentCategory === "all" || tool.category === currentCategory;
+        const matchSearch =
+          !query ||
+          tool.title.toLowerCase().includes(query) ||
+          tool.desc.toLowerCase().includes(query) ||
+          tool.engine.toLowerCase().includes(query);
+        return matchCategory && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+
+      grid.innerHTML = filtered
+        .map((tool) => {
+          let borderClass = "";
+          if (tool.cardStyle === "cyan-pink") borderClass = "card-neon-cyan-pink";
+          else if (tool.cardStyle === "red-nas") borderClass = "card-neon-red";
+          else if (tool.cardStyle === "dashed") borderClass = "card-dashed";
+
+          let badgeHtml = "";
+          if (tool.status === "LIVE") {
+            badgeHtml = `<span class="badge-live">LIVE</span>`;
+          } else if (tool.status === "NAS_LIVE") {
+            badgeHtml = `
+              <div class="flex items-center gap-1.5">
+                <span class="badge-live">NAS</span>
+                <span class="badge-live">LIVE</span>
+              </div>
+            `;
+          } else if (tool.status === "READY") {
+            badgeHtml = `<span class="badge-soon">READY</span>`;
+          } else {
+            badgeHtml = `<span class="badge-soon">COMING SOON</span>`;
+          }
+
+          const svgGraphic = CARD_SVGS[tool.id] || CARD_SVGS["12"];
+          const titleColorClass = tool.id === "12" ? "text-slate-300" : "text-white";
+
+          return `
+            <article
+              onclick="openEmptyShell('${tool.id}')"
+              role="button"
+              tabindex="0"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEmptyShell('${tool.id}');}"
+              aria-label="${tool.title} 실행"
+              class="tool-card ${borderClass} group"
+            >
+              <!-- 상단 우측 뱃지 영역 -->
+              <div class="relative z-10 flex items-center justify-end">
+                ${badgeHtml}
+              </div>
+
+              <!-- 중앙 커스텀 그래픽 영역 -->
+              <div class="relative z-10 flex items-center justify-center my-1 transform group-hover:scale-[1.04] transition duration-300">
+                ${svgGraphic}
+              </div>
+
+              <!-- 하단 좌측 타이틀 영역 -->
+              <div class="relative z-10 mt-1">
+                <h2 class="text-[17px] sm:text-[18px] font-bold tracking-tight ${titleColorClass} group-hover:text-cyan-200 transition">
+                  ${tool.title}
+                </h2>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    /**
+     * 4. 카테고리 필터 및 실시간 검색 제어
+     */
+    function filterCategory(category) {
+      currentCategory = category;
+      document.querySelectorAll(".cat-btn").forEach((btn) => {
+        if (btn.getAttribute("data-category") === category) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+
+      if (!document.getElementById("shellView").classList.contains("hidden")) {
+        closeEmptyShell();
+      }
+      renderToolsGrid();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById("searchInput");
+      input.value = "";
+      currentSearchQuery = "";
+      document.getElementById("clearSearchBtn").classList.add("hidden");
+      filterCategory("all");
+    }
+
+    /**
+     * 5. 카드 클릭 시 완성된 페이지(01~10)는 즉시 이동하고 나머지는 Empty Shell 열기
+     */
+    function openEmptyShell(toolId) {
+      const tool = TOOLS_CONFIG.find((t) => t.id === toolId);
+      if (!tool) return;
+      if (
+        tool.id === "01" ||
+        tool.id === "02" ||
+        tool.id === "03" ||
+        tool.id === "04" ||
+        tool.id === "05" ||
+        tool.id === "06" ||
+        tool.id === "07" ||
+        tool.id === "08" ||
+        tool.id === "09" ||
+        tool.id === "10"
+      ) {
+        window.location.href = tool.path;
+        return;
+      }
+      activeTool = tool;
+
+      document.getElementById("dashboardView").classList.add("hidden");
+      const shellView = document.getElementById("shellView");
+      shellView.classList.remove("hidden");
+
+      const badgeEl = document.getElementById("shellBadge");
+      if (tool.status === "LIVE" || tool.status === "NAS_LIVE") {
+        badgeEl.className = "badge-live";
+        badgeEl.textContent = tool.status === "NAS_LIVE" ? "NAS · LIVE" : "LIVE";
+      } else {
+        badgeEl.className = "badge-soon";
+        badgeEl.textContent = tool.status;
+      }
+
+      document.getElementById("shellPath").textContent = tool.path;
+      document.getElementById("shellTitle").textContent = tool.title;
+      document.getElementById("shellDesc").textContent = tool.desc;
+      document.getElementById("shellEngine").textContent = tool.engine;
+      document.getElementById("shellInputSpec").textContent = tool.inputSpec;
+      document.getElementById("shellOutputSpec").textContent = tool.outputSpec;
+      document.getElementById("shellFutureLogicName").textContent = `[${tool.title}] 실제 변환 엔진`;
+
+      const illustBox = document.getElementById("shellIllustrationBox");
+      illustBox.innerHTML = CARD_SVGS[tool.id] || CARD_SVGS["12"];
+
+      const localWs = document.getElementById("shellLocalWorkspace");
+      const nasWs = document.getElementById("shellNasWorkspace");
+      const suggestWs = document.getElementById("shellSuggestWorkspace");
+
+      localWs.classList.add("hidden");
+      nasWs.classList.add("hidden");
+      suggestWs.classList.add("hidden");
+
+      if (tool.id === "11") {
+        nasWs.classList.remove("hidden");
+        const savedNasUrl = localStorage.getItem("youtility_nas_url") || "https://yt.my-synology.synology.me";
+        document.getElementById("shellNasEndpointDisplay").textContent = savedNasUrl;
+      } else if (tool.id === "12") {
+        suggestWs.classList.remove("hidden");
+      } else {
+        localWs.classList.remove("hidden");
+        resetShellFiles();
+      }
+
+      history.replaceState(null, "", `#tool-${tool.id}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      showToast(`'${tool.title}' 빈 껍데기 화면이 실행되었습니다.`, "info");
+    }
+
+    function closeEmptyShell(e) {
+      if (e) e.preventDefault();
+      document.getElementById("shellView").classList.add("hidden");
+      document.getElementById("dashboardView").classList.remove("hidden");
+      activeTool = null;
+      history.replaceState(null, "", window.location.pathname);
+    }
+
+    /**
+     * 6. 빈 껍데기 내 로컬 파일 로드 & 로컬 저장 파이프라인 테스트
+     */
+    function handleShellFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      selectedShellFiles = Array.from(fileList);
+
+      const container = document.getElementById("loadedFilesContainer");
+      const listEl = document.getElementById("loadedFilesList");
+      const guideEl = document.getElementById("shellEmptyGuide");
+
+      container.classList.remove("hidden");
+      guideEl.classList.add("hidden");
+
+      listEl.innerHTML = selectedShellFiles
+        .map((file, idx) => {
+          const sizeKB = (file.size / 1024).toFixed(1);
+          return `
+            <li class="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="truncate pr-3">
+                <span class="text-cyan-400 font-mono mr-1.5">#${idx + 1}</span>
+                <span class="text-slate-100 font-medium">${escapeHtml(file.name)}</span>
+              </div>
+              <div class="text-xs text-slate-400 shrink-0 font-mono">
+                ${sizeKB} KB · ${file.type || "binary"}
+              </div>
+            </li>
+          `;
+        })
+        .join("");
+
+      showToast(`${selectedShellFiles.length}개 로컬 파일이 브라우저 메모리에 로드되었습니다.`, "success");
+    }
+
+    function resetShellFiles() {
+      selectedShellFiles = [];
+      const fileInput = document.getElementById("shellFileInput");
+      if (fileInput) fileInput.value = "";
+      document.getElementById("loadedFilesContainer").classList.add("hidden");
+      document.getElementById("shellEmptyGuide").classList.remove("hidden");
+    }
+
+    function triggerDummyLocalSave() {
+      if (!activeTool) return;
+      const now = new Date().toLocaleString("ko-KR");
+      const fileNames = selectedShellFiles.map((f) => `- ${f.name} (${f.size} bytes)`).join("\n");
+
+      const reportContent = [
+        "====================================================",
+        " [You-틸리티] 빈 껍데기(Empty Shell) 로컬 입출력 검증 파일",
+        "====================================================",
+        `실행 도구 : ${activeTool.title}`,
+        `모듈 경로 : ${activeTool.path}`,
+        `핵심 엔진 : ${activeTool.engine}`,
+        `테스트 시각 : ${now}`,
+        "",
+        "[브라우저 메모리에 정상 로드된 내 기기 파일 목록]",
+        fileNames || "- 선택된 파일 없음",
+        "",
+        "※ 이 파일이 내 PC나 스마트폰에 정상 저장되었다면,",
+        "  '로컬 파일 선택 -> 브라우저 메모리 처리 -> 로컬 다운로드' 파이프라인이 완벽히 작동하는 것입니다."
+      ].join("\n");
+
+      const blob = new Blob([reportContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `[You-틸리티_껍데기테스트]_${activeTool.id}_output.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast("내 기기(로컬)로 빈 껍데기 테스트 결과 파일이 저장되었습니다!", "success");
+    }
+
+    /**
+     * 7. 11번 유튜브 MP3 추출 (시놀로지 NAS) 빈 껍데기 테스트
+     */
+    function triggerDummyNasExtract() {
+      const urlInput = document.getElementById("ytUrlInput").value.trim();
+      const quality = document.getElementById("ytQualitySelect").value;
+      const nasEndpoint = localStorage.getItem("youtility_nas_url") || "https://yt.my-synology.synology.me";
+
+      if (!urlInput) {
+        showToast("테스트할 유튜브 영상 주소를 먼저 입력해 주세요.", "warn");
+        document.getElementById("ytUrlInput").focus();
+        return;
+      }
+
+      showToast(`시놀로지 NAS(${nasEndpoint})로 [${quality}] 추출 요청 시뮬레이션 완료!`, "success");
+    }
+
+    /**
+     * 8. 12번 + 새 기능 제안하기 (실시간 슬롯 추가)
+     */
+    function addCustomToolSlot() {
+      const titleInput = document.getElementById("newToolTitle");
+      const catSelect = document.getElementById("newToolCategory");
+      const engineInput = document.getElementById("newToolEngine");
+
+      const title = titleInput.value.trim();
+      if (!title) {
+        showToast("추가할 새 도구의 이름을 입력해 주세요.", "warn");
+        titleInput.focus();
+        return;
+      }
+
+      const newId = String(TOOLS_CONFIG.length + 1).padStart(2, "0");
+      const newToolObj = {
+        id: newId,
+        title: title,
+        category: catSelect.value,
+        status: "COMING SOON",
+        cardStyle: "default",
+        path: `./tools/${newId}-custom-tool/index.html`,
+        engine: engineInput.value.trim() || "Custom Client-Side Module",
+        inputSpec: "로컬 파일 입력",
+        outputSpec: "로컬 가공 파일 저장",
+        desc: "도련님이 직접 추가하신 확장 유틸리티 슬롯입니다."
+      };
+
+      TOOLS_CONFIG.splice(TOOLS_CONFIG.length - 1, 0, newToolObj);
+      CARD_SVGS[newId] = CARD_SVGS["01"];
+
+      titleInput.value = "";
+      engineInput.value = "";
+
+      closeEmptyShell();
+      renderToolsGrid();
+      showToast(`'${title}' 카드가 대시보드에 추가되었습니다!`, "success");
+    }
+
+    /**
+     * 9. 시놀로지 NAS 연동 모달 관리
+     */
+    function openNasModal() {
+      const modal = document.getElementById("nasModal");
+      document.getElementById("nasUrlInput").value =
+        localStorage.getItem("youtility_nas_url") || "https://yt.my-synology.synology.me";
+      document.getElementById("nasKeyInput").value =
+        localStorage.getItem("youtility_nas_key") || "";
+      document.getElementById("nasOnlineToggle").checked =
+        localStorage.getItem("youtility_nas_online") !== "false";
+
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeNasModal() {
+      const modal = document.getElementById("nasModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function saveNasSettings() {
+      const url = document.getElementById("nasUrlInput").value.trim() || "https://yt.my-synology.synology.me";
+      const key = document.getElementById("nasKeyInput").value.trim();
+      const isOnline = document.getElementById("nasOnlineToggle").checked;
+
+      localStorage.setItem("youtility_nas_url", url);
+      localStorage.setItem("youtility_nas_key", key);
+      localStorage.setItem("youtility_nas_online", String(isOnline));
+
+      updateNasIndicator(isOnline);
+      const endpointDisplay = document.getElementById("shellNasEndpointDisplay");
+      if (endpointDisplay) endpointDisplay.textContent = url;
+
+      closeNasModal();
+      showToast("시놀로지 NAS 연동 설정이 브라우저에 저장되었습니다.", "success");
+    }
+
+    function updateNasIndicator(isOnline) {
+      const dots = [document.getElementById("nasStatusDot"), document.getElementById("nasDotMobile")];
+      const texts = [document.getElementById("nasStatusText"), document.getElementById("nasTextMobile")];
+
+      dots.forEach((dot) => {
+        if (!dot) return;
+        dot.className = isOnline
+          ? "w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_10px_#22C55E]"
+          : "w-2.5 h-2.5 rounded-full bg-slate-500";
+      });
+      texts.forEach((txt) => {
+        if (!txt) return;
+        txt.textContent = isOnline ? "NAS Online" : "Local Only";
+      });
+    }
+
+    /**
+     * 10. 커스텀 토스트 메시지 & 유틸리티 함수
+     */
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+
+      let borderColor = "border-cyan-500/60";
+      let dotColor = "bg-cyan-400";
+      if (type === "success") {
+        borderColor = "border-emerald-500/60";
+        dotColor = "bg-emerald-400";
+      } else if (type === "warn") {
+        borderColor = "border-amber-500/60";
+        dotColor = "bg-amber-400";
+      }
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#131826]/95 border ${borderColor} text-slate-100 text-xs sm:text-sm font-medium shadow-2xl backdrop-blur-md transition-all duration-300`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${dotColor} shrink-0"></span>
+        <span>${escapeHtml(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(8px)";
+        setTimeout(() => toast.remove(), 280);
+      }, 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    /**
+     * 11. 초기 로드 및 이벤트 바인딩
+     */
+    window.addEventListener("DOMContentLoaded", () => {
+      const isOnline = localStorage.getItem("youtility_nas_online") !== "false";
+      updateNasIndicator(isOnline);
+
+      renderToolsGrid();
+
+      const searchInput = document.getElementById("searchInput");
+      const clearBtn = document.getElementById("clearSearchBtn");
+      searchInput.addEventListener("input", (e) => {
+        currentSearchQuery = e.target.value;
+        if (currentSearchQuery.trim().length > 0) {
+          clearBtn.classList.remove("hidden");
+        } else {
+          clearBtn.classList.add("hidden");
+        }
+        if (!document.getElementById("shellView").classList.contains("hidden")) {
+          closeEmptyShell();
+        }
+        renderToolsGrid();
+      });
+
+      const dropZone = document.getElementById("dropZoneLabel");
+      ["dragenter", "dragover"].forEach((evtName) => {
+        dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add("drop-zone-active");
+        });
+      });
+      ["dragleave", "drop"].forEach((evtName) => {
+        dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove("drop-zone-active");
+        });
+      });
+      dropZone.addEventListener("drop", (e) => {
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+          handleShellFiles(e.dataTransfer.files);
+        }
+      });
+
+      if (window.location.hash.startsWith("#tool-")) {
+        const id = window.location.hash.replace("#tool-", "");
+        openEmptyShell(id);
+      }
+    });
+  </script>
+</body>
+</html>

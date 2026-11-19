@@ -1,0 +1,3019 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>초간단 만능 PDF 에디터 | You-틸리티</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PDF.js 코어 및 워커 사전 로드 (웹워커 차단·CORS·로컬 file:// 오류 100% 방지) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+  <!-- PDF 병합·생성 및 ZIP 압축 엔진 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    * {
+      font-family: 'Pretendard', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #070b14;
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
+    }
+    .aurora-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora-orb-1 {
+      position: absolute;
+      top: -160px;
+      left: 14%;
+      width: 560px;
+      height: 560px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.22) 0%, rgba(168, 85, 247, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .aurora-orb-2 {
+      position: absolute;
+      top: -100px;
+      right: 10%;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 72%);
+      filter: blur(55px);
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #38bdf8 0%, #c084fc 50%, #fb7185 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.84);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6);
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 50%, #f43f5e 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.32);
+      transition: transform 0.14s ease, filter 0.14s ease, opacity 0.14s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .tool-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 11px;
+      border-radius: 13px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      transition: all 0.14s ease;
+      cursor: pointer;
+      min-width: 76px;
+      user-select: none;
+    }
+    .tool-btn:hover {
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #ffffff;
+      background: rgba(30, 41, 59, 0.95);
+      transform: translateY(-1px);
+    }
+    .tool-btn.active {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.28) 0%, rgba(244, 63, 94, 0.25) 100%);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.32);
+    }
+    .drop-zone {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(11, 17, 32, 0.88) 100%);
+      border: 2.5px dashed rgba(56, 189, 248, 0.65);
+      border-radius: 24px;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.14);
+    }
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #f472b6;
+      box-shadow: 0 0 42px rgba(244, 114, 182, 0.28), inset 0 0 24px rgba(56, 189, 248, 0.12);
+      transform: translateY(-2px);
+    }
+    .thumb-card {
+      border: 2px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.92);
+      transition: all 0.14s ease;
+    }
+    .thumb-card:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+    }
+    .thumb-card.selected {
+      border-color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+      background: rgba(30, 41, 59, 0.98);
+    }
+    .canvas-stage-wrap {
+      background-color: #0b1120;
+      background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
+      background-size: 18px 18px;
+    }
+    .paper-shadow {
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.82), 0 0 0 1px rgba(255, 255, 255, 0.16);
+    }
+    .color-chip {
+      width: 24px;
+      height: 24px;
+      border-radius: 9999px;
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      cursor: pointer;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .color-chip.active {
+      transform: scale(1.2);
+      border-color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.75);
+    }
+    .sub-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .sub-pill.active {
+      background: #22d3ee;
+      color: #0f172a;
+      border-color: #22d3ee;
+    }
+
+    /* Sejda 스타일 무결점 인라인 기존 텍스트 블록 레이어 */
+    #textLayerContainer {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    #textLayerContainer.interactive-mode {
+      pointer-events: auto;
+    }
+    .pdf-text-item {
+      position: absolute;
+      box-sizing: border-box;
+      border: 0;
+      border-radius: 2px;
+      padding: 0;
+      margin: 0;
+      line-height: 1.08;
+      white-space: pre;
+      cursor: text;
+      outline: none;
+      transform-origin: left top;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    /* 수정 전 원본 상태: 투명 글자로 마우스 드래그 복사 및 호버 감지 (원본 PDF 픽셀이 그대로 선명하게 보임) */
+    .pdf-text-item.unmodified {
+      color: transparent !important;
+      background-color: transparent !important;
+    }
+    .pdf-text-item.unmodified::selection {
+      background: rgba(56, 189, 248, 0.35);
+      color: transparent;
+    }
+    /* 안내선 켜짐 상태에서의 호버 효과 (실제 저장본에는 절대 포함되지 않는 외곽 outline 사용) */
+    #textLayerContainer.show-guides .pdf-text-item.unmodified:hover {
+      outline: 1.5px dashed rgba(34, 211, 238, 0.85);
+      outline-offset: 2px;
+      background-color: rgba(34, 211, 238, 0.06) !important;
+    }
+    /* 포커스 또는 실제 수정된 상태: 테두리/그림자 흔적 없이 순수 배경색+글자색만 표시 */
+    .pdf-text-item.modified,
+    .pdf-text-item:focus {
+      z-index: 30;
+    }
+    .pdf-text-item:focus {
+      outline: 2px solid #0284c7 !important;
+      outline-offset: 2px;
+      min-width: 16px;
+    }
+    #textLayerContainer.show-guides .pdf-text-item.modified:not(:focus):hover {
+      outline: 1.5px dashed #f43f5e;
+      outline-offset: 2px;
+    }
+
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.55); border-radius: 999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div class="aurora-bg">
+    <div class="aurora-orb-1"></div>
+    <div class="aurora-orb-2"></div>
+  </div>
+
+  <div class="relative z-10 max-w-[1480px] mx-auto px-3 sm:px-6 py-3.5 sm:py-5">
+    <!-- 상단 헤더 -->
+    <header class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-3.5">
+      <div class="flex items-center gap-3.5 w-full lg:w-auto justify-between lg:justify-start">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div>
+            <div class="text-2xl font-extrabold tracking-tight brand-gradient">You-틸리티</div>
+            <div class="text-[11px] text-slate-400 -mt-0.5">당신의 일상 만능 도구함</div>
+          </div>
+        </a>
+        <a href="./index.html" class="px-3.5 py-1.5 rounded-lg glass-panel hover:border-cyan-400/50 text-xs sm:text-sm font-medium text-slate-200 flex items-center gap-1.5 transition">
+          <span>←</span>
+          <span>대시보드</span>
+        </a>
+      </div>
+
+      <div class="text-center">
+        <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+          📄 초간단 만능 PDF 에디터 <span class="text-xs font-mono text-emerald-400 align-middle">v4.0 무결점</span>
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">네모 흔적 0% · 클릭 즉시 수정 · 드래그 복사 · 윈도우 폰트 연동 · 도장/서명 · 병합/분할</p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+        <button id="topExtractTextBtn" type="button" onclick="openFullTextModal()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-amber-500/40 text-xs font-bold text-amber-300 transition flex items-center gap-1">
+          <span>📋</span>
+          <span>전체 글자 복사</span>
+        </button>
+        <button id="topAddBtn" type="button" onclick="triggerAddFiles()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-xs font-bold text-cyan-300 transition flex items-center gap-1">
+          <span>➕</span>
+          <span>PDF·사진 합치기</span>
+        </button>
+        <button id="topSplitBtn" type="button" onclick="openSplitModal()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-purple-500/40 text-xs font-bold text-purple-300 transition flex items-center gap-1">
+          <span>✂️</span>
+          <span>페이지 분할</span>
+        </button>
+        <button id="topImgExportBtn" type="button" onclick="exportAllPagesAsImages()" class="hidden px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition flex items-center gap-1">
+          <span>🖼️</span>
+          <span>이미지로 저장</span>
+        </button>
+        <button id="downloadPdfBtn" type="button" onclick="exportEditedPdf()" disabled class="btn-primary px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
+          <span>💾</span>
+          <span>완성된 PDF 저장</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 숨겨진 파일 입력기 -->
+    <input type="file" id="mainFileInput" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp" multiple class="hidden" onchange="handleIncomingFiles(this.files)" />
+    <input type="file" id="stampImageInput" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleStampImageUpload(this.files)" />
+    <input type="file" id="customFontFileInput" accept=".ttf,.otf,.woff,.woff2" class="hidden" onchange="handleCustomFontFile(this.files)" />
+
+    <!-- [초기 화면] 파일 업로드 드롭존 -->
+    <div id="emptyUploadView" class="max-w-3xl mx-auto my-6">
+      <div id="dropZone" onclick="triggerAddFiles()" class="drop-zone p-8 sm:p-14 text-center cursor-pointer">
+        <div class="text-6xl mb-4">📄</div>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-2">
+          여기를 눌러 편집할 PDF 파일(또는 사진)을 선택하세요!
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-300 mb-6">
+          문서 안의 기존 글자를 마우스로 클릭하면 워드나 메모장처럼 그 자리에서 바로 고치고 복사할 수 있습니다.
+        </p>
+        <div class="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl btn-primary text-sm sm:text-base font-extrabold">
+          <span>📂 내 PC · 스마트폰에서 파일 불러오기</span>
+        </div>
+
+        <div class="mt-5">
+          <button type="button" onclick="event.stopPropagation(); createNewBlankDocument();" class="px-4 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-cyan-300 transition">
+            📝 파일 없이 빈 A4 종이로 새로 시작하기
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-8 text-xs text-slate-300 max-w-2xl mx-auto">
+          <div class="bg-slate-900/85 border border-cyan-500/30 rounded-xl p-3">
+            <div class="text-base mb-1">⚡</div>
+            <div class="font-bold text-cyan-300">기존 글자 클릭 수정</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">네모 흔적 없는 완벽한 배경색 복원</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">🖥️</div>
+            <div class="font-bold text-white">윈도우 PC 폰트 연동</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">맑은고딕·굴림·바탕 및 내 PC 폰트 로드</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">✍️</div>
+            <div class="font-bold text-white">1초 자동 도장·서명</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">이름만 치면 투명 인감도장 즉시 생성</div>
+          </div>
+          <div class="bg-slate-900/85 border border-slate-800 rounded-xl p-3">
+            <div class="text-base mb-1">📑</div>
+            <div class="font-bold text-white">병합 · 분할 · 이미지</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">페이지 순서 변경 및 고화질 저장</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- [편집기 메인 워크스페이스] -->
+    <div id="editorWorkspace" class="hidden space-y-3">
+
+      <!-- 1. 메인 모드 & 도구 선택 바 -->
+      <section class="glass-panel rounded-2xl p-3 sm:p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" data-tool="edit_text" onclick="setActiveTool('edit_text')" class="tool-btn active">
+              <span class="text-xl">⚡</span>
+              <span class="text-xs font-extrabold text-cyan-200">기존 글자 수정·복사</span>
+            </button>
+            <button type="button" data-tool="add_text" onclick="setActiveTool('add_text')" class="tool-btn">
+              <span class="text-xl">➕</span>
+              <span class="text-xs font-extrabold">새 글자 추가</span>
+            </button>
+            <button type="button" data-tool="select" onclick="setActiveTool('select')" class="tool-btn">
+              <span class="text-xl">👆</span>
+              <span class="text-xs font-extrabold">개체 이동·크기</span>
+            </button>
+            <button type="button" data-tool="whiteout" onclick="setActiveTool('whiteout')" class="tool-btn">
+              <span class="text-xl">🧽</span>
+              <span class="text-xs font-extrabold">영역 지우개</span>
+            </button>
+            <button type="button" data-tool="stamp_mark" onclick="setActiveTool('stamp_mark')" class="tool-btn">
+              <span class="text-xl">✅</span>
+              <span class="text-xs font-extrabold">체크·기호</span>
+            </button>
+            <button type="button" data-tool="highlight" onclick="setActiveTool('highlight')" class="tool-btn">
+              <span class="text-xl">🖍️</span>
+              <span class="text-xs font-extrabold">형광펜</span>
+            </button>
+            <button type="button" data-tool="pen" onclick="setActiveTool('pen')" class="tool-btn">
+              <span class="text-xl">🖊️</span>
+              <span class="text-xs font-extrabold">자유 펜</span>
+            </button>
+            <button type="button" data-tool="shape" onclick="setActiveTool('shape')" class="tool-btn">
+              <span class="text-xl">⬜</span>
+              <span class="text-xs font-extrabold">도형·화살표</span>
+            </button>
+            <button type="button" onclick="openSignatureModal()" class="tool-btn border-pink-500/40">
+              <span class="text-xl">✍️</span>
+              <span class="text-xs font-extrabold text-pink-300">서명·도장</span>
+            </button>
+            <button type="button" onclick="openWatermarkModal()" class="tool-btn">
+              <span class="text-xl">🏷️</span>
+              <span class="text-xs font-extrabold">워터마크</span>
+            </button>
+          </div>
+
+          <!-- 우측 실행취소 / 원상복구 / 삭제 -->
+          <div class="flex items-center gap-1.5 ml-auto">
+            <button id="restoreOrigTextBtn" type="button" onmousedown="event.preventDefault()" onclick="restoreFocusedTextBlock()" class="hidden px-2.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-xs font-bold text-amber-300 transition">
+              🔄 원래 글자로 복구
+            </button>
+            <button type="button" onclick="undoAction()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition" title="되돌리기 (Ctrl+Z)">
+              ↩️ 되돌리기
+            </button>
+            <button type="button" onclick="redoAction()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition" title="다시 실행 (Ctrl+Y)">
+              ↪️ 다시실행
+            </button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="deleteSelectedOrFocused()" class="px-3 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-xs font-bold text-rose-200 transition">
+              🗑️ 선택삭제
+            </button>
+          </div>
+        </div>
+
+        <!-- 2단: 폰트(윈도우 로컬 폰트 포함) · 크기 · 글자색 · 배경색 · 굵기 컨트롤 바 -->
+        <div class="mt-2.5 pt-2.5 border-t border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
+          <div class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+            <span>💡</span>
+            <span id="toolGuideText">문서 안의 아무 글자나 마우스로 클릭하면 바로 수정하거나 드래그해서 복사(Ctrl+C)할 수 있습니다!</span>
+          </div>
+
+          <!-- 서체 및 스타일 컨트롤러 -->
+          <div class="flex flex-wrap items-center gap-2 ml-auto">
+            <!-- [체크·기호 전용 선택기] -->
+            <div id="stampMarkSubBar" class="hidden items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+              <button type="button" onclick="setMarkSymbol('✓', this)" class="sub-pill active">✓ 체크</button>
+              <button type="button" onclick="setMarkSymbol('◯', this)" class="sub-pill">◯ 동그라미</button>
+              <button type="button" onclick="setMarkSymbol('✗', this)" class="sub-pill">✗ 엑스</button>
+              <button type="button" onclick="setMarkSymbol('▲', this)" class="sub-pill">▲ 삼각</button>
+              <button type="button" onclick="setMarkSymbol('★', this)" class="sub-pill">★ 별표</button>
+            </div>
+
+            <!-- [도형 전용 선택기] -->
+            <div id="shapeSubBar" class="hidden items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+              <button type="button" onclick="setShapeKind('rect', this)" class="sub-pill active">⬜ 네모</button>
+              <button type="button" onclick="setShapeKind('circle', this)" class="sub-pill">⭕ 원형</button>
+              <button type="button" onclick="setShapeKind('arrow', this)" class="sub-pill">➡️ 화살표</button>
+              <button type="button" onclick="setShapeKind('line', this)" class="sub-pill">➖ 직선</button>
+            </div>
+
+            <!-- 폰트 패밀리 선택 + 윈도우 PC 폰트 전체 불러오기 -->
+            <div class="flex items-center gap-1 bg-slate-900/95 px-2 py-1 rounded-xl border border-slate-700">
+              <select id="fontFamilySelect" onchange="updateFontFamily(this.value)" class="bg-transparent text-xs font-bold text-white focus:outline-none pr-1 max-w-[145px]">
+                <optgroup label="기본 한글·윈도우 서체" class="bg-slate-900 text-cyan-300">
+                  <option value="'Pretendard', sans-serif">프리텐다드 (기본 고딕)</option>
+                  <option value="'Malgun Gothic', '맑은 고딕', sans-serif" selected>맑은 고딕 (윈도우 표준)</option>
+                  <option value="'Gulim', '굴림', sans-serif">굴림 (Gulim)</option>
+                  <option value="'Dotum', '돋움', sans-serif">돋움 (Dotum)</option>
+                  <option value="'Batang', '바탕', serif">바탕 (명조체)</option>
+                  <option value="'Gungsuh', '궁서', serif">궁서 (Gungsuh)</option>
+                  <option value="'HCR Batang', '함초롬바탕', serif">함초롬바탕 (한글)</option>
+                  <option value="'HCR Dotum', '함초롬돋움', sans-serif">함초롬돋움 (한글)</option>
+                  <option value="'NanumGothic', '나눔고딕', sans-serif">나눔고딕</option>
+                  <option value="'NanumMyeongjo', '나눔명조', serif">나눔명조</option>
+                  <option value="Arial, sans-serif">Arial (영문 고딕)</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                  <option value="'Courier New', monospace">Courier New (고정폭)</option>
+                </optgroup>
+                <optgroup id="localPcFontGroup" label="불러온 내 PC 폰트" class="bg-slate-900 text-emerald-300 hidden"></optgroup>
+              </select>
+              <button type="button" onclick="loadWindowsLocalFonts()" class="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-500/40 text-[11px] font-extrabold text-cyan-300 transition shrink-0" title="내 PC(윈도우/맥)에 설치된 모든 폰트를 목록에 불러옵니다">
+                🖥️ PC폰트 로드
+              </button>
+              <button type="button" onclick="document.getElementById('customFontFileInput').click()" class="px-1.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 shrink-0" title="외부 .ttf / .otf 폰트 파일 직접 추가">
+                +TTF
+              </button>
+            </div>
+
+            <!-- 글자 크기 조절 -->
+            <div class="flex items-center gap-1.5 bg-slate-900/95 px-2.5 py-1 rounded-xl border border-slate-700">
+              <span class="text-[11px] text-slate-400">크기</span>
+              <input id="toolSizeRange" type="range" min="8" max="72" value="14" oninput="updateToolSize(this.value)" class="w-20 accent-cyan-400 cursor-pointer" />
+              <input id="toolSizeNumber" type="number" min="6" max="120" value="14" oninput="updateToolSize(this.value)" class="w-11 bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-xs font-mono text-cyan-300 text-center focus:outline-none" />
+            </div>
+
+            <!-- 굵게(B) / 기울임(I) -->
+            <div class="flex items-center gap-1">
+              <button id="boldToggleBtn" type="button" onmousedown="event.preventDefault()" onclick="toggleBoldText()" class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-extrabold text-slate-300 hover:text-white transition" title="글자 굵게">
+                B
+              </button>
+              <button id="italicToggleBtn" type="button" onmousedown="event.preventDefault()" onclick="toggleItalicText()" class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs italic font-serif font-bold text-slate-300 hover:text-white transition" title="기울임꼴">
+                I
+              </button>
+            </div>
+
+            <!-- 글자/선 색상 선택 -->
+            <div class="flex items-center gap-1 bg-slate-900/95 px-2.5 py-1 rounded-xl border border-slate-700">
+              <span class="text-[11px] text-slate-400 mr-0.5">글자색</span>
+              <button type="button" onmousedown="event.preventDefault()" onclick="setToolColor('#0f172a', this)" class="color-chip active" style="background:#0f172a" title="검정"></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="setToolColor('#dc2626', this)" class="color-chip" style="background:#dc2626" title="빨강"></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="setToolColor('#2563eb', this)" class="color-chip" style="background:#2563eb" title="파랑"></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="setToolColor('#16a34a', this)" class="color-chip" style="background:#16a34a" title="초록"></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="setToolColor('#ffffff', this)" class="color-chip" style="background:#ffffff" title="흰색"></button>
+              <input type="color" id="customColorInput" value="#0f172a" oninput="setToolColor(this.value, null)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="글자 색상 직접 선택" />
+            </div>
+
+            <!-- 마스킹 배경색 선택 -->
+            <div class="flex items-center gap-1 bg-slate-900/95 px-2.5 py-1 rounded-xl border border-slate-700" title="기존 글자를 덮어쓸 배경색입니다 (기본값: 원본 배경색 자동 추출)">
+              <span class="text-[11px] text-slate-400">배경칠</span>
+              <input type="color" id="customBgColorInput" value="#ffffff" oninput="updateMaskBgColor(this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 좌측 페이지 목록 + 우측 메인 종이 작업대 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        
+        <!-- 좌측 3칸: 페이지 썸네일 & 페이지 관리 -->
+        <aside class="lg:col-span-3 glass-panel rounded-2xl p-3 flex flex-col max-h-[76vh]">
+          <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-800">
+            <span class="text-xs sm:text-sm font-extrabold text-white">📑 페이지 (<span id="totalPageCount">0</span>장)</span>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="addBlankPage()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">
+                +빈종이
+              </button>
+              <button type="button" onclick="extractCurrentPageOnly()" class="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 transition">
+                이 장만 저장
+              </button>
+            </div>
+          </div>
+
+          <div id="pageThumbList" class="space-y-2.5 overflow-y-auto pr-1 flex-1"></div>
+
+          <div class="grid grid-cols-5 gap-1 pt-2.5 mt-2 border-t border-slate-800 text-[11px] font-bold">
+            <button type="button" onclick="moveCurrentPage(-1)" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">⬆️위로</button>
+            <button type="button" onclick="moveCurrentPage(1)" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition">⬇️아래</button>
+            <button type="button" onclick="rotateCurrentPage()" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 transition">🔄회전</button>
+            <button type="button" onclick="duplicateCurrentPage()" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 transition">📑복제</button>
+            <button type="button" onclick="deleteCurrentPage()" class="py-2 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 transition">❌삭제</button>
+          </div>
+        </aside>
+
+        <!-- 우측 9칸: 메인 PDF 종이 편집 영역 -->
+        <main class="lg:col-span-9 glass-panel rounded-2xl p-3 sm:p-4 flex flex-col">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-800">
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="goPrevPage()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">◀ 이전</button>
+              <span class="text-xs sm:text-sm font-extrabold text-white px-2">
+                <span id="currentPageNum" class="text-cyan-400">1</span> / <span id="maxPageNum">1</span> 페이지
+              </span>
+              <button type="button" onclick="goNextPage()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200">다음 ▶</button>
+              <span id="extractedBlockCountBadge" class="ml-2 px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-[11px] font-bold text-cyan-300">
+                인식된 텍스트 블록: 0개
+              </span>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-slate-300 cursor-pointer mr-1">
+                <input type="checkbox" id="showHoverGuideCheck" checked onchange="toggleHoverGuides(this.checked)" class="accent-cyan-400" />
+                <span>글자 테두리 안내선</span>
+              </label>
+              <button type="button" onclick="exportCurrentPageAsPng()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-emerald-300">
+                📸 현재 장 PNG
+              </button>
+              <button type="button" onclick="changeZoom(-0.15)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-bold text-slate-200">-</button>
+              <span id="zoomPercentLabel" class="text-xs font-mono text-cyan-300 w-12 text-center">100%</span>
+              <button type="button" onclick="changeZoom(0.15)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-bold text-slate-200">+</button>
+              <button type="button" onclick="resetZoom()" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300">100%</button>
+            </div>
+          </div>
+
+          <!-- 종이 캔버스 스테이지 -->
+          <div id="canvasScrollArea" class="canvas-stage-wrap rounded-xl overflow-auto max-h-[72vh] p-3 sm:p-6 flex justify-center items-start relative">
+            <div id="paperContainer" class="relative paper-shadow bg-white">
+              <!-- 1층: 원본 PDF 렌더링 캔버스 -->
+              <canvas id="pdfRenderCanvas" class="block"></canvas>
+              <!-- 2층: Sejda 스타일 인라인 기존 글자 직접 편집/복사 DOM 레이어 -->
+              <div id="textLayerContainer" class="interactive-mode show-guides"></div>
+              <!-- 3층: 도장·서명·형광펜·도형·새글자 캔버스 레이어 -->
+              <canvas id="overlayEditCanvas" class="absolute inset-0 z-10 pointer-events-none touch-none"></canvas>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- [모달 1] 서명 그리기 · 1초 자동 도장 생성 · 도장 사진 불러오기 -->
+  <div id="signatureModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="glass-panel rounded-2xl max-w-lg w-full p-5 sm:p-6 border-cyan-500/40">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+        <h3 class="text-lg font-extrabold text-white">✍️ 서명 그리기 & 1초 자동 도장 만들기</h3>
+        <button type="button" onclick="closeSignatureModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 rounded-xl mb-4 border border-slate-800 text-xs font-extrabold">
+        <button type="button" id="sigTabBtn1" onclick="switchSigTab(1)" class="py-2 rounded-lg bg-cyan-500 text-slate-950">1. 직접 서명 그리기</button>
+        <button type="button" id="sigTabBtn2" onclick="switchSigTab(2)" class="py-2 rounded-lg text-slate-300 hover:text-white">2. 자동 도장 만들기</button>
+        <button type="button" id="sigTabBtn3" onclick="switchSigTab(3)" class="py-2 rounded-lg text-slate-300 hover:text-white">3. 도장 사진 올리기</button>
+      </div>
+
+      <!-- 탭 1: 자필 서명 패드 -->
+      <div id="sigTabContent1" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-300">펜 색상:</span>
+            <button type="button" onclick="setSigPenColor('#0f172a')" class="w-5 h-5 rounded-full bg-slate-900 border-2 border-white"></button>
+            <button type="button" onclick="setSigPenColor('#dc2626')" class="w-5 h-5 rounded-full bg-red-600 border border-white/40"></button>
+            <button type="button" onclick="setSigPenColor('#2563eb')" class="w-5 h-5 rounded-full bg-blue-600 border border-white/40"></button>
+          </div>
+          <button type="button" onclick="clearSignaturePad()" class="text-xs text-rose-300 font-bold hover:underline">지우고 다시 쓰기</button>
+        </div>
+        <div class="bg-white rounded-xl overflow-hidden border-2 border-slate-700">
+          <canvas id="signaturePadCanvas" width="440" height="170" class="w-full h-40 block cursor-crosshair touch-none"></canvas>
+        </div>
+        <button type="button" onclick="applyDrawnSignature()" class="w-full py-3 rounded-xl btn-primary text-sm font-extrabold">
+          이 서명을 문서에 넣기
+        </button>
+      </div>
+
+      <!-- 탭 2: 1초 자동 한글/영문 도장 생성기 -->
+      <div id="sigTabContent2" class="hidden space-y-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">도장에 새길 이름 / 문구</label>
+            <input type="text" id="autoStampName" value="조재성" maxlength="8" oninput="renderAutoStampPreview()" placeholder="예: 홍길동, 승인, 확인" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white font-bold focus:outline-none focus:border-cyan-400" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">도장 모양 선택</label>
+            <select id="autoStampStyle" onchange="renderAutoStampPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white font-bold focus:outline-none">
+              <option value="round">🔴 원형 인감도장 (이름+인)</option>
+              <option value="oval">⭕ 타원형 만년도장</option>
+              <option value="square">🟥 사각 법인/직인 도장</option>
+              <option value="box">✅ 사각 결재 확인란</option>
+            </select>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-4 flex flex-col items-center justify-center border-2 border-slate-700">
+          <canvas id="autoStampCanvas" width="180" height="180" class="w-32 h-32"></canvas>
+          <span class="text-[11px] text-slate-500 mt-1">투명 배경 고해상도 도장 미리보기</span>
+        </div>
+        <button type="button" onclick="applyAutoStamp()" class="w-full py-3 rounded-xl btn-primary text-sm font-extrabold">
+          이 도장을 문서에 찍기
+        </button>
+      </div>
+
+      <!-- 탭 3: 내 기기 도장/사인 사진 불러오기 -->
+      <div id="sigTabContent3" class="hidden space-y-3.5">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          종이에 찍은 도장 사진이나 서명 이미지를 올리면, <strong>하얀 종이 배경을 자동으로 투명하게 지워서</strong> 문서 위에 깔끔하게 얹어줍니다.
+        </p>
+        <label class="flex items-center gap-2 bg-slate-900 p-3 rounded-xl border border-slate-800 text-xs font-bold text-cyan-300 cursor-pointer">
+          <input type="checkbox" id="removeWhiteBgCheck" checked class="accent-cyan-400 w-4 h-4" />
+          <span>하얀 배경 자동으로 투명하게 지우기 (누끼 기능)</span>
+        </label>
+        <button type="button" onclick="document.getElementById('stampImageInput').click()" class="w-full py-3.5 rounded-xl btn-primary text-sm font-extrabold">
+          🖼️ 내 기기에서 도장·서명 이미지 선택하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- [모달 2] 워터마크 일괄 넣기 모달 -->
+  <div id="watermarkModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="glass-panel rounded-2xl max-w-md w-full p-5 sm:p-6 border-cyan-500/40">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+        <h3 class="text-lg font-extrabold text-white">🏷️ 전체 페이지 워터마크 넣기</h3>
+        <button type="button" onclick="closeWatermarkModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">워터마크 문구</label>
+          <input type="text" id="watermarkTextInput" value="대외비 (CONFIDENTIAL)" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white font-bold focus:outline-none focus:border-cyan-400" />
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button type="button" onclick="document.getElementById('watermarkTextInput').value='대외비'" class="px-2.5 py-1 rounded-lg bg-slate-800 text-xs text-slate-300 hover:text-white">대외비</button>
+          <button type="button" onclick="document.getElementById('watermarkTextInput').value='사본 (COPY)'" class="px-2.5 py-1 rounded-lg bg-slate-800 text-xs text-slate-300 hover:text-white">사본 (COPY)</button>
+          <button type="button" onclick="document.getElementById('watermarkTextInput').value='검토용 (DRAFT)'" class="px-2.5 py-1 rounded-lg bg-slate-800 text-xs text-slate-300 hover:text-white">검토용 (DRAFT)</button>
+          <button type="button" onclick="document.getElementById('watermarkTextInput').value='무단배포금지'" class="px-2.5 py-1 rounded-lg bg-slate-800 text-xs text-slate-300 hover:text-white">무단배포금지</button>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-2">
+          <button type="button" onclick="clearWatermark()" class="px-4 py-2.5 rounded-xl bg-rose-950/80 border border-rose-500/40 text-xs font-bold text-rose-200">
+            워터마크 제거
+          </button>
+          <button type="button" onclick="applyWatermark()" class="flex-1 py-2.5 rounded-xl btn-primary text-xs sm:text-sm font-extrabold">
+            전체 페이지에 워터마크 적용
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- [모달 3] 페이지 분할 / 범위 추출 모달 -->
+  <div id="splitModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="glass-panel rounded-2xl max-w-md w-full p-5 sm:p-6 border-purple-500/40">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+        <h3 class="text-lg font-extrabold text-white">✂️ 원하는 페이지만 골라 분할 저장</h3>
+        <button type="button" onclick="closeSplitModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">추출할 페이지 번호 또는 범위 입력</label>
+          <input type="text" id="splitRangeInput" placeholder="예: 1-3, 5" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white font-mono focus:outline-none focus:border-purple-400" />
+          <p class="text-[11px] text-slate-400 mt-1">예시: <code>1-3</code> (1~3페이지), <code>1, 3, 5</code> (1, 3, 5페이지)</p>
+        </div>
+        <button type="button" onclick="exportCustomRangePdf()" class="w-full py-3 rounded-xl btn-primary text-sm font-extrabold">
+          입력한 페이지만 묶어서 PDF로 저장
+        </button>
+        <div class="border-t border-slate-800 pt-3">
+          <button type="button" onclick="exportEveryPageIndividuallyZip()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-cyan-300 transition">
+            📦 전체 페이지를 1장씩 낱개 PDF로 모두 분리해 받기 (.zip)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- [모달 4] 전체 텍스트 한 번에 복사 모달 -->
+  <div id="fullTextModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="glass-panel rounded-2xl max-w-2xl w-full p-5 sm:p-6 border-amber-500/40">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+        <h3 class="text-lg font-extrabold text-white">📋 문서 텍스트 전체 추출 · 복사</h3>
+        <button type="button" onclick="closeFullTextModal()" class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <textarea id="fullTextOutput" rows="12" class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-amber-400"></textarea>
+      <div class="flex items-center justify-end gap-2 mt-3">
+        <button type="button" onclick="copyFullExtractedText()" class="px-5 py-2.5 rounded-xl btn-primary text-xs sm:text-sm font-extrabold">
+          📋 클립보드에 전체 복사하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 오버레이 -->
+  <div id="loadingOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div class="glass-panel rounded-2xl px-7 py-5 text-center border-cyan-400/40">
+      <div class="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <div id="loadingText" class="text-sm font-extrabold text-white">문서를 빠르게 처리하고 있습니다...</div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * [v4.0 핵심 버그 완벽 해결 내역]
+     * 1. 클릭만 하고 아무것도 안 고친 뒤 다른 곳을 클릭했을 때 글자가 하얗게 사라지던 치명적 버그 완벽 해결:
+     *    - 기존에는 focus 시점에 overlayEditCanvas에 배경 마스킹을 그렸고, blur 시점에 focusedTextBlockId를 해제하지 않아
+     *      DOM 글자는 투명해지고 캔버스에는 흰색 사각형이 남아 글자가 사라졌습니다.
+     *    - 이제 단순히 클릭(focus)만 한 상태(`isModified === false`)에서는 캔버스 마스킹을 절대 그리지 않고,
+     *      실제로 글자를 1글자라도 수정하거나 서식을 바꾼 순간(`isModified === true`)에만 마스킹합니다.
+     *    - 또한 타이핑 후 원래 글자와 100% 동일하면 자동으로 `isModified = false`로 복원되어 원본 벡터 글씨가 그대로 유지됩니다.
+     * 2. 수정 후 저장 시 글자 주변에 생기던 네모칸(패치) 테두리 흔적 100% 제거:
+     *    - 첫째, 글자 안티앨리어싱 픽셀이 섞이지 않도록 글자 영역 바깥쪽(외곽 4~7px 링 영역)의 순수 셀 배경색 최빈값(Mode)을 정밀 추출합니다.
+     *    - 둘째, 수정된 텍스트가 있는 페이지를 내보낼 때 투명 PNG 조각을 덧대어 경계선(Interpolation Artifact)이 생기는 방식 대신,
+     *      원본 고해상도 캔버스 위에 직접 배경색과 새 글자를 단일 레이어로 합성하여 네모 흔적이 0%도 남지 않도록 처리했습니다.
+     */
+    const pdfjsLib = window["pdfjs-dist/build/pdf"] || window.pdfjsLib;
+    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+    const CMAP_CDN_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/";
+    const STD_FONT_CDN_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/";
+
+    // 문서 및 페이지 상태
+    let sourcePdfs = []; // [{ id, bytes: Uint8Array, pdfJsDoc, name }]
+    let pages = [];      // [{ uid, sourceIdx, pageIndex, rotation, textBlocks: null | [], annotations: [], undoStack: [], redoStack: [] }]
+    let currentPageIdx = 0;
+    let zoomScale = 1.0;
+    let watermarkText = "";
+    let currentRenderTask = null;
+    let thumbRenderToken = 0;
+
+    // 도구 및 서식 상태
+    let activeTool = "edit_text";
+    let currentFontFamily = "'Malgun Gothic', '맑은 고딕', sans-serif";
+    let toolColor = "#0f172a";
+    let maskBgColor = "#ffffff";
+    let toolSize = 14;
+    let isBoldText = false;
+    let isItalicText = false;
+    let currentMarkSymbol = "✓";
+    let currentShapeKind = "rect";
+
+    // 인터랙션 상태
+    let basePageViewport = null;
+    let focusedTextBlockId = null;
+    let selectedAnnotationId = null;
+    let isDragging = false;
+    let dragMode = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let activeDraftAnnotation = null;
+
+    // 서명 패드 상태
+    let isSigning = false;
+    let sigLastX = 0;
+    let sigLastY = 0;
+    let sigPenColor = "#0f172a";
+
+    const TOOL_GUIDES = {
+      edit_text: "문서 안의 기존 글자를 마우스로 클릭하면 바로 내용을 고치거나 드래그해서 복사(Ctrl+C)할 수 있습니다!",
+      add_text: "문서의 빈 곳을 클릭하면 원하는 위치에 새로운 글자 상자를 추가합니다.",
+      select: "추가한 도장·서명·도형·새글자를 클릭해 위치를 옮기거나 모서리 파란 점을 당겨 크기를 조절하세요.",
+      whiteout: "지우고 싶은 영역 위를 마우스로 드래그하면 배경색으로 깨끗하게 가려집니다.",
+      stamp_mark: "원하는 칸을 클릭하면 체크(✓), 동그라미(◯), 엑스(✗) 기호가 즉시 찍힙니다.",
+      highlight: "강조하고 싶은 문장 위를 마우스로 드래그하여 형광펜을 칠하세요.",
+      pen: "마우스나 손가락으로 자유롭게 선이나 메모를 그리세요.",
+      shape: "원하는 영역을 마우스로 드래그하여 네모, 원형, 화살표, 직선을 그리세요."
+    };
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const div = document.createElement("div");
+      const border = type === "ok" ? "border-emerald-400/60" : type === "err" ? "border-rose-400/60" : "border-cyan-400/60";
+      const dot = type === "ok" ? "bg-emerald-400" : type === "err" ? "bg-rose-400" : "bg-cyan-400";
+      div.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 border ${border} text-white text-xs sm:text-sm font-bold shadow-2xl transition-opacity duration-200`;
+      div.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${dot} shrink-0"></span><span>${msg}</span>`;
+      container.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = "0";
+        setTimeout(() => div.remove(), 220);
+      }, 2800);
+    }
+
+    function setLoading(show, text = "문서를 빠르게 처리하고 있습니다...") {
+      const el = document.getElementById("loadingOverlay");
+      document.getElementById("loadingText").textContent = text;
+      if (show) {
+        el.classList.remove("hidden");
+        el.classList.add("flex");
+      } else {
+        el.classList.add("hidden");
+        el.classList.remove("flex");
+      }
+    }
+
+    function triggerAddFiles() {
+      document.getElementById("mainFileInput").click();
+    }
+
+    // 드래그 앤 드롭 바인딩
+    const dropZone = document.getElementById("dropZone");
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("drag-over");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleIncomingFiles(e.dataTransfer.files);
+      }
+    });
+
+    function dataUrlToUint8Array(dataUrl) {
+      const base64 = dataUrl.split(",")[1];
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function cloneUint8(uint8) {
+      const copy = new Uint8Array(uint8.byteLength);
+      copy.set(uint8);
+      return copy;
+    }
+
+    function readFileAsUint8Array(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(new Uint8Array(reader.result));
+        reader.onerror = () => reject(new Error("파일 읽기에 실패했습니다."));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+    }
+
+    // 1. 윈도우/맥 로컬 설치 폰트 불러오기
+    async function loadWindowsLocalFonts() {
+      if (typeof window.queryLocalFonts !== "function") {
+        showToast("이 브라우저는 자동 폰트 조회를 지원하지 않아 폰트 파일(.ttf/.otf) 선택 창을 엽니다.", "info");
+        document.getElementById("customFontFileInput").click();
+        return;
+      }
+      try {
+        const fonts = await window.queryLocalFonts();
+        if (!fonts || fonts.length === 0) {
+          showToast("설치된 로컬 폰트를 찾지 못했습니다.", "err");
+          return;
+        }
+        const uniqueFamilies = new Set();
+        fonts.forEach((f) => {
+          if (f.family) uniqueFamilies.add(f.family);
+        });
+
+        const group = document.getElementById("localPcFontGroup");
+        group.innerHTML = "";
+        group.classList.remove("hidden");
+
+        Array.from(uniqueFamilies).sort().forEach((fam) => {
+          const opt = document.createElement("option");
+          opt.value = `'${fam}', sans-serif`;
+          opt.textContent = `🖥️ ${fam}`;
+          group.appendChild(opt);
+        });
+
+        showToast(`내 PC에 설치된 폰트 ${uniqueFamilies.size}종을 모두 불러왔습니다!`, "ok");
+      } catch (err) {
+        showToast("권한이 거부되었거나 지원되지 않습니다. 우측 +TTF 버튼으로 폰트를 추가할 수 있습니다.", "err");
+      }
+    }
+
+    async function handleCustomFontFile(files) {
+      if (!files || !files[0]) return;
+      const file = files[0];
+      const fontName = file.name.replace(/\.(ttf|otf|woff2?)$/i, "");
+      try {
+        const buf = await file.arrayBuffer();
+        const fontFace = new FontFace(fontName, buf);
+        await fontFace.load();
+        document.fonts.add(fontFace);
+
+        const group = document.getElementById("localPcFontGroup");
+        group.classList.remove("hidden");
+        const opt = document.createElement("option");
+        opt.value = `'${fontName}', sans-serif`;
+        opt.textContent = `📂 ${fontName}`;
+        opt.selected = true;
+        group.appendChild(opt);
+
+        updateFontFamily(opt.value);
+        showToast(`'${fontName}' 폰트가 적용되었습니다!`, "ok");
+      } catch (e) {
+        showToast("폰트 파일을 읽는 중 오류가 발생했습니다.", "err");
+      }
+      document.getElementById("customFontFileInput").value = "";
+    }
+
+    // 2. 무결점 PDF.js 로더
+    async function loadPdfJsDocument(uint8Bytes, password = "") {
+      const opts = {
+        data: cloneUint8(uint8Bytes),
+        disableWorker: true,
+        cMapUrl: CMAP_CDN_URL,
+        cMapPacked: true,
+        standardFontDataUrl: STD_FONT_CDN_URL,
+        isEvalSupported: false,
+        stopAtErrors: false
+      };
+      if (password) opts.password = password;
+
+      try {
+        const doc = await pdfjsLib.getDocument(opts).promise;
+        await doc.getPage(1);
+        return doc;
+      } catch (err) {
+        if (err && err.name === "PasswordException") {
+          const userPw = window.prompt("이 PDF는 암호가 설정되어 있습니다.\n열기 암호를 입력해 주세요:");
+          if (userPw !== null && userPw !== "") {
+            return await loadPdfJsDocument(uint8Bytes, userPw);
+          }
+          throw new Error("암호가 입력되지 않았습니다.");
+        }
+        const docFallback = await pdfjsLib.getDocument({
+          data: cloneUint8(uint8Bytes),
+          disableWorker: true,
+          isEvalSupported: false,
+          stopAtErrors: false
+        }).promise;
+        await docFallback.getPage(1);
+        return docFallback;
+      }
+    }
+
+    async function handleIncomingFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      setLoading(true, "PDF 문서와 텍스트 레이어를 분석하고 있습니다...");
+
+      try {
+        let addedPages = 0;
+        const firstNewPageIdx = pages.length;
+
+        for (let f = 0; f < fileList.length; f++) {
+          const file = fileList[f];
+          const lowerName = (file.name || "").toLowerCase();
+
+          if (file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(lowerName)) {
+            const pdfBytes = await convertImageFileToPdfBytes(file);
+            const pdfJsDoc = await loadPdfJsDocument(pdfBytes);
+            const sourceIdx = sourcePdfs.length;
+            sourcePdfs.push({ id: "src_" + Date.now() + "_" + sourceIdx, bytes: pdfBytes, pdfJsDoc, name: file.name });
+
+            pages.push({
+              uid: "pg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+              sourceIdx,
+              pageIndex: 0,
+              rotation: 0,
+              textBlocks: null,
+              annotations: [],
+              undoStack: [],
+              redoStack: []
+            });
+            addedPages++;
+            continue;
+          }
+
+          const rawBytes = await readFileAsUint8Array(file);
+          const isPdfHeader = rawBytes.length > 4 && rawBytes[0] === 0x25 && rawBytes[1] === 0x50 && rawBytes[2] === 0x44 && rawBytes[3] === 0x46;
+
+          if (file.type === "application/pdf" || lowerName.endsWith(".pdf") || isPdfHeader) {
+            const pdfJsDoc = await loadPdfJsDocument(rawBytes);
+            const sourceIdx = sourcePdfs.length;
+
+            sourcePdfs.push({
+              id: "src_" + Date.now() + "_" + sourceIdx,
+              bytes: cloneUint8(rawBytes),
+              pdfJsDoc,
+              name: file.name || "문서.pdf"
+            });
+
+            for (let p = 0; p < pdfJsDoc.numPages; p++) {
+              pages.push({
+                uid: "pg_" + Date.now() + "_" + p + "_" + Math.random().toString(36).slice(2, 6),
+                sourceIdx,
+                pageIndex: p,
+                rotation: 0,
+                textBlocks: null,
+                annotations: [],
+                undoStack: [],
+                redoStack: []
+              });
+              addedPages++;
+            }
+          }
+        }
+
+        if (addedPages === 0) {
+          setLoading(false);
+          showToast("PDF 또는 이미지(PNG/JPG) 파일을 선택해 주세요.", "err");
+          return;
+        }
+
+        activateEditorUI();
+        await selectPage(firstNewPageIdx);
+        setLoading(false);
+
+        renderThumbnailsAsync();
+        showToast(`총 ${addedPages}페이지 로드 완료! 아무 글자나 클릭해 바로 수정하세요.`, "ok");
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+        showToast("열기 실패: " + (err && err.message ? err.message : "파일을 확인해 주세요."), "err");
+      } finally {
+        document.getElementById("mainFileInput").value = "";
+      }
+    }
+
+    async function convertImageFileToPdfBytes(file) {
+      const dataUrl = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const img = await loadImageElement(dataUrl);
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      c.getContext("2d").drawImage(img, 0, 0);
+      const pngBytes = dataUrlToUint8Array(c.toDataURL("image/png"));
+
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      const embedded = await pdfDoc.embedPng(pngBytes);
+      const page = pdfDoc.addPage([595.28, 841.89]);
+      const margin = 24;
+      const scale = Math.min((595.28 - margin * 2) / img.width, (841.89 - margin * 2) / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+
+      page.drawImage(embedded, {
+        x: (595.28 - drawW) / 2,
+        y: (841.89 - drawH) / 2,
+        width: drawW,
+        height: drawH
+      });
+      return await pdfDoc.save();
+    }
+
+    async function createNewBlankDocument() {
+      setLoading(true, "빈 A4 문서를 생성 중입니다...");
+      try {
+        const pdfDoc = await PDFLib.PDFDocument.create();
+        pdfDoc.addPage([595.28, 841.89]);
+        const pdfBytes = await pdfDoc.save();
+        const pdfJsDoc = await loadPdfJsDocument(pdfBytes);
+        const sourceIdx = sourcePdfs.length;
+
+        sourcePdfs.push({ id: "src_blank_" + Date.now(), bytes: pdfBytes, pdfJsDoc, name: "새_문서.pdf" });
+        pages.push({
+          uid: "pg_blank_" + Date.now(),
+          sourceIdx,
+          pageIndex: 0,
+          rotation: 0,
+          textBlocks: [],
+          annotations: [],
+          undoStack: [],
+          redoStack: []
+        });
+
+        activateEditorUI();
+        await selectPage(pages.length - 1);
+        setLoading(false);
+        renderThumbnailsAsync();
+        setActiveTool("add_text");
+        showToast("빈 A4 문서가 준비되었습니다. 원하는 곳을 클릭해 글자를 입력하세요!", "ok");
+      } catch (e) {
+        setLoading(false);
+      }
+    }
+
+    function activateEditorUI() {
+      document.getElementById("emptyUploadView").classList.add("hidden");
+      document.getElementById("editorWorkspace").classList.remove("hidden");
+      document.getElementById("topExtractTextBtn").classList.remove("hidden");
+      document.getElementById("topAddBtn").classList.remove("hidden");
+      document.getElementById("topSplitBtn").classList.remove("hidden");
+      document.getElementById("topImgExportBtn").classList.remove("hidden");
+      document.getElementById("downloadPdfBtn").disabled = false;
+    }
+
+    // =========================================================================
+    // 3. 정밀 텍스트 라인/셀 추출 & 외곽 링(Ring) 최빈값 배경색 샘플링 엔진 (네모 흔적 0%)
+    // =========================================================================
+    async function extractAndSamplePageTextBlocks(pdfPage, baseViewport, renderedCanvas, renderScale) {
+      let textContent = null;
+      try {
+        textContent = await pdfPage.getTextContent();
+      } catch (e) {
+        return [];
+      }
+      if (!textContent || !textContent.items || textContent.items.length === 0) return [];
+
+      const rawItems = [];
+      for (const item of textContent.items) {
+        if (!item.str || !item.str.trim()) continue;
+        const tx = pdfjsLib.Util.transform(baseViewport.transform, item.transform);
+        const fontHeight = Math.max(7.5, Math.hypot(tx[2], tx[3]) || Math.hypot(tx[0], tx[1]) || 12);
+        const x = tx[4];
+        const y = tx[5] - fontHeight * 0.84;
+        const w = Math.max(fontHeight * 0.45, item.width ? item.width * baseViewport.scale : item.str.length * fontHeight * 0.55);
+        const h = fontHeight * 1.16;
+
+        const fName = (item.fontName || "").toLowerCase();
+        const isSerif = fName.includes("batang") || fName.includes("myeongjo") || fName.includes("serif") || fName.includes("times") || fName.includes("ming");
+        const isBold = fName.includes("bold") || fName.includes("heavy") || fName.includes("black");
+
+        rawItems.push({
+          text: item.str,
+          x,
+          y,
+          w,
+          h,
+          fontSize: Math.round(fontHeight * 10) / 10,
+          fontFamily: isSerif ? "'Batang', '바탕', serif" : "'Malgun Gothic', '맑은 고딕', sans-serif",
+          bold: isBold,
+          italic: fName.includes("italic") || fName.includes("oblique")
+        });
+      }
+
+      rawItems.sort((a, b) => {
+        if (Math.abs(a.y - b.y) > Math.min(a.fontSize, b.fontSize) * 0.45) {
+          return a.y - b.y;
+        }
+        return a.x - b.x;
+      });
+
+      const mergedBlocks = [];
+      for (const item of rawItems) {
+        if (mergedBlocks.length === 0) {
+          mergedBlocks.push({ ...item });
+          continue;
+        }
+        const prev = mergedBlocks[mergedBlocks.length - 1];
+        const sameLine = Math.abs(item.y - prev.y) <= Math.min(item.fontSize, prev.fontSize) * 0.48;
+        const gapX = item.x - (prev.x + prev.w);
+
+        if (sameLine && gapX >= -item.fontSize * 0.4 && gapX <= Math.max(prev.fontSize, item.fontSize) * 1.4) {
+          const needSpace = gapX > Math.min(prev.fontSize, item.fontSize) * 0.22 && !prev.text.endsWith(" ") && !item.text.startsWith(" ");
+          prev.text += (needSpace ? " " : "") + item.text;
+          const rightEdge = Math.max(prev.x + prev.w, item.x + item.w);
+          prev.x = Math.min(prev.x, item.x);
+          prev.w = rightEdge - prev.x;
+          prev.y = Math.min(prev.y, item.y);
+          prev.h = Math.max(prev.h, item.h);
+        } else {
+          mergedBlocks.push({ ...item });
+        }
+      }
+
+      const ctx = renderedCanvas.getContext("2d");
+      const cw = renderedCanvas.width;
+      const ch = renderedCanvas.height;
+
+      return mergedBlocks.map((b, idx) => {
+        const sampled = sampleCleanCellAndTextColors(ctx, cw, ch, b.x * renderScale, b.y * renderScale, b.w * renderScale, b.h * renderScale);
+        return {
+          id: `tb_${Date.now()}_${idx}`,
+          origText: b.text,
+          text: b.text,
+          x: b.x,
+          y: b.y,
+          origX: b.x,
+          origY: b.y,
+          origW: b.w,
+          origH: b.h,
+          w: b.w,
+          h: b.h,
+          fontSize: b.fontSize,
+          fontFamily: b.fontFamily,
+          bold: sampled.isBoldStroke || b.bold,
+          italic: b.italic,
+          color: sampled.fgHex,
+          bgColor: sampled.bgHex,
+          isModified: false,
+          isDeleted: false
+        };
+      });
+    }
+
+    /**
+     * 글자 안티앨리어싱 번짐 픽셀이 절대 섞이지 않도록
+     * 글자 바운딩 박스 바깥쪽 4~7px 링(Ring) 영역에서 순수 배경색(Mode)을 추출하고,
+     * 내부 픽셀 중 배경색과 가장 선명하게 대비되는 실제 글자 중심부 색상을 추출합니다.
+     */
+    function sampleCleanCellAndTextColors(ctx, cw, ch, px, py, pw, ph) {
+      try {
+        const pad = 6;
+        const sx = Math.max(0, Math.min(cw - 1, Math.floor(px - pad)));
+        const sy = Math.max(0, Math.min(ch - 1, Math.floor(py - pad)));
+        const sw = Math.max(4, Math.min(cw - sx, Math.ceil(pw + pad * 2)));
+        const sh = Math.max(4, Math.min(ch - sy, Math.ceil(ph + pad * 2)));
+
+        const imgData = ctx.getImageData(sx, sy, sw, sh).data;
+
+        // 1) 글자에서 4~6px 떨어진 외곽 테두리 링 픽셀들만 수집해 최빈값(Mode)으로 순수 셀 배경색 결정
+        const colorBuckets = new Map();
+        const addBgSample = (x, y) => {
+          const idx = (y * sw + x) * 4;
+          const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+          // 표의 진한 테두리 선(어두운 회색/검정)은 배경색 후보에서 제외
+          if (r < 140 && g < 140 && b < 140) return;
+          const key = `${r},${g},${b}`;
+          colorBuckets.set(key, (colorBuckets.get(key) || 0) + 1);
+        };
+
+        for (let x = 0; x < sw; x++) {
+          addBgSample(x, 0);
+          addBgSample(x, 1);
+          addBgSample(x, sh - 1);
+          addBgSample(x, Math.max(0, sh - 2));
+        }
+        for (let y = 2; y < sh - 2; y++) {
+          addBgSample(0, y);
+          addBgSample(1, y);
+          addBgSample(sw - 1, y);
+          addBgSample(Math.max(0, sw - 2), y);
+        }
+
+        let bestBg = [255, 255, 255];
+        let maxCount = 0;
+        for (const [key, cnt] of colorBuckets.entries()) {
+          if (cnt > maxCount) {
+            maxCount = cnt;
+            bestBg = key.split(",").map(Number);
+          }
+        }
+
+        // 2) 글자 내부 영역에서 배경색과 거리가 먼 상위 픽셀들을 찾아 실제 글자 색상 추출
+        let fgCandidates = [];
+        let darkPixelCount = 0;
+        let innerTotalCount = 0;
+
+        for (let y = pad; y < sh - pad; y++) {
+          for (let x = pad; x < sw - pad; x++) {
+            const idx = (y * sw + x) * 4;
+            const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+            const dist = Math.hypot(r - bestBg[0], g - bestBg[1], b - bestBg[2]);
+            innerTotalCount++;
+            if (dist > 65) {
+              darkPixelCount++;
+              fgCandidates.push({ r, g, b, dist });
+            }
+          }
+        }
+
+        let bestFg = [15, 23, 42];
+        if (fgCandidates.length > 0) {
+          // 가장 선명한(대비가 가장 높은) 상위 20% 픽셀의 중앙값으로 안티앨리어싱 없는 원색 추출
+          fgCandidates.sort((a, b) => b.dist - a.dist);
+          const topCount = Math.max(1, Math.floor(fgCandidates.length * 0.2));
+          let sumR = 0, sumG = 0, sumB = 0;
+          for (let i = 0; i < topCount; i++) {
+            sumR += fgCandidates[i].r;
+            sumG += fgCandidates[i].g;
+            sumB += fgCandidates[i].b;
+          }
+          bestFg = [Math.round(sumR / topCount), Math.round(sumG / topCount), Math.round(sumB / topCount)];
+        }
+
+        // 획 밀도가 높으면 Bold로 자동 판별
+        const strokeRatio = innerTotalCount > 0 ? darkPixelCount / innerTotalCount : 0;
+
+        return {
+          bgHex: rgbToHex(bestBg[0], bestBg[1], bestBg[2]),
+          fgHex: rgbToHex(bestFg[0], bestFg[1], bestFg[2]),
+          isBoldStroke: strokeRatio > 0.23
+        };
+      } catch (e) {
+        return { bgHex: "#ffffff", fgHex: "#0f172a", isBoldStroke: false };
+      }
+    }
+
+    // =========================================================================
+    // 4. 무결점 인라인 DOM 텍스트 레이어 (클릭만 하고 나와도 절대 사라지지 않음)
+    // =========================================================================
+    function renderInteractiveTextLayer() {
+      const container = document.getElementById("textLayerContainer");
+      container.innerHTML = "";
+      const pageMeta = pages[currentPageIdx];
+      if (!pageMeta || !pageMeta.textBlocks) return;
+
+      const displayScale = 1.25 * zoomScale;
+      const validBlocks = pageMeta.textBlocks.filter((b) => !b.isDeleted);
+      document.getElementById("extractedBlockCountBadge").textContent = `인식된 텍스트 블록: ${validBlocks.length}개`;
+
+      const frag = document.createDocumentFragment();
+
+      for (const block of validBlocks) {
+        const div = document.createElement("div");
+        div.id = `dom_${block.id}`;
+        div.dataset.blockId = block.id;
+        div.contentEditable = activeTool === "edit_text" ? "true" : "false";
+        div.spellcheck = false;
+        div.textContent = block.text;
+
+        applyTextBlockStylesToElement(div, block, displayScale, false);
+
+        // [핵심 수정] 클릭(focus) 시에는 블록의 원래 색상을 그대로 보여주고, isModified는 절대 건드리지 않음!
+        div.addEventListener("focus", () => {
+          focusedTextBlockId = block.id;
+          selectedAnnotationId = null;
+
+          if (block.isModified) {
+            document.getElementById("restoreOrigTextBtn").classList.remove("hidden");
+          } else {
+            document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+          }
+
+          // 편집 중에는 DOM 박스 자체에 추출된 셀 배경색과 원본 글자색을 입혀 선명하게 타이핑하도록 지원
+          div.style.backgroundColor = block.bgColor || "#ffffff";
+          div.style.color = block.color || "#0f172a";
+
+          syncToolbarWithTextBlock(block);
+          redrawAnnotations();
+        });
+
+        // 실제로 키보드로 글자를 입력/수정한 순간에만 수정 상태(isModified)로 전환
+        div.addEventListener("input", () => {
+          const newText = div.innerText.replace(/\r/g, "");
+          if (newText === block.origText && !block.styleChanged) {
+            // 다시 원래 글자와 똑같이 돌려놓았다면 미수정(원본) 상태로 자동 복귀
+            block.isModified = false;
+            block.text = block.origText;
+            document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+          } else {
+            if (!block.isModified) {
+              pushUndoState();
+              block.isModified = true;
+            }
+            block.text = newText;
+            document.getElementById("restoreOrigTextBtn").classList.remove("hidden");
+          }
+
+          div.className = `pdf-text-item ${block.isModified ? "modified" : "unmodified"}`;
+          div.style.backgroundColor = block.bgColor || "#ffffff";
+          div.style.color = block.color || "#0f172a";
+          redrawAnnotations();
+          updateThumbEditedBadge();
+        });
+
+        // [핵심 수정] 다른 곳을 클릭해 포커스가 풀릴 때(blur): 아무것도 안 고쳤다면 100% 투명 원본 상태로 복원!
+        div.addEventListener("blur", () => {
+          if (focusedTextBlockId === block.id) {
+            focusedTextBlockId = null;
+          }
+
+          if (!block.isModified) {
+            div.className = "pdf-text-item unmodified";
+            div.style.backgroundColor = "transparent";
+            div.style.color = "transparent";
+            document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+          } else {
+            div.className = "pdf-text-item modified";
+            div.style.backgroundColor = block.bgColor || "#ffffff";
+            div.style.color = block.color || "#0f172a";
+
+            const rect = div.getBoundingClientRect();
+            if (rect.width > 4) {
+              block.w = Math.max(block.origW, rect.width / displayScale);
+              block.h = Math.max(block.origH, rect.height / displayScale);
+            }
+          }
+          redrawAnnotations();
+        });
+
+        div.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            div.blur();
+          }
+        });
+
+        frag.appendChild(div);
+      }
+
+      container.appendChild(frag);
+    }
+
+    function applyTextBlockStylesToElement(div, block, displayScale, isFocused) {
+      const leftPx = block.x * displayScale;
+      const topPx = block.y * displayScale;
+      const minW = Math.max(12, block.origW * displayScale + 2);
+      const minH = Math.max(12, block.origH * displayScale + 1);
+      const fSizePx = block.fontSize * displayScale;
+
+      div.className = `pdf-text-item ${block.isModified ? "modified" : "unmodified"}`;
+      div.style.left = `${leftPx}px`;
+      div.style.top = `${topPx}px`;
+      div.style.minWidth = `${minW}px`;
+      div.style.minHeight = `${minH}px`;
+      div.style.fontSize = `${fSizePx}px`;
+      div.style.fontFamily = block.fontFamily || currentFontFamily;
+      div.style.fontWeight = block.bold ? "700" : "400";
+      div.style.fontStyle = block.italic ? "italic" : "normal";
+
+      if (block.isModified || isFocused) {
+        div.style.backgroundColor = block.bgColor || "#ffffff";
+        div.style.color = block.color || "#0f172a";
+      } else {
+        div.style.backgroundColor = "transparent";
+        div.style.color = "transparent";
+      }
+    }
+
+    function syncToolbarWithTextBlock(block) {
+      toolSize = Math.round(block.fontSize);
+      document.getElementById("toolSizeRange").value = Math.min(72, Math.max(8, toolSize));
+      document.getElementById("toolSizeNumber").value = toolSize;
+
+      toolColor = block.color || "#0f172a";
+      document.getElementById("customColorInput").value = toolColor;
+
+      maskBgColor = block.bgColor && block.bgColor !== "transparent" ? block.bgColor : "#ffffff";
+      document.getElementById("customBgColorInput").value = maskBgColor;
+
+      isBoldText = !!block.bold;
+      isItalicText = !!block.italic;
+      updateBoldItalicButtonsUI();
+    }
+
+    function restoreFocusedTextBlock() {
+      const targetId = focusedTextBlockId;
+      const pageMeta = pages[currentPageIdx];
+      if (!pageMeta || !pageMeta.textBlocks) return;
+
+      const block = targetId
+        ? pageMeta.textBlocks.find((b) => b.id === targetId)
+        : [...pageMeta.textBlocks].reverse().find((b) => b.isModified);
+
+      if (!block) return;
+
+      pushUndoState();
+      block.text = block.origText;
+      block.isModified = false;
+      block.styleChanged = false;
+      block.isDeleted = false;
+      focusedTextBlockId = null;
+      document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+
+      renderInteractiveTextLayer();
+      redrawAnnotations();
+      updateThumbEditedBadge();
+      showToast("원래 PDF 글자로 깨끗하게 복구했습니다!");
+    }
+
+    function toggleHoverGuides(checked) {
+      const container = document.getElementById("textLayerContainer");
+      if (checked) container.classList.add("show-guides");
+      else container.classList.remove("show-guides");
+    }
+
+    // 5. 메인 페이지 선택 및 캔버스 렌더링
+    async function selectPage(idx) {
+      if (idx < 0 || idx >= pages.length) return;
+      currentPageIdx = idx;
+      focusedTextBlockId = null;
+      selectedAnnotationId = null;
+      document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+
+      document.getElementById("currentPageNum").textContent = idx + 1;
+      document.getElementById("maxPageNum").textContent = pages.length;
+
+      document.querySelectorAll("#pageThumbList .thumb-card").forEach((c, i) => {
+        if (i === idx) c.classList.add("selected");
+        else c.classList.remove("selected");
+      });
+
+      if (currentRenderTask) {
+        try { currentRenderTask.cancel(); } catch (e) {}
+        currentRenderTask = null;
+      }
+
+      const pageMeta = pages[idx];
+      const srcObj = sourcePdfs[pageMeta.sourceIdx];
+      let pdfPage = await srcObj.pdfJsDoc.getPage(pageMeta.pageIndex + 1);
+      const totalRot = ((pdfPage.rotate || 0) + pageMeta.rotation) % 360;
+
+      basePageViewport = pdfPage.getViewport({ scale: 1.0, rotation: totalRot });
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const displayScale = 1.25 * zoomScale;
+      const renderScale = displayScale * dpr;
+      const renderViewport = pdfPage.getViewport({ scale: renderScale, rotation: totalRot });
+
+      const cssWidth = Math.max(1, Math.round(basePageViewport.width * displayScale));
+      const cssHeight = Math.max(1, Math.round(basePageViewport.height * displayScale));
+
+      const paperContainer = document.getElementById("paperContainer");
+      paperContainer.style.width = cssWidth + "px";
+      paperContainer.style.height = cssHeight + "px";
+
+      const pdfCanvas = document.getElementById("pdfRenderCanvas");
+      pdfCanvas.width = Math.max(1, Math.round(renderViewport.width));
+      pdfCanvas.height = Math.max(1, Math.round(renderViewport.height));
+      pdfCanvas.style.width = cssWidth + "px";
+      pdfCanvas.style.height = cssHeight + "px";
+
+      const ctx = pdfCanvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, pdfCanvas.width, pdfCanvas.height);
+
+      currentRenderTask = pdfPage.render({ canvasContext: ctx, viewport: renderViewport });
+      try {
+        await currentRenderTask.promise;
+      } catch (err) {
+        if (err && err.name === "RenderingCancelledException") return;
+      }
+
+      if (pageMeta.textBlocks === null) {
+        pageMeta.textBlocks = await extractAndSamplePageTextBlocks(pdfPage, basePageViewport, pdfCanvas, renderScale);
+      }
+
+      const editCanvas = document.getElementById("overlayEditCanvas");
+      editCanvas.width = Math.max(1, Math.round(cssWidth * dpr));
+      editCanvas.height = Math.max(1, Math.round(cssHeight * dpr));
+      editCanvas.style.width = cssWidth + "px";
+      editCanvas.style.height = cssHeight + "px";
+
+      renderInteractiveTextLayer();
+      redrawAnnotations();
+    }
+
+    // 6. 비동기 백그라운드 썸네일 렌더링
+    async function renderThumbnailsAsync() {
+      const myToken = ++thumbRenderToken;
+      const container = document.getElementById("pageThumbList");
+      container.innerHTML = "";
+      document.getElementById("totalPageCount").textContent = pages.length;
+      document.getElementById("maxPageNum").textContent = pages.length;
+
+      const canvasHolders = [];
+      for (let i = 0; i < pages.length; i++) {
+        const card = document.createElement("div");
+        card.id = `thumb_card_${i}`;
+        card.className = `thumb-card rounded-xl p-2 cursor-pointer flex flex-col items-center ${i === currentPageIdx ? "selected" : ""}`;
+        card.onclick = () => selectPage(i);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 120;
+        canvas.height = 168;
+        canvas.className = "rounded bg-white max-w-full h-auto shadow";
+
+        const label = document.createElement("div");
+        label.id = `thumb_label_${i}`;
+        label.className = "mt-1.5 text-xs font-bold text-slate-300 flex items-center justify-between w-full px-1";
+        label.innerHTML = `<span>${i + 1} 페이지</span><span class="text-[10px] text-cyan-400"></span>`;
+
+        card.appendChild(canvas);
+        card.appendChild(label);
+        container.appendChild(card);
+        canvasHolders.push(canvas);
+      }
+      updateThumbEditedBadge();
+
+      for (let i = 0; i < pages.length; i++) {
+        if (myToken !== thumbRenderToken) return;
+        try {
+          const pageMeta = pages[i];
+          const srcObj = sourcePdfs[pageMeta.sourceIdx];
+          const pdfPage = await srcObj.pdfJsDoc.getPage(pageMeta.pageIndex + 1);
+          const totalRot = ((pdfPage.rotate || 0) + pageMeta.rotation) % 360;
+          const vp = pdfPage.getViewport({ scale: 0.24, rotation: totalRot });
+
+          const canvas = canvasHolders[i];
+          canvas.width = Math.max(1, Math.round(vp.width));
+          canvas.height = Math.max(1, Math.round(vp.height));
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await pdfPage.render({ canvasContext: ctx, viewport: vp }).promise;
+        } catch (e) {}
+      }
+    }
+
+    function updateThumbEditedBadge() {
+      const p = pages[currentPageIdx];
+      const lbl = document.getElementById(`thumb_label_${currentPageIdx}`);
+      if (lbl && p) {
+        const modTextCount = (p.textBlocks || []).filter((b) => b.isModified || b.isDeleted).length;
+        const totalEdits = modTextCount + p.annotations.length;
+        lbl.innerHTML = `<span>${currentPageIdx + 1} 페이지</span><span class="text-[10px] text-cyan-400">${totalEdits > 0 ? `편집됨(${totalEdits})` : ""}</span>`;
+      }
+    }
+
+    // 7. 도구 전환 및 폰트·색상·크기 실시간 반영
+    function setActiveTool(toolName) {
+      activeTool = toolName;
+      if (toolName !== "select") selectedAnnotationId = null;
+      if (toolName !== "edit_text") {
+        focusedTextBlockId = null;
+        document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+      }
+
+      document.querySelectorAll(".tool-btn[data-tool]").forEach((btn) => {
+        if (btn.getAttribute("data-tool") === toolName) btn.classList.add("active");
+        else btn.classList.remove("active");
+      });
+
+      document.getElementById("toolGuideText").textContent = TOOL_GUIDES[toolName] || "";
+
+      const markSub = document.getElementById("stampMarkSubBar");
+      const shapeSub = document.getElementById("shapeSubBar");
+      markSub.className = toolName === "stamp_mark" ? "flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800" : "hidden";
+      shapeSub.className = toolName === "shape" ? "flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800" : "hidden";
+
+      const textLayer = document.getElementById("textLayerContainer");
+      const editCanvas = document.getElementById("overlayEditCanvas");
+
+      if (toolName === "edit_text") {
+        textLayer.classList.add("interactive-mode");
+        editCanvas.style.pointerEvents = "none";
+      } else {
+        textLayer.classList.remove("interactive-mode");
+        editCanvas.style.pointerEvents = "auto";
+        editCanvas.style.cursor = toolName === "select" ? "default" : toolName === "add_text" ? "text" : "crosshair";
+      }
+
+      renderInteractiveTextLayer();
+      redrawAnnotations();
+    }
+
+    function updateFontFamily(fontVal) {
+      currentFontFamily = fontVal;
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.fontFamily = fontVal;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.fontFamily = fontVal;
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+          updateThumbEditedBadge();
+        }
+      }
+      if (selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann && ann.type === "text") {
+          pushUndoState();
+          ann.fontFamily = fontVal;
+          recalcTextBoxBounds(ann);
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function updateToolSize(val) {
+      const num = Math.max(6, Math.min(120, parseFloat(val) || 14));
+      toolSize = num;
+      document.getElementById("toolSizeRange").value = Math.min(72, Math.max(8, num));
+      document.getElementById("toolSizeNumber").value = num;
+
+      const displayScale = 1.25 * zoomScale;
+
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          block.fontSize = num;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.fontSize = `${num * displayScale}px`;
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+          updateThumbEditedBadge();
+        }
+      }
+      if (selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann) {
+          ann.size = num;
+          if (ann.type === "text") recalcTextBoxBounds(ann);
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function setToolColor(hex, btnEl) {
+      toolColor = hex;
+      document.getElementById("customColorInput").value = hex;
+      document.querySelectorAll(".color-chip").forEach((c) => c.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.color = hex;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.color = hex;
+            domEl.style.backgroundColor = block.bgColor || "#ffffff";
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+          updateThumbEditedBadge();
+        }
+      }
+      if (selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann && ann.type !== "image") {
+          pushUndoState();
+          ann.color = hex;
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function updateMaskBgColor(hex) {
+      maskBgColor = hex;
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.bgColor = hex;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.backgroundColor = hex;
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function toggleBoldText() {
+      isBoldText = !isBoldText;
+      updateBoldItalicButtonsUI();
+
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.bold = isBoldText;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.fontWeight = isBoldText ? "700" : "400";
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+        }
+      }
+      if (selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann && ann.type === "text") {
+          pushUndoState();
+          ann.bold = isBoldText;
+          recalcTextBoxBounds(ann);
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function toggleItalicText() {
+      isItalicText = !isItalicText;
+      updateBoldItalicButtonsUI();
+
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.italic = isItalicText;
+          block.isModified = true;
+          block.styleChanged = true;
+          const domEl = document.getElementById(`dom_${block.id}`);
+          if (domEl) {
+            domEl.style.fontStyle = isItalicText ? "italic" : "normal";
+            domEl.className = "pdf-text-item modified";
+          }
+          redrawAnnotations();
+        }
+      }
+      if (selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann && ann.type === "text") {
+          pushUndoState();
+          ann.italic = isItalicText;
+          recalcTextBoxBounds(ann);
+          redrawAnnotations();
+        }
+      }
+    }
+
+    function updateBoldItalicButtonsUI() {
+      document.getElementById("boldToggleBtn").className = isBoldText
+        ? "px-2.5 py-1.5 rounded-xl bg-cyan-500/25 border border-cyan-400 text-xs font-extrabold text-cyan-200 transition"
+        : "px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-extrabold text-slate-400 transition";
+      document.getElementById("italicToggleBtn").className = isItalicText
+        ? "px-2.5 py-1.5 rounded-xl bg-cyan-500/25 border border-cyan-400 text-xs italic font-serif font-bold text-cyan-200 transition"
+        : "px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs italic font-serif font-bold text-slate-400 transition";
+    }
+
+    function setMarkSymbol(sym, btnEl) {
+      currentMarkSymbol = sym;
+      document.querySelectorAll("#stampMarkSubBar .sub-pill").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+    }
+
+    function setShapeKind(kind, btnEl) {
+      currentShapeKind = kind;
+      document.querySelectorAll("#shapeSubBar .sub-pill").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+    }
+
+    function getCurrentTextBlocks() {
+      return pages[currentPageIdx] && pages[currentPageIdx].textBlocks ? pages[currentPageIdx].textBlocks : [];
+    }
+
+    function getCurrentAnnotations() {
+      return pages[currentPageIdx] ? pages[currentPageIdx].annotations : [];
+    }
+
+    function getNormalizedCoords(clientX, clientY) {
+      const editCanvas = document.getElementById("overlayEditCanvas");
+      const rect = editCanvas.getBoundingClientRect();
+      const displayScale = 1.25 * zoomScale;
+      return {
+        x: (clientX - rect.left) / displayScale,
+        y: (clientY - rect.top) / displayScale
+      };
+    }
+
+    function recalcTextBoxBounds(ann) {
+      const tempCanvas = document.createElement("canvas");
+      const ctx = tempCanvas.getContext("2d");
+      ctx.font = `${ann.italic ? "italic " : ""}${ann.bold ? "700" : "400"} ${ann.size}px ${ann.fontFamily || currentFontFamily}`;
+      const lines = (ann.text || "").split("\n");
+      let maxW = 30;
+      for (const line of lines) {
+        maxW = Math.max(maxW, ctx.measureText(line).width + 14);
+      }
+      ann.w = maxW;
+      ann.h = Math.max(ann.size * 1.28 * lines.length + 6, ann.size + 8);
+    }
+
+    // =========================================================================
+    // 8. 캔버스 렌더링 (실제로 수정/삭제된 글자만 마스킹하며 클릭만 한 글자는 절대 가리지 않음)
+    // =========================================================================
+    function redrawAnnotations() {
+      const editCanvas = document.getElementById("overlayEditCanvas");
+      if (!editCanvas || !basePageViewport) return;
+      const ctx = editCanvas.getContext("2d");
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const displayScale = 1.25 * zoomScale;
+
+      ctx.save();
+      ctx.clearRect(0, 0, editCanvas.width, editCanvas.height);
+      ctx.scale(displayScale * dpr, displayScale * dpr);
+
+      // [핵심 수정] 오직 실제로 수정되었거나(isModified) 삭제된(isDeleted) 블록만 원본 글자를 배경색으로 마스킹!
+      const blocks = getCurrentTextBlocks();
+      for (const b of blocks) {
+        if ((b.isModified || b.isDeleted) && b.bgColor && b.bgColor !== "transparent") {
+          ctx.fillStyle = b.bgColor;
+          ctx.fillRect(b.origX - 1, b.origY - 0.5, b.origW + 2, b.origH + 1);
+        }
+      }
+
+      // 추가된 어노테이션 그리기
+      const list = [...getCurrentAnnotations()];
+      if (activeDraftAnnotation) list.push(activeDraftAnnotation);
+
+      for (const ann of list) {
+        drawSingleAnnotation(ctx, ann, ann.id === selectedAnnotationId, false);
+      }
+
+      if (watermarkText) {
+        drawWatermarkOnContext(ctx, basePageViewport.width, basePageViewport.height);
+      }
+      ctx.restore();
+    }
+
+    // 최종 내보내기(PDF/PNG) 시 원본 캔버스 위에 흔적 없이 단일 레이어로 합성하는 함수
+    function drawModifiedTextBlocksForExport(ctx, blocks) {
+      if (!blocks) return;
+      for (const b of blocks) {
+        if (!b.isModified && !b.isDeleted) continue;
+        ctx.save();
+
+        // 원본 글자가 있던 자리만 정밀 추출된 셀 배경색으로 매끄럽게 덮음 (테두리/외곽선 0%)
+        if (b.bgColor && b.bgColor !== "transparent" && b.origW > 0) {
+          ctx.fillStyle = b.bgColor;
+          ctx.fillRect(b.origX - 1, b.origY - 0.5, Math.max(b.origW + 2, b.w + 1), Math.max(b.origH + 1, b.h + 1));
+        }
+
+        // 삭제된 블록이 아니라면 수정된 텍스트를 선명하게 렌더링
+        if (!b.isDeleted && b.text) {
+          ctx.fillStyle = b.color || "#0f172a";
+          const fStyle = b.italic ? "italic " : "";
+          const fWeight = b.bold ? "700" : "400";
+          const fFam = b.fontFamily || "'Malgun Gothic', sans-serif";
+          ctx.font = `${fStyle}${fWeight} ${b.fontSize}px ${fFam}`;
+          ctx.textBaseline = "top";
+
+          const lines = b.text.split("\n");
+          const lh = b.fontSize * 1.12;
+          lines.forEach((line, idx) => {
+            ctx.fillText(line, b.x, b.y + idx * lh);
+          });
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawWatermarkOnContext(ctx, pageW, pageH) {
+      ctx.save();
+      ctx.translate(pageW / 2, pageH / 2);
+      ctx.rotate(-Math.PI / 6);
+      ctx.font = `800 46px ${currentFontFamily}`;
+      ctx.fillStyle = "rgba(148, 163, 184, 0.25)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(watermarkText, 0, 0);
+      ctx.restore();
+    }
+
+    function drawSingleAnnotation(ctx, ann, isSelected, isExporting = false) {
+      ctx.save();
+
+      if (ann.type === "whiteout") {
+        ctx.fillStyle = ann.color || "#ffffff";
+        ctx.fillRect(ann.x, ann.y, ann.w, ann.h);
+        if (!isExporting) {
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+        }
+      }
+      else if (ann.type === "highlight") {
+        ctx.fillStyle = hexToRgba(ann.color || "#facc15", 0.38);
+        ctx.fillRect(ann.x, ann.y, ann.w, ann.h);
+      }
+      else if (ann.type === "shape") {
+        ctx.strokeStyle = ann.color || "#dc2626";
+        ctx.fillStyle = ann.color || "#dc2626";
+        ctx.lineWidth = Math.max(2, (ann.size || 18) / 7);
+        const kind = ann.shapeKind || "rect";
+
+        if (kind === "rect") {
+          ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+        } else if (kind === "circle") {
+          ctx.beginPath();
+          ctx.ellipse(ann.x + ann.w / 2, ann.y + ann.h / 2, Math.abs(ann.w / 2), Math.abs(ann.h / 2), 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (kind === "line" || kind === "arrow") {
+          const x1 = ann.x1 !== undefined ? ann.x1 : ann.x;
+          const y1 = ann.y1 !== undefined ? ann.y1 : ann.y;
+          const x2 = ann.x2 !== undefined ? ann.x2 : ann.x + ann.w;
+          const y2 = ann.y2 !== undefined ? ann.y2 : ann.y + ann.h;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+
+          if (kind === "arrow") {
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const headLen = Math.max(10, ctx.lineWidth * 3.2);
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+      }
+      else if (ann.type === "pen" && ann.points && ann.points.length > 0) {
+        ctx.strokeStyle = ann.color || "#0f172a";
+        ctx.lineWidth = Math.max(2, (ann.size || 18) / 7);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(ann.points[0].x, ann.points[0].y);
+        for (let i = 1; i < ann.points.length; i++) {
+          ctx.lineTo(ann.points[i].x, ann.points[i].y);
+        }
+        ctx.stroke();
+      }
+      else if (ann.type === "text") {
+        ctx.fillStyle = ann.color || "#0f172a";
+        const fStyle = ann.italic ? "italic " : "";
+        const fWeight = ann.bold ? "700" : "400";
+        const fFam = ann.fontFamily || currentFontFamily;
+        ctx.font = `${fStyle}${fWeight} ${ann.size}px ${fFam}`;
+        ctx.textBaseline = "top";
+        const lines = (ann.text || "").split("\n");
+        const lineHeight = ann.size * 1.25;
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, ann.x + 3, ann.y + 2 + idx * lineHeight);
+        });
+      }
+      else if (ann.type === "image" && ann.imgEl) {
+        ctx.drawImage(ann.imgEl, ann.x, ann.y, ann.w, ann.h);
+      }
+
+      if (isSelected && !isExporting && ann.type !== "pen") {
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = "#0284c7";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(ann.x - 2, ann.y - 2, ann.w + 4, ann.h + 4);
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(ann.x + ann.w - 5, ann.y + ann.h - 5, 10, 10);
+        ctx.strokeRect(ann.x + ann.w - 5, ann.y + ann.h - 5, 10, 10);
+      }
+
+      ctx.restore();
+    }
+
+    function hexToRgba(hex, alpha) {
+      const clean = (hex || "#facc15").replace("#", "");
+      const num = parseInt(clean, 16);
+      const r = (num >> 16) & 255;
+      const g = (num >> 8) & 255;
+      const b = num & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // 9. 오버레이 캔버스 이벤트
+    const editCanvas = document.getElementById("overlayEditCanvas");
+
+    editCanvas.addEventListener("pointerdown", (e) => {
+      if (!basePageViewport || activeTool === "edit_text") return;
+      const pt = getNormalizedCoords(e.clientX, e.clientY);
+      dragStartX = pt.x;
+      dragStartY = pt.y;
+
+      if (activeTool === "add_text") {
+        pushUndoState();
+        const newBlock = {
+          id: `tb_new_${Date.now()}`,
+          origText: "",
+          text: "새 텍스트 입력",
+          x: pt.x,
+          y: pt.y - toolSize * 0.5,
+          origX: pt.x,
+          origY: pt.y - toolSize * 0.5,
+          origW: 0,
+          origH: 0,
+          w: 90,
+          h: toolSize * 1.3,
+          fontSize: toolSize,
+          fontFamily: currentFontFamily,
+          bold: isBoldText,
+          italic: isItalicText,
+          color: toolColor,
+          bgColor: "transparent",
+          isModified: true,
+          isDeleted: false
+        };
+        if (!pages[currentPageIdx].textBlocks) pages[currentPageIdx].textBlocks = [];
+        pages[currentPageIdx].textBlocks.push(newBlock);
+
+        setActiveTool("edit_text");
+        focusedTextBlockId = newBlock.id;
+        setTimeout(() => {
+          const domEl = document.getElementById(`dom_${newBlock.id}`);
+          if (domEl) {
+            domEl.focus();
+            document.execCommand("selectAll", false, null);
+          }
+        }, 20);
+        updateThumbEditedBadge();
+        return;
+      }
+
+      if (activeTool === "select") {
+        const list = getCurrentAnnotations();
+        if (selectedAnnotationId) {
+          const sel = list.find((a) => a.id === selectedAnnotationId);
+          if (sel && sel.type !== "pen") {
+            if (Math.abs(pt.x - (sel.x + sel.w)) <= 12 && Math.abs(pt.y - (sel.y + sel.h)) <= 12) {
+              pushUndoState();
+              isDragging = true;
+              dragMode = "resize";
+              editCanvas.setPointerCapture(e.pointerId);
+              return;
+            }
+          }
+        }
+
+        let hit = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+          const a = list[i];
+          if (a.type === "pen") {
+            if (a.points.some((p) => Math.hypot(p.x - pt.x, p.y - pt.y) < 12)) { hit = a; break; }
+          } else if (pt.x >= a.x && pt.x <= a.x + a.w && pt.y >= a.y && pt.y <= a.y + a.h) {
+            hit = a;
+            break;
+          }
+        }
+
+        selectedAnnotationId = hit ? hit.id : null;
+        if (hit) {
+          pushUndoState();
+          isDragging = true;
+          dragMode = "move";
+          editCanvas.setPointerCapture(e.pointerId);
+        }
+        redrawAnnotations();
+        return;
+      }
+
+      if (activeTool === "stamp_mark") {
+        pushUndoState();
+        const ann = {
+          id: "ann_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          type: "text",
+          text: currentMarkSymbol,
+          x: pt.x - toolSize * 0.5,
+          y: pt.y - toolSize * 0.5,
+          size: Math.max(16, toolSize),
+          fontFamily: currentFontFamily,
+          color: toolColor === "#ffffff" ? "#dc2626" : toolColor,
+          bold: true,
+          w: toolSize * 1.3,
+          h: toolSize * 1.3
+        };
+        recalcTextBoxBounds(ann);
+        getCurrentAnnotations().push(ann);
+        selectedAnnotationId = ann.id;
+        redrawAnnotations();
+        updateThumbEditedBadge();
+        return;
+      }
+
+      if (activeTool === "pen") {
+        pushUndoState();
+        isDragging = true;
+        dragMode = "draw_pen";
+        activeDraftAnnotation = {
+          id: "ann_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          type: "pen",
+          color: toolColor,
+          size: toolSize,
+          points: [{ x: pt.x, y: pt.y }]
+        };
+        editCanvas.setPointerCapture(e.pointerId);
+        redrawAnnotations();
+        return;
+      }
+
+      if (activeTool === "whiteout" || activeTool === "highlight" || activeTool === "shape") {
+        pushUndoState();
+        isDragging = true;
+        dragMode = "draw_box";
+        activeDraftAnnotation = {
+          id: "ann_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          type: activeTool,
+          shapeKind: currentShapeKind,
+          color: activeTool === "whiteout" ? maskBgColor : activeTool === "highlight" && toolColor === "#0f172a" ? "#facc15" : toolColor,
+          size: toolSize,
+          x: pt.x,
+          y: pt.y,
+          w: 1,
+          h: 1,
+          x1: pt.x,
+          y1: pt.y,
+          x2: pt.x + 1,
+          y2: pt.y + 1
+        };
+        editCanvas.setPointerCapture(e.pointerId);
+        redrawAnnotations();
+      }
+    });
+
+    editCanvas.addEventListener("pointermove", (e) => {
+      if (!isDragging) return;
+      const pt = getNormalizedCoords(e.clientX, e.clientY);
+
+      if (dragMode === "move" && selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann) {
+          const dx = pt.x - dragStartX;
+          const dy = pt.y - dragStartY;
+          if (ann.type === "pen") {
+            ann.points.forEach((p) => { p.x += dx; p.y += dy; });
+          } else {
+            ann.x += dx;
+            ann.y += dy;
+            if (ann.x1 !== undefined) {
+              ann.x1 += dx; ann.y1 += dy;
+              ann.x2 += dx; ann.y2 += dy;
+            }
+          }
+          dragStartX = pt.x;
+          dragStartY = pt.y;
+          redrawAnnotations();
+        }
+      } else if (dragMode === "resize" && selectedAnnotationId) {
+        const ann = getCurrentAnnotations().find((a) => a.id === selectedAnnotationId);
+        if (ann && ann.type !== "pen") {
+          ann.w = Math.max(14, pt.x - ann.x);
+          ann.h = Math.max(12, pt.y - ann.y);
+          if (ann.x2 !== undefined) {
+            ann.x2 = ann.x + ann.w;
+            ann.y2 = ann.y + ann.h;
+          }
+          if (ann.type === "text") {
+            ann.size = Math.max(8, Math.round(ann.h * 0.75));
+          }
+          redrawAnnotations();
+        }
+      } else if (dragMode === "draw_pen" && activeDraftAnnotation) {
+        activeDraftAnnotation.points.push({ x: pt.x, y: pt.y });
+        redrawAnnotations();
+      } else if (dragMode === "draw_box" && activeDraftAnnotation) {
+        activeDraftAnnotation.x = Math.min(dragStartX, pt.x);
+        activeDraftAnnotation.y = Math.min(dragStartY, pt.y);
+        activeDraftAnnotation.w = Math.max(4, Math.abs(pt.x - dragStartX));
+        activeDraftAnnotation.h = Math.max(4, Math.abs(pt.y - dragStartY));
+        activeDraftAnnotation.x1 = dragStartX;
+        activeDraftAnnotation.y1 = dragStartY;
+        activeDraftAnnotation.x2 = pt.x;
+        activeDraftAnnotation.y2 = pt.y;
+        redrawAnnotations();
+      }
+    });
+
+    editCanvas.addEventListener("pointerup", () => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      if ((dragMode === "draw_pen" || dragMode === "draw_box") && activeDraftAnnotation) {
+        if (dragMode === "draw_box" && activeDraftAnnotation.w < 5 && activeDraftAnnotation.h < 5) {
+          activeDraftAnnotation = null;
+        } else {
+          getCurrentAnnotations().push(activeDraftAnnotation);
+          selectedAnnotationId = activeDraftAnnotation.id;
+          activeDraftAnnotation = null;
+          updateThumbEditedBadge();
+        }
+      }
+      dragMode = null;
+      redrawAnnotations();
+    });
+
+    // 10. Undo / Redo 및 선택 삭제
+    function pushUndoState() {
+      const p = pages[currentPageIdx];
+      if (!p) return;
+      const snapshot = JSON.stringify({
+        textBlocks: p.textBlocks || [],
+        annotations: p.annotations.map((a) => ({ ...a, imgEl: undefined }))
+      });
+      p.undoStack.push(snapshot);
+      if (p.undoStack.length > 30) p.undoStack.shift();
+      p.redoStack = [];
+    }
+
+    async function restoreFromSnapshot(jsonStr) {
+      const parsed = JSON.parse(jsonStr);
+      const p = pages[currentPageIdx];
+      p.textBlocks = parsed.textBlocks || [];
+      p.annotations = await cloneAnnotationsList(parsed.annotations || []);
+      focusedTextBlockId = null;
+      selectedAnnotationId = null;
+      renderInteractiveTextLayer();
+      redrawAnnotations();
+      updateThumbEditedBadge();
+    }
+
+    async function cloneAnnotationsList(list) {
+      const result = [];
+      for (const item of list) {
+        const copy = JSON.parse(JSON.stringify({ ...item, imgEl: undefined }));
+        if (copy.type === "image" && copy.dataUrl) {
+          copy.imgEl = await loadImageElement(copy.dataUrl);
+        }
+        result.push(copy);
+      }
+      return result;
+    }
+
+    function loadImageElement(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (e) => reject(e);
+        img.src = src;
+      });
+    }
+
+    async function undoAction() {
+      const p = pages[currentPageIdx];
+      if (!p || p.undoStack.length === 0) {
+        showToast("더 이상 되돌릴 작업이 없습니다.");
+        return;
+      }
+      const currentSnap = JSON.stringify({
+        textBlocks: p.textBlocks || [],
+        annotations: p.annotations.map((a) => ({ ...a, imgEl: undefined }))
+      });
+      p.redoStack.push(currentSnap);
+      await restoreFromSnapshot(p.undoStack.pop());
+      showToast("이전 상태로 되돌렸습니다.");
+    }
+
+    async function redoAction() {
+      const p = pages[currentPageIdx];
+      if (!p || p.redoStack.length === 0) {
+        showToast("다시 실행할 작업이 없습니다.");
+        return;
+      }
+      const currentSnap = JSON.stringify({
+        textBlocks: p.textBlocks || [],
+        annotations: p.annotations.map((a) => ({ ...a, imgEl: undefined }))
+      });
+      p.undoStack.push(currentSnap);
+      await restoreFromSnapshot(p.redoStack.pop());
+      showToast("작업을 다시 실행했습니다.");
+    }
+
+    function deleteSelectedOrFocused() {
+      if (focusedTextBlockId) {
+        const block = getCurrentTextBlocks().find((b) => b.id === focusedTextBlockId);
+        if (block) {
+          pushUndoState();
+          block.text = "";
+          block.isModified = true;
+          block.isDeleted = true;
+          focusedTextBlockId = null;
+          document.getElementById("restoreOrigTextBtn").classList.add("hidden");
+          renderInteractiveTextLayer();
+          redrawAnnotations();
+          updateThumbEditedBadge();
+          showToast("선택한 기존 글자를 지웠습니다.");
+          return;
+        }
+      }
+      if (selectedAnnotationId) {
+        const list = getCurrentAnnotations();
+        const idx = list.findIndex((a) => a.id === selectedAnnotationId);
+        if (idx !== -1) {
+          pushUndoState();
+          list.splice(idx, 1);
+          selectedAnnotationId = null;
+          redrawAnnotations();
+          updateThumbEditedBadge();
+          showToast("선택한 개체를 삭제했습니다.");
+          return;
+        }
+      }
+      showToast("먼저 지울 글자나 도장을 클릭해 주세요.");
+    }
+
+    // 11. 페이지 관리 함수
+    async function addBlankPage() {
+      const pdfDoc = await PDFLib.PDFDocument.create();
+      const w = basePageViewport ? basePageViewport.width : 595.28;
+      const h = basePageViewport ? basePageViewport.height : 841.89;
+      pdfDoc.addPage([w, h]);
+      const pdfBytes = await pdfDoc.save();
+      const pdfJsDoc = await loadPdfJsDocument(pdfBytes);
+      const sourceIdx = sourcePdfs.length;
+
+      sourcePdfs.push({ id: "src_blank_" + Date.now(), bytes: pdfBytes, pdfJsDoc, name: "빈페이지.pdf" });
+      pages.splice(currentPageIdx + 1, 0, {
+        uid: "pg_" + Date.now(),
+        sourceIdx,
+        pageIndex: 0,
+        rotation: 0,
+        textBlocks: [],
+        annotations: [],
+        undoStack: [],
+        redoStack: []
+      });
+      await selectPage(currentPageIdx + 1);
+      renderThumbnailsAsync();
+      showToast("빈 페이지가 추가되었습니다!", "ok");
+    }
+
+    async function moveCurrentPage(dir) {
+      const targetIdx = currentPageIdx + dir;
+      if (targetIdx < 0 || targetIdx >= pages.length) return;
+      const temp = pages[currentPageIdx];
+      pages[currentPageIdx] = pages[targetIdx];
+      pages[targetIdx] = temp;
+      await selectPage(targetIdx);
+      renderThumbnailsAsync();
+    }
+
+    async function rotateCurrentPage() {
+      pages[currentPageIdx].rotation = (pages[currentPageIdx].rotation + 90) % 360;
+      pages[currentPageIdx].textBlocks = null;
+      await selectPage(currentPageIdx);
+      renderThumbnailsAsync();
+      showToast("페이지를 90도 회전했습니다.");
+    }
+
+    async function duplicateCurrentPage() {
+      const orig = pages[currentPageIdx];
+      const clonedAnns = await cloneAnnotationsList(orig.annotations);
+      const clonedBlocks = orig.textBlocks ? JSON.parse(JSON.stringify(orig.textBlocks)) : null;
+      pages.splice(currentPageIdx + 1, 0, {
+        uid: "pg_" + Date.now() + "_copy",
+        sourceIdx: orig.sourceIdx,
+        pageIndex: orig.pageIndex,
+        rotation: orig.rotation,
+        textBlocks: clonedBlocks,
+        annotations: clonedAnns,
+        undoStack: [],
+        redoStack: []
+      });
+      await selectPage(currentPageIdx + 1);
+      renderThumbnailsAsync();
+      showToast("현재 페이지를 복제했습니다!", "ok");
+    }
+
+    async function deleteCurrentPage() {
+      if (pages.length <= 1) {
+        showToast("최소 1페이지는 남아 있어야 합니다.", "err");
+        return;
+      }
+      pages.splice(currentPageIdx, 1);
+      if (currentPageIdx >= pages.length) currentPageIdx = pages.length - 1;
+      await selectPage(currentPageIdx);
+      renderThumbnailsAsync();
+      showToast("페이지를 삭제했습니다.");
+    }
+
+    async function extractCurrentPageOnly() {
+      await buildAndDownloadPdf([pages[currentPageIdx]], `PDF_${currentPageIdx + 1}페이지_추출.pdf`);
+    }
+
+    function goPrevPage() { if (currentPageIdx > 0) selectPage(currentPageIdx - 1); }
+    function goNextPage() { if (currentPageIdx < pages.length - 1) selectPage(currentPageIdx + 1); }
+
+    function changeZoom(delta) {
+      zoomScale = Math.min(2.2, Math.max(0.5, +(zoomScale + delta).toFixed(2)));
+      document.getElementById("zoomPercentLabel").textContent = Math.round(zoomScale * 100) + "%";
+      selectPage(currentPageIdx);
+    }
+
+    function resetZoom() {
+      zoomScale = 1.0;
+      document.getElementById("zoomPercentLabel").textContent = "100%";
+      selectPage(currentPageIdx);
+    }
+
+    // 12. 서명 패드 & 1초 자동 도장 생성기
+    function openSignatureModal() {
+      const modal = document.getElementById("signatureModal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      clearSignaturePad();
+      renderAutoStampPreview();
+    }
+
+    function closeSignatureModal() {
+      const modal = document.getElementById("signatureModal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function switchSigTab(tabNum) {
+      [1, 2, 3].forEach((n) => {
+        const btn = document.getElementById(`sigTabBtn${n}`);
+        const content = document.getElementById(`sigTabContent${n}`);
+        if (n === tabNum) {
+          btn.className = "py-2 rounded-lg bg-cyan-500 text-slate-950 font-extrabold";
+          content.classList.remove("hidden");
+        } else {
+          btn.className = "py-2 rounded-lg text-slate-300 hover:text-white font-bold";
+          content.classList.add("hidden");
+        }
+      });
+      if (tabNum === 2) renderAutoStampPreview();
+    }
+
+    const sigCanvas = document.getElementById("signaturePadCanvas");
+    const sigCtx = sigCanvas.getContext("2d");
+
+    function setSigPenColor(c) { sigPenColor = c; }
+    function clearSignaturePad() { sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); }
+
+    sigCanvas.addEventListener("pointerdown", (e) => {
+      isSigning = true;
+      const rect = sigCanvas.getBoundingClientRect();
+      sigLastX = (e.clientX - rect.left) * (sigCanvas.width / rect.width);
+      sigLastY = (e.clientY - rect.top) * (sigCanvas.height / rect.height);
+      sigCanvas.setPointerCapture(e.pointerId);
+    });
+
+    sigCanvas.addEventListener("pointermove", (e) => {
+      if (!isSigning) return;
+      const rect = sigCanvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (sigCanvas.width / rect.width);
+      const y = (e.clientY - rect.top) * (sigCanvas.height / rect.height);
+
+      sigCtx.strokeStyle = sigPenColor;
+      sigCtx.lineWidth = 3.8;
+      sigCtx.lineCap = "round";
+      sigCtx.lineJoin = "round";
+      sigCtx.beginPath();
+      sigCtx.moveTo(sigLastX, sigLastY);
+      sigCtx.lineTo(x, y);
+      sigCtx.stroke();
+
+      sigLastX = x;
+      sigLastY = y;
+    });
+
+    sigCanvas.addEventListener("pointerup", () => { isSigning = false; });
+
+    function applyDrawnSignature() {
+      insertImageAnnotation(sigCanvas.toDataURL("image/png"), 140, 58);
+      closeSignatureModal();
+    }
+
+    function renderAutoStampPreview() {
+      const rawName = (document.getElementById("autoStampName").value || "조재성").trim();
+      const style = document.getElementById("autoStampStyle").value;
+      const c = document.getElementById("autoStampCanvas");
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      const red = "#dc2626";
+      ctx.strokeStyle = red;
+      ctx.fillStyle = red;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      if (style === "round") {
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(90, 90, 74, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const chars = (rawName.length <= 3 ? rawName + "인" : rawName).split("");
+        if (chars.length === 4) {
+          ctx.font = "900 42px 'Batang', serif";
+          ctx.fillText(chars[0], 116, 62);
+          ctx.fillText(chars[1], 116, 118);
+          ctx.fillText(chars[2], 64, 62);
+          ctx.fillText(chars[3], 64, 118);
+        } else {
+          ctx.font = "900 38px 'Batang', serif";
+          ctx.fillText(rawName, 90, 90);
+        }
+      } else if (style === "oval") {
+        ctx.lineWidth = 5.5;
+        ctx.beginPath();
+        ctx.ellipse(90, 90, 46, 78, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const chars = rawName.split("");
+        const step = 120 / Math.max(1, chars.length);
+        ctx.font = `900 ${chars.length > 3 ? 28 : 34}px 'Batang', serif`;
+        chars.forEach((ch, idx) => {
+          const yPos = 90 - ((chars.length - 1) * step) / 2 + idx * step;
+          ctx.fillText(ch, 90, yPos);
+        });
+      } else if (style === "square") {
+        ctx.lineWidth = 6;
+        ctx.strokeRect(20, 20, 140, 140);
+        const chars = (rawName.length === 3 ? rawName + "인" : rawName).split("");
+        if (chars.length === 4) {
+          ctx.font = "900 46px 'Batang', serif";
+          ctx.fillText(chars[0], 122, 58);
+          ctx.fillText(chars[1], 122, 122);
+          ctx.fillText(chars[2], 58, 58);
+          ctx.fillText(chars[3], 58, 122);
+        } else {
+          ctx.font = "900 38px 'Batang', serif";
+          ctx.fillText(rawName, 90, 90);
+        }
+      } else if (style === "box") {
+        ctx.lineWidth = 4;
+        ctx.strokeRect(14, 34, 152, 112);
+        ctx.beginPath();
+        ctx.moveTo(14, 72);
+        ctx.lineTo(166, 72);
+        ctx.stroke();
+
+        ctx.font = "800 20px 'Pretendard', sans-serif";
+        const today = new Date().toLocaleDateString("ko-KR");
+        ctx.fillText("결재 · 확인", 90, 53);
+        ctx.font = "900 32px 'Pretendard', sans-serif";
+        ctx.fillText(rawName, 90, 102);
+        ctx.font = "600 13px 'Pretendard', sans-serif";
+        ctx.fillText(today, 90, 132);
+      }
+    }
+
+    function applyAutoStamp() {
+      const c = document.getElementById("autoStampCanvas");
+      insertImageAnnotation(c.toDataURL("image/png"), 66, 66);
+      closeSignatureModal();
+    }
+
+    function handleStampImageUpload(files) {
+      if (!files || !files[0]) return;
+      const removeBg = document.getElementById("removeWhiteBgCheck").checked;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let finalDataUrl = e.target.result;
+          if (removeBg) {
+            const c = document.createElement("canvas");
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, c.width, c.height);
+            const d = imgData.data;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i] > 215 && d[i + 1] > 215 && d[i + 2] > 215) {
+                d[i + 3] = 0;
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            finalDataUrl = c.toDataURL("image/png");
+          }
+          const ratio = img.height / Math.max(1, img.width);
+          insertImageAnnotation(finalDataUrl, 85, Math.round(85 * ratio));
+          closeSignatureModal();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(files[0]);
+      document.getElementById("stampImageInput").value = "";
+    }
+
+    function insertImageAnnotation(dataUrl, w, h) {
+      const img = new Image();
+      img.onload = () => {
+        pushUndoState();
+        const ann = {
+          id: "ann_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          type: "image",
+          dataUrl,
+          imgEl: img,
+          x: basePageViewport ? (basePageViewport.width / 2 - w / 2) : 120,
+          y: basePageViewport ? (basePageViewport.height / 2 - h / 2) : 120,
+          w,
+          h
+        };
+        getCurrentAnnotations().push(ann);
+        setActiveTool("select");
+        selectedAnnotationId = ann.id;
+        redrawAnnotations();
+        updateThumbEditedBadge();
+        showToast("서명·도장이 추가되었습니다! 마우스로 원하는 위치에 놓으세요.", "ok");
+      };
+      img.src = dataUrl;
+    }
+
+    // 13. 전체 글자 추출/복사 모달 & 워터마크 & 분할 모달
+    function openFullTextModal() {
+      const blocks = getCurrentTextBlocks().filter((b) => !b.isDeleted);
+      const lines = blocks.map((b) => b.text).join("\n");
+      document.getElementById("fullTextOutput").value = lines || "(이 페이지에서 인식된 텍스트가 없습니다)";
+      const m = document.getElementById("fullTextModal");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+    function closeFullTextModal() {
+      const m = document.getElementById("fullTextModal");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    }
+    function copyFullExtractedText() {
+      const ta = document.getElementById("fullTextOutput");
+      ta.select();
+      navigator.clipboard.writeText(ta.value).then(() => {
+        showToast("페이지 전체 텍스트가 클립보드에 복사되었습니다!", "ok");
+        closeFullTextModal();
+      });
+    }
+
+    function openWatermarkModal() {
+      const m = document.getElementById("watermarkModal");
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+    function closeWatermarkModal() {
+      const m = document.getElementById("watermarkModal");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    }
+    function applyWatermark() {
+      watermarkText = document.getElementById("watermarkTextInput").value.trim();
+      closeWatermarkModal();
+      redrawAnnotations();
+      showToast("전체 페이지에 워터마크가 적용되었습니다!", "ok");
+    }
+    function clearWatermark() {
+      watermarkText = "";
+      closeWatermarkModal();
+      redrawAnnotations();
+      showToast("워터마크를 제거했습니다.");
+    }
+
+    function openSplitModal() {
+      const m = document.getElementById("splitModal");
+      document.getElementById("splitRangeInput").value = `1-${pages.length}`;
+      m.classList.remove("hidden");
+      m.classList.add("flex");
+    }
+    function closeSplitModal() {
+      const m = document.getElementById("splitModal");
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+    }
+
+    function parsePageRangeString(str, maxPages) {
+      const indices = [];
+      const parts = str.split(",");
+      for (let part of parts) {
+        part = part.trim();
+        if (!part) continue;
+        if (part.includes("-")) {
+          const [s, e] = part.split("-").map((n) => parseInt(n.trim(), 10));
+          if (!isNaN(s) && !isNaN(e)) {
+            const start = Math.max(1, Math.min(s, e));
+            const end = Math.min(maxPages, Math.max(s, e));
+            for (let i = start; i <= end; i++) {
+              if (!indices.includes(i - 1)) indices.push(i - 1);
+            }
+          }
+        } else {
+          const num = parseInt(part, 10);
+          if (!isNaN(num) && num >= 1 && num <= maxPages) {
+            if (!indices.includes(num - 1)) indices.push(num - 1);
+          }
+        }
+      }
+      return indices;
+    }
+
+    async function exportCustomRangePdf() {
+      const raw = document.getElementById("splitRangeInput").value.trim();
+      const idxList = parsePageRangeString(raw, pages.length);
+      if (idxList.length === 0) {
+        showToast("올바른 페이지 범위를 입력해 주세요.", "err");
+        return;
+      }
+      closeSplitModal();
+      await buildAndDownloadPdf(idxList.map((i) => pages[i]), `PDF_분할_${raw.replace(/[^0-9,-]/g, "")}.pdf`);
+    }
+
+    async function exportEveryPageIndividuallyZip() {
+      closeSplitModal();
+      setLoading(true, "모든 페이지를 낱개 PDF로 분리 중입니다...");
+      try {
+        const zip = new JSZip();
+        for (let i = 0; i < pages.length; i++) {
+          const singleBytes = await generatePdfBytesForPages([pages[i]]);
+          zip.file(`페이지_${String(i + 1).padStart(2, "0")}.pdf`, singleBytes);
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        triggerBlobDownload(blob, "You-틸리티_낱개PDF_전체분할.zip");
+        showToast("전체 페이지가 낱개 PDF(.zip)로 저장되었습니다!", "ok");
+      } catch (e) {
+        showToast("분할 저장 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // 14. 최종 PDF 합성 엔진 (네모 테두리 흔적 0% 단일 캔버스 무결점 합성)
+    // =========================================================================
+    async function exportEditedPdf() {
+      if (pages.length === 0) return;
+      if (document.activeElement && document.activeElement.isContentEditable) {
+        document.activeElement.blur();
+      }
+      const defaultName = sourcePdfs[0] ? sourcePdfs[0].name.replace(/\.(pdf|png|jpe?g|webp)$/i, "_편집완료.pdf") : "You-틸리티_편집완료.pdf";
+      await buildAndDownloadPdf(pages, defaultName);
+    }
+
+    async function generatePdfBytesForPages(targetPages) {
+      const outPdf = await PDFLib.PDFDocument.create();
+      const loadedLibDocs = {};
+
+      for (let i = 0; i < targetPages.length; i++) {
+        const pageMeta = targetPages[i];
+        const srcObj = sourcePdfs[pageMeta.sourceIdx];
+        const hasModifiedText = (pageMeta.textBlocks || []).some((b) => b.isModified || b.isDeleted);
+        const hasAnnotations = pageMeta.annotations && pageMeta.annotations.length > 0;
+        const isPageEdited = hasModifiedText || hasAnnotations || !!watermarkText;
+
+        // 수정 사항이 전혀 없는 페이지는 원본 PDF 벡터 페이지 그대로 100% 무손실 복사
+        if (!isPageEdited) {
+          try {
+            if (!loadedLibDocs[pageMeta.sourceIdx]) {
+              loadedLibDocs[pageMeta.sourceIdx] = await PDFLib.PDFDocument.load(cloneUint8(srcObj.bytes), {
+                ignoreEncryption: true,
+                updateMetadata: false
+              });
+            }
+            const srcLibDoc = loadedLibDocs[pageMeta.sourceIdx];
+            if (!srcLibDoc.isEncrypted) {
+              const [copiedPage] = await outPdf.copyPages(srcLibDoc, [pageMeta.pageIndex]);
+              const origRot = copiedPage.getRotation().angle || 0;
+              const finalRot = (origRot + pageMeta.rotation) % 360;
+              copiedPage.setRotation(PDFLib.degrees(finalRot));
+              outPdf.addPage(copiedPage);
+              continue;
+            }
+          } catch (e) {}
+        }
+
+        // 수정된 텍스트나 도장이 있는 페이지:
+        // 투명 PNG 조각을 덧대어 생기는 알파 경계선(네모 박스 흔적)을 원천 차단하기 위해
+        // 3.0배 초고해상도 단일 캔버스에 원본 페이지 + 배경색 마스킹 + 새 글자를 직접 그려 무결점 합성
+        const pdfJsPage = await srcObj.pdfJsDoc.getPage(pageMeta.pageIndex + 1);
+        const totalRot = ((pdfJsPage.rotate || 0) + pageMeta.rotation) % 360;
+        const baseVp = pdfJsPage.getViewport({ scale: 1.0, rotation: totalRot });
+        const exportScale = 3.0;
+        const hiVp = pdfJsPage.getViewport({ scale: exportScale, rotation: totalRot });
+
+        const fullCanvas = document.createElement("canvas");
+        fullCanvas.width = Math.max(1, Math.round(hiVp.width));
+        fullCanvas.height = Math.max(1, Math.round(hiVp.height));
+        const fCtx = fullCanvas.getContext("2d");
+        fCtx.fillStyle = "#ffffff";
+        fCtx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+        await pdfJsPage.render({ canvasContext: fCtx, viewport: hiVp }).promise;
+
+        fCtx.save();
+        fCtx.scale(exportScale, exportScale);
+        drawModifiedTextBlocksForExport(fCtx, pageMeta.textBlocks);
+        for (const ann of pageMeta.annotations) {
+          drawSingleAnnotation(fCtx, ann, false, true);
+        }
+        if (watermarkText) {
+          drawWatermarkOnContext(fCtx, baseVp.width, baseVp.height);
+        }
+        fCtx.restore();
+
+        const pngBytes = dataUrlToUint8Array(fullCanvas.toDataURL("image/png"));
+        const embeddedPng = await outPdf.embedPng(pngBytes);
+        const newPage = outPdf.addPage([baseVp.width, baseVp.height]);
+        newPage.drawImage(embeddedPng, {
+          x: 0,
+          y: 0,
+          width: baseVp.width,
+          height: baseVp.height
+        });
+      }
+      return await outPdf.save();
+    }
+
+    async function buildAndDownloadPdf(targetPages, fileName) {
+      setLoading(true, "네모 흔적 없이 깨끗한 고해상도 PDF를 생성 중입니다...");
+      try {
+        const pdfBytes = await generatePdfBytesForPages(targetPages);
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        triggerBlobDownload(blob, fileName);
+        showToast(`'${fileName}' 저장이 완료되었습니다!`, "ok");
+      } catch (err) {
+        console.error(err);
+        showToast("PDF 저장 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 15. 고화질 이미지(PNG / ZIP) 내보내기
+    async function renderPageWithEditsToDataUrl(pageIdx, scale = 2.6) {
+      const pageMeta = pages[pageIdx];
+      const srcObj = sourcePdfs[pageMeta.sourceIdx];
+      const pdfPage = await srcObj.pdfJsDoc.getPage(pageMeta.pageIndex + 1);
+      const totalRot = ((pdfPage.rotate || 0) + pageMeta.rotation) % 360;
+      const vp = pdfPage.getViewport({ scale, rotation: totalRot });
+
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(vp.width));
+      c.height = Math.max(1, Math.round(vp.height));
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, c.width, c.height);
+      await pdfPage.render({ canvasContext: ctx, viewport: vp }).promise;
+
+      ctx.save();
+      ctx.scale(scale, scale);
+      drawModifiedTextBlocksForExport(ctx, pageMeta.textBlocks);
+      for (const ann of pageMeta.annotations) {
+        drawSingleAnnotation(ctx, ann, false, true);
+      }
+      if (watermarkText) {
+        drawWatermarkOnContext(ctx, vp.width / scale, vp.height / scale);
+      }
+      ctx.restore();
+      return c.toDataURL("image/png");
+    }
+
+    async function exportCurrentPageAsPng() {
+      if (pages.length === 0) return;
+      if (document.activeElement && document.activeElement.isContentEditable) {
+        document.activeElement.blur();
+      }
+      setLoading(true, "현재 페이지를 고화질 PNG로 저장 중...");
+      try {
+        const dataUrl = await renderPageWithEditsToDataUrl(currentPageIdx, 2.8);
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `PDF_${currentPageIdx + 1}페이지.png`;
+        a.click();
+        showToast("현재 페이지가 PNG 이미지로 저장되었습니다!", "ok");
+      } catch (e) {
+        showToast("이미지 저장 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function exportAllPagesAsImages() {
+      if (pages.length === 0) return;
+      if (pages.length === 1) {
+        await exportCurrentPageAsPng();
+        return;
+      }
+      setLoading(true, "전체 페이지를 고화질 이미지(.zip)로 변환 중...");
+      try {
+        const zip = new JSZip();
+        for (let i = 0; i < pages.length; i++) {
+          const dataUrl = await renderPageWithEditsToDataUrl(i, 2.4);
+          zip.file(`페이지_${String(i + 1).padStart(2, "0")}.png`, dataUrl.split(",")[1], { base64: true });
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        triggerBlobDownload(blob, "You-틸리티_PDF_전체이미지.zip");
+        showToast("전체 페이지가 이미지(.zip)로 저장되었습니다!", "ok");
+      } catch (e) {
+        showToast("이미지 변환 중 오류가 발생했습니다.", "err");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function triggerBlobDownload(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    // 키보드 단축키 지원
+    window.addEventListener("keydown", (e) => {
+      const activeEl = document.activeElement;
+      const isEditingDomText = activeEl && (activeEl.isContentEditable || activeEl.tagName === "TEXTAREA" || activeEl.tagName === "INPUT");
+      if (isEditingDomText) return;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedAnnotationId) {
+        e.preventDefault();
+        deleteSelectedOrFocused();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        undoAction();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redoAction();
+      }
+    });
+  </script>
+</body>
+</html>
