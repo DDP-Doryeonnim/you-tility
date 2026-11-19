@@ -222,7 +222,7 @@
         <span>여기를 터치하면 화면이 재생됩니다</span>
       </button>
 
-      <!-- 1) 초기 빈 화면 안내 -->
+      <!-- 1) 초기 빈 화면 안내 (중복 버튼 4개 제거 완료) -->
       <div id="emptyStageGuide" class="z-10 max-w-xl text-center p-5">
         <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3.5 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-3xl sm:text-4xl shadow-2xl">
           🖥️
@@ -236,25 +236,9 @@
         </p>
 
         <div class="flex flex-wrap items-center justify-center gap-2">
-          <button type="button" id="btnMainScreenShare" onclick="startLocalScreenShare()" class="btn-primary px-4 py-3 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5">
-            <span>🖥️</span>
-            <span id="btnMainScreenShareLabel">내 화면 공유 시작</span>
-          </button>
-          <button type="button" id="btnMainCameraShare" onclick="startLocalCameraShare('environment')" class="px-4 py-3 rounded-xl bg-purple-950/90 hover:bg-purple-900 border border-purple-400/50 text-xs sm:text-sm font-extrabold text-purple-200 transition flex items-center gap-1.5">
-            <span>📷</span>
-            <span>모바일 카메라 실시간 중계</span>
-          </button>
-          <button type="button" onclick="document.getElementById('boardImageInput').click()" class="px-4 py-3 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-400/50 text-xs sm:text-sm font-extrabold text-amber-200 transition flex items-center gap-1.5">
-            <span>🖼️</span>
-            <span>캡처·사진 칠판 공유</span>
-          </button>
           <button type="button" id="requestRemoteShareBtn" onclick="requestRemoteToShareScreen()" class="hidden px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition items-center gap-1.5 shadow-lg">
             <span>📢</span>
             <span>상대방에게 화면 공유 요청</span>
-          </button>
-          <button type="button" onclick="copyInviteUrl()" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-xs sm:text-sm font-extrabold text-cyan-300 transition flex items-center gap-1.5">
-            <span>🔗</span>
-            <span>초대 URL 복사</span>
           </button>
         </div>
       </div>
@@ -522,7 +506,7 @@
 
 <script>
 /* ============================================================================
- *  You-tility Screen & Laser v4.1 — 방향별 세분화 독립 라우팅 + 미지원 UI 자동 숨김
+ *  You-tility Screen & Laser v4.2 — 방향별 세분화 독립 라우팅 + 스테이지 버튼 4개 정리
  *  --------------------------------------------------------------------------
  *  [검증 완료 6개 경로 — 엔진 로직 100% 그대로 보존]
  *   1) PC -> PC            : PeerJS WebRTC 60fps 직접 스트리밍
@@ -531,10 +515,6 @@
  *   4) PC -> Android       : PeerJS WebRTC
  *   5) iOS(27+) -> Android : PeerJS WebRTC 실시간 미러링
  *   6) iOS(27+) -> iOS     : WSS 바이너리 캔버스 (visibleVideo 캡처)
- *
- *  [UI 개선만 추가]
- *   - 안드로이드(전 기종) 및 구버전 iOS(getDisplayMedia 미지원)에서
- *     화면 공유 버튼 3곳만 자동 숨김 처리하여 카메라/사진칠판만 깔끔하게 노출
  * ============================================================================ */
 
 const WSS_BROKERS = [
@@ -574,9 +554,7 @@ let screenShareRuntimeUnsupported = false;
 
 function canSupportScreenShare() {
   if (screenShareRuntimeUnsupported) return false;
-  // 안드로이드 모바일 브라우저는 getDisplayMedia 미지원
   if (MY_OS === "Android") return false;
-  // 구버전 아이폰(iOS 26 이하) 및 미지원 브라우저 자동 감지
   const hasApi = Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function");
   return hasApi;
 }
@@ -585,14 +563,7 @@ function applyScreenShareUiVisibility(forceDisable = false) {
   if (forceDisable) screenShareRuntimeUnsupported = true;
   const supported = canSupportScreenShare();
 
-  // 1) 좌측 초기 안내 화면의 화면 공유 버튼 (flex <-> hidden 충돌 방지)
-  const btnMain = document.getElementById("btnMainScreenShare");
-  if (btnMain) {
-    btnMain.classList.toggle("hidden", !supported);
-    btnMain.classList.toggle("flex", supported);
-  }
-
-  // 2) 우측 QR 패널 하단 화면 공유 버튼 (숨김 시 3열 -> 2열 자동 정렬)
+  // 1) 우측 QR 패널 하단 화면 공유 버튼 (숨김 시 3열 -> 2열 자동 정렬)
   const btnHost = document.getElementById("btnHostScreenShare");
   const hostGroup = document.getElementById("hostShareBtnGroup");
   if (btnHost) {
@@ -603,14 +574,14 @@ function applyScreenShareUiVisibility(forceDisable = false) {
     hostGroup.classList.toggle("grid-cols-2", !supported);
   }
 
-  // 3) 상대방 연결 완료 모달의 화면 공유 버튼 (flex <-> hidden 충돌 방지)
+  // 2) 상대방 연결 완료 모달의 화면 공유 버튼 (flex <-> hidden 충돌 방지)
   const btnModal = document.getElementById("modalBtnShareDesktop");
   if (btnModal) {
     btnModal.classList.toggle("hidden", !supported);
     btnModal.classList.toggle("flex", supported);
   }
 
-  // 4) 미지원 기기에서만 혼란 없도록 초기 안내 문구 자연스럽게 조정
+  // 3) 미지원 기기 초기 안내 문구 조정
   const subtext = document.getElementById("emptyStageSubtext");
   if (subtext && !supported) {
     subtext.innerHTML =
@@ -2270,14 +2241,12 @@ function openInviteeModal(isRequest = false) {
   const descEl = document.getElementById("inviteeModalDesc");
 
   if (supported) {
-    // PC · 최신 아이폰(iOS 27+): 기존 문구 그대로 유지
     titleEl.textContent = isRequest
       ? "상대방이 화면 공유를 요청했습니다!"
       : "상대방과 연결되었습니다!";
     descEl.textContent =
       "내 화면을 상대방에게 공유하거나, 상대방이 공유한 화면을 내 기기에서 보며 레이저로 안내할 수 있습니다.";
   } else {
-    // 안드로이드 · 구버전 아이폰: 화면 미러링 오해 방지 문구
     titleEl.textContent = isRequest
       ? "상대방이 카메라·사진 공유를 요청했습니다!"
       : "상대방과 연결되었습니다!";
@@ -2341,14 +2310,7 @@ function clearQuickMessages() {
 
 // ---------------- 앱 부트스트랩 ----------------
 (async function bootstrap() {
-  const mainLabel = document.getElementById("btnMainScreenShareLabel");
-  if (mainLabel) {
-    mainLabel.textContent =
-      MY_OS === "iOS" ? "아이폰 화면 공유 시작"
-      : "PC 화면 공유 시작";
-  }
-
-  // 안드로이드 및 구버전 아이폰에서 화면 공유 버튼 3곳 자동 숨김 적용
+  // 안드로이드 및 구버전 아이폰에서 화면 공유 버튼 자동 숨김 적용
   applyScreenShareUiVisibility();
   updateEngineHintUI();
 
