@@ -642,10 +642,10 @@
 
       // 2. PC -> 아이폰
       "PC->iOS": {
-        label: "PC ➔ iOS (Safari 호환 경량 ACK + 자동재생 대응)",
+        label: "PC ➔ iOS (Safari 호환 초경량 ACK + 자동재생 대응)",
         send: (stream, targetPeer) => {
           sendWebRtcMediaCall(stream, targetPeer);
-          startAckFrameSender({ maxDim: 800, quality: 0.48, intervalMs: 120, maxBytes: 38000 });
+          startAckFrameSender({ maxDim: 640, quality: 0.38, intervalMs: 120, maxBytes: 15000 });
         },
         receiveStream: (remoteStream) => mountNativeVideoStream(remoteStream, true),
         receiveFrame: (dataUrl, w, h) => drawCanvasFrame(dataUrl, w, h)
@@ -657,44 +657,13 @@
 
         // [아이폰(송신측) 실행 코드]
         send: (stream, targetPeer) => {
-          // 1) iOS Safari는 화면에 보이지 않는(display:none) 비디오의 디코딩을 멈추므로
-          //    화면 좌상단 구석(2x2px, opacity 0.01)에 강제 렌더링 상태로 유지
-          const hiddenVid = document.getElementById("senderHiddenVideo");
-          if (hiddenVid) {
-            hiddenVid.style.display = "block";
-            hiddenVid.style.position = "fixed";
-            hiddenVid.style.left = "0px";
-            hiddenVid.style.top = "0px";
-            hiddenVid.style.width = "2px";
-            hiddenVid.style.height = "2px";
-            hiddenVid.style.opacity = "0.01";
-            hiddenVid.style.pointerEvents = "none";
-            hiddenVid.muted = true;
-            hiddenVid.setAttribute("playsinline", "true");
-            hiddenVid.setAttribute("webkit-playsinline", "true");
-            if (hiddenVid.srcObject !== stream) {
-              hiddenVid.srcObject = stream;
-            }
-            hiddenVid.play().catch(() => {});
-          }
-
-          // 2) PC로 네이티브 WebRTC 미디어 스트림 전송
-          if (targetPeer && peer) {
-            try {
-              if (currentMediaCall) {
-                try { currentMediaCall.close(); } catch (e) {}
-              }
-              currentMediaCall = peer.call(targetPeer, stream);
-            } catch (e) {}
-          }
-
-          // 3) 네이티브 트랙 협상이 지연되거나 방화벽에 막힐 경우를 대비한
-          //    iOS Safari DataChannel 64KB 한도 안전(40KB 이하) 1-Frame ACK 전송
+          ensureHiddenVideoActive(stream);
+          sendWebRtcMediaCall(stream, targetPeer);
           startAckFrameSender({
-            maxDim: 840,
-            quality: 0.52,
+            maxDim: 640,
+            quality: 0.38,
             intervalMs: 110,
-            maxBytes: 40000
+            maxBytes: 15000
           });
         },
 
@@ -823,21 +792,9 @@
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
-            {
-              urls: "turn:openrelay.metered.ca:80",
-              username: "openrelayproject",
-              credential: "openrelayproject"
-            },
-            {
-              urls: "turn:openrelay.metered.ca:443",
-              username: "openrelayproject",
-              credential: "openrelayproject"
-            },
-            {
-              urls: "turn:openrelay.metered.ca:443?transport=tcp",
-              username: "openrelayproject",
-              credential: "openrelayproject"
-            }
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" }
           ]
         }
       });
@@ -856,7 +813,7 @@
           try { currentMediaCall.close(); } catch (e) {}
         }
         currentMediaCall = call;
-        call.answer(undefined, { sdpTransform: preferH264SDP });
+        call.answer(); // PeerJS 표준 시그니처로 복구
         call.on("stream", (remoteStream) => {
           closeInviteeModalOnly();
           if (REMOTE_OS === "UNKNOWN") {
@@ -1249,27 +1206,13 @@
       }
     }
 
-    // H.264 코덱을 최우선으로 재정렬하여 iOS Safari WebRTC 호환성 확보
-    // iOS WebKit은 VP8/VP9 하드웨어 디코딩이 불안정하여 H.264를 반드시 우선 협상해야 함
-    function preferH264SDP(sdp) {
-      return sdp.replace(/(m=video \d+ \S+ )([\d ]+)/, (match, prefix, payloads) => {
-        const list = payloads.trim().split(' ');
-        const h264Pts = list.filter(pt =>
-          new RegExp(`a=rtpmap:${pt} H264`, 'i').test(sdp) ||
-          new RegExp(`a=rtpmap:${pt} H265`, 'i').test(sdp)
-        );
-        const others = list.filter(pt => !h264Pts.includes(pt));
-        return prefix + [...h264Pts, ...others].join(' ');
-      });
-    }
-
     function sendWebRtcMediaCall(stream, targetPeer) {
       if (!targetPeer || !peer) return;
       try {
         if (currentMediaCall) {
           try { currentMediaCall.close(); } catch (e) {}
         }
-        currentMediaCall = peer.call(targetPeer, stream, { sdpTransform: preferH264SDP });
+        currentMediaCall = peer.call(targetPeer, stream); // PeerJS 표준 시그니처로 복구
       } catch (e) {}
     }
 
@@ -1384,32 +1327,29 @@
 
       videoEl.srcObject = remoteStream;
       videoEl.muted = true;
+      videoEl.setAttribute("muted", "");
       videoEl.setAttribute("playsinline", "true");
       videoEl.setAttribute("webkit-playsinline", "true");
 
       const confirmNativePlaying = () => {
         if (isNativeVideoPlaying) return; // 중복 호출 방지
-        // readyState >= 3(HAVE_FUTURE_DATA): 실제 프레임 도착 보장 조건 추가
-        if (videoEl.videoWidth > 0 && !videoEl.paused && videoEl.readyState >= 3) {
-          // rAF 1회 대기: iOS Safari의 가짜 play() resolve(첫 프레임 미렌더링) 방지
-          requestAnimationFrame(() => {
-            if (isNativeVideoPlaying || videoEl.videoWidth === 0) return;
-            isNativeVideoPlaying = true;
-            demoCanvas.classList.add("hidden");
-            videoEl.classList.remove("hidden");
-            iosBanner.classList.add("hidden");
-            iosBanner.classList.remove("flex");
+        // WebRTC 실시간 스트림 특성에 맞춰 readyState >= 2 (HAVE_CURRENT_DATA)로 정상화
+        if (videoEl.videoWidth > 0 && !videoEl.paused && videoEl.readyState >= 2) {
+          isNativeVideoPlaying = true;
+          demoCanvas.classList.add("hidden");
+          videoEl.classList.remove("hidden");
+          iosBanner.classList.add("hidden");
+          iosBanner.classList.remove("flex");
 
-            const resBadge = document.getElementById("stageResolutionBadge");
-            resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight} HD`;
-            resBadge.classList.remove("hidden");
-            document.getElementById("streamModeHint").textContent = `[${REMOTE_OS} ➔ ${MY_OS}] WebRTC HD 스트리밍`;
-            resizeLaserOverlayCanvas();
+          const resBadge = document.getElementById("stageResolutionBadge");
+          resBadge.textContent = `${videoEl.videoWidth}×${videoEl.videoHeight} HD`;
+          resBadge.classList.remove("hidden");
+          document.getElementById("streamModeHint").textContent = `[${REMOTE_OS} ➔ ${MY_OS}] WebRTC HD 스트리밍`;
+          resizeLaserOverlayCanvas();
 
-            if (dataConn && dataConn.open) {
-              dataConn.send({ type: "native_video_ok" });
-            }
-          });
+          if (dataConn && dataConn.open) {
+            dataConn.send({ type: "native_video_ok" });
+          }
         }
       };
 
