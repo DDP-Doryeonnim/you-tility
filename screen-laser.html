@@ -972,8 +972,8 @@ function updateEmptyStageUI() {
   // 연결 완료 상태 — 역할에 따라 버튼 위계와 안내 문구를 명확히 분리
   el.emptyStageRoleBadge.classList.remove("hidden");
 
-  if (state.role === "host") {
-    // [수신·안내자] QR·PIN을 띄워놓은 쪽: 상대방 화면 수신이 메인
+if (state.role === "host") {
+    // [수신·안내자] QR·PIN을 띄워놓은 쪽: 버튼 없이 순수 수신 대기 화면만 표시
     el.emptyStageRoleBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold mb-2.5 border bg-emerald-500/15 border-emerald-400/50 text-emerald-300";
     el.emptyStageRoleBadge.textContent = `👀 수신·안내자 · 상대방(${state.remoteOS || "기기"}) 연결됨`;
     el.emptyStageHeading.textContent = "상대방이 화면을 선택하면 여기에 바로 표시됩니다";
@@ -981,12 +981,11 @@ function updateEmptyStageUI() {
       '상대방 기기에 공유 선택 팝업이 열렸습니다.<br />' +
       '화면이 나타나면 하단 <strong class="text-rose-300">레이저·펜·동그라미</strong>로 원하는 위치를 짚어 안내하세요.';
 
-    // 1순위 메인 버튼: 상대방에게 공유 요청
-    el.requestRemoteShareBtn.className = "flex px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold transition items-center gap-1.5 shadow-lg";
-    el.requestRemoteShareBtnText.textContent = "상대방에게 공유 요청";
-    // 2순위 보조 버튼: 예외적으로 내가 대신 보여줄 때
-    el.openShareModalBtn.className = "flex px-3.5 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-cyan-300 text-xs font-bold transition items-center gap-1.5";
-    el.openShareModalBtnText.textContent = "내 화면 대신 공유하기";
+    // 수신자 화면 중앙 버튼 모두 숨김
+    el.requestRemoteShareBtn.classList.add("hidden");
+    el.requestRemoteShareBtn.classList.remove("flex");
+    el.openShareModalBtn.classList.add("hidden");
+    el.openShareModalBtn.classList.remove("flex");
 
     if (state.activeDisplayMode === "empty") {
       setStageStatus(`연결 완료 — 상대방(${state.remoteOS || "기기"}) 화면 수신 대기 중`, false, "수신 대기");
