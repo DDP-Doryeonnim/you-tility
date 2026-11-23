@@ -17,6 +17,7 @@
     * {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       background-color: #070b14;
@@ -167,9 +168,9 @@
 
       <div class="text-center">
         <h1 class="text-xl sm:text-2xl md:text-[26px] font-bold tracking-tight text-white">
-          🚀 초간단 QR 파일 슝! <span class="text-xs font-mono text-emerald-400 align-middle">v6.0 TURBO</span>
+          🚀 초간단 QR 파일 슝! <span class="text-xs font-mono text-emerald-400 align-middle">v6.1 TURBO</span>
         </h1>
-        <p class="text-xs text-slate-400 mt-0.5">P2P 직통 터보 + 12연속 배치 파이프라인 초고속 전송</p>
+        <p class="text-xs text-slate-400 mt-0.5">P2P 직통 터보 + 무결성 검증 배치 파이프라인 초고속 전송</p>
       </div>
 
       <div class="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-full">
@@ -228,7 +229,7 @@
           <div>
             <div class="flex items-center justify-between mb-2">
               <span class="text-base font-extrabold text-pink-300">🔢 방법 2. 번호로 직접 연결</span>
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/30 font-semibold">번호 입력</span>
+              <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/30 font-semibold">번호 입력</span>
             </div>
             <p class="text-xs text-slate-400 mb-4">
               QR을 찍기 어려운 환경에서는 상대방의 <strong>4자리 숫자</strong>를 입력하고 연결하기를 누르세요.
@@ -336,16 +337,18 @@
       <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/80">
         <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
           <span>🛠️</span>
-          <span>실시간 연결 상태 로그 (v6.0 · WebRTC 직통 터보 + 12배치 파이프라인)</span>
+          <span>실시간 연결 상태 로그 (v6.1 · WebRTC 32KB 터보 + 8배치 무결성 파이프라인)</span>
         </span>
         <div class="flex items-center gap-1.5">
           <button
+            type="button"
             onclick="forceFreshReload()"
             class="px-2.5 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-[11px] font-semibold text-cyan-300 transition"
           >
             새 번호 받기
           </button>
           <button
+            type="button"
             onclick="clearLog()"
             class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-semibold text-slate-300 transition"
           >
@@ -359,18 +362,21 @@
 
   <script>
     /**
-     * You-틸리티 v6.0 TURBO 엔진
-     * 1. 연결: 3중 WSS 브로커(443 포함)로 방화벽 없이 0.2초 만에 100% 연결
-     * 2. 초고속 직통 터보: 연결 즉시 백그라운드에서 WebRTC DataChannel(128KB Raw Binary) 자동 개통 -> 3MB 약 0.4초
-     * 3. 고속 배치 파이프라인: 방화벽으로 WebRTC가 막힌 경우에도 48KB x 12개 연속 파이프라인 전송 -> 기존 대비 10배 이상 가속
+     * You-틸리티 v6.1 TURBO 엔진 (PC · 아이폰 · 안드로이드 전 기기 무결성 검증 버전)
+     * 1. 연결: 3중 WSS 브로커(443 포함)로 방화벽 없이 즉시 연결
+     * 2. P2P 직통 터보: WebRTC DataChannel (32KB Raw Binary) + 시그널 중복 차단 + 조기 ICE 큐잉
+     * 3. 무결성 배치 파이프라인: 24KB x 8개 연속 전송 + 누락 검증 + 타임아웃 안전장치 + 터보 끊김 자동 폴백
      */
     const TOPIC_PREFIX = "youtility/v6/node/";
     const GITHUB_FALLBACK_URL = "https://ddp-doryeonnim.github.io/you-tility/snapdrop-share.html";
 
-    // 전송 파라미터
-    const TURBO_CHUNK_SIZE = 128 * 1024; // WebRTC 직통 시 128KB 원문 바이너리 전송
-    const MQTT_CHUNK_SIZE = 48 * 1024;   // 릴레이 시 48KB 분할
-    const MQTT_WINDOW_SIZE = 12;         // 12개(576KB) 연속 전송 후 1회 일괄 확인 (왕복 지연 1/12로 단축)
+    // 모바일(iOS Safari / Android) SCTP 및 공개 MQTT 브로커 안전 한도 최적화
+    const TURBO_CHUNK_SIZE = 32 * 1024;   // WebRTC 직통 시 32KB (모든 브라우저 64KB SCTP 한도 안전 준수)
+    const TURBO_BUFFER_HIGH = 512 * 1024; // 송신 버퍼 상한 512KB
+    const MQTT_CHUNK_SIZE = 24 * 1024;    // 릴레이 시 24KB 원문 (Base64 약 32KB -> 브로커 차단 방지)
+    const MQTT_WINDOW_SIZE = 8;           // 8개(약 192KB) 단위 일괄 검증
+    const ACK_RETRY_INTERVAL = 900;       // ACK 재요청 간격 (ms)
+    const ACK_MAX_RETRIES = 10;           // 최대 재시도 (약 9초 초과 시 안전 중단)
 
     const BROKER_URLS = [
       { name: "EMQX-Cloud", url: "wss://broker.emqx.io:8084/mqtt" },
@@ -378,15 +384,12 @@
       { name: "Eclipse-443", url: "wss://mqtt.eclipseprojects.io:443/mqtt" }
     ];
 
+    // 지연 유발 외부 무료 TURN 제거 (P2P 불가 시 이미 연결된 3중 MQTT 파이프라인이 즉시 중계)
     const RTC_ICE_CONFIG = {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun.cloudflare.com:3478" },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelayproject",
-          credential: "openrelayproject"
-        }
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun.cloudflare.com:3478" }
       ]
     };
 
@@ -401,10 +404,14 @@
     let autoConnectDelayTimer = null;
     let totalFilesHandled = 0;
 
-    // WebRTC 직통 터보 상태
+    // WebRTC 직통 터보 및 시그널링 상태
     let rtcPeer = null;
     let rtcChannel = null;
     let isTurboReady = false;
+    let hasRemoteDescription = false;
+    let pendingIceCandidates = [];
+    let seenSignalIds = new Set();
+    let turboMsgQueue = Promise.resolve();
 
     // 송신 제어 및 ACK 대기 상태
     let isSending = false;
@@ -448,6 +455,7 @@
     }
 
     function forceFreshReload() {
+      sendByeSignal();
       window.location.href = getCleanBaseUrl() + "?v=" + Date.now();
     }
 
@@ -495,6 +503,10 @@
         reader.onerror = reject;
         reader.readAsArrayBuffer(blobSlice);
       });
+    }
+
+    function makeUniqueId(prefix) {
+      return prefix + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
     }
 
     function getInviteUrl(pin) {
@@ -547,7 +559,11 @@
 
     // 1. 3중 클라우드 터널 초기화
     function initTunnels() {
-      myPin = String(Math.floor(1000 + Math.random() * 9000));
+      // 자동 접속 대상 번호와 우연히 겹치지 않도록 고유 번호 생성
+      do {
+        myPin = String(Math.floor(1000 + Math.random() * 9000));
+      } while (autoTargetPin && myPin === autoTargetPin);
+
       document.getElementById("myCode").textContent = myPin;
       renderQRCode(myPin);
 
@@ -560,7 +576,7 @@
       const myTopic = TOPIC_PREFIX + myPin;
 
       BROKER_URLS.forEach((broker, idx) => {
-        const clientId = "yt6_" + myPin + "_" + idx + "_" + Math.random().toString(16).slice(2, 8);
+        const clientId = "yt61_" + myPin + "_" + idx + "_" + Math.random().toString(16).slice(2, 8);
         let client = null;
         try {
           client = mqtt.connect(broker.url, {
@@ -622,25 +638,33 @@
     }
 
     function sendPacket(targetPin, payloadObj, broadcastAll = false) {
+      if (!targetPin) return false;
       const targetTopic = TOPIC_PREFIX + targetPin;
       const jsonStr = JSON.stringify(payloadObj);
 
       if (!broadcastAll && peerBrokerIdx !== -1 && clients[peerBrokerIdx] && clients[peerBrokerIdx].connected) {
-        clients[peerBrokerIdx].publish(targetTopic, jsonStr, { qos: 0 });
-        return;
+        try {
+          clients[peerBrokerIdx].publish(targetTopic, jsonStr, { qos: 0 });
+          return true;
+        } catch (e) {}
       }
 
+      let sentAny = false;
       clients.forEach((c) => {
         if (c && c.connected) {
-          try { c.publish(targetTopic, jsonStr, { qos: 0 }); } catch (e) {}
+          try {
+            c.publish(targetTopic, jsonStr, { qos: 0 });
+            sentAny = true;
+          } catch (e) {}
         }
       });
+      return sentAny;
     }
 
     function resetConnectButton() {
       const btn = document.getElementById("connectBtn");
-      btn.disabled = false;
-      btn.textContent = "연결하기";
+      btn.disabled = !isTunnelReady;
+      btn.textContent = isTunnelReady ? "연결하기" : "터널 개통 중...";
     }
 
     // 2. 상대방 4자리 번호로 연결 요청
@@ -689,10 +713,21 @@
       }
     });
 
-    // =========================================================
+    // =========================================================================
     // [초고속 WebRTC P2P 직통 터보 업그레이드 엔진]
-    // 이미 연결된 MQTT 터널을 시그널링으로 삼아 백그라운드에서 직통 채널을 개통합니다.
-    // =========================================================
+    // 시그널 ID 중복 차단 + 조기 ICE Candidate 큐잉 + 끊김 자동 감지
+    // =========================================================================
+    function setSpeedModeUI(turboOn) {
+      const badge = document.getElementById("speedModeBadge");
+      if (turboOn) {
+        badge.textContent = "🚀 P2P 직통 터보 가동됨";
+        badge.className = "px-2.5 py-0.5 rounded-lg bg-emerald-500/25 border border-emerald-400/50 text-xs font-extrabold text-emerald-300";
+      } else {
+        badge.textContent = "⚡ 고속 파이프라인 모드";
+        badge.className = "px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-xs font-bold text-cyan-300";
+      }
+    }
+
     function initWebRTCTurbo(remotePin, isOfferer) {
       if (typeof RTCPeerConnection === "undefined") return;
       closeWebRTCTurbo();
@@ -705,8 +740,21 @@
             sendPacket(remotePin, {
               cmd: "RTC_CAND",
               from: myPin,
+              sigId: makeUniqueId("cand"),
               cand: event.candidate
             }, false);
+          }
+        };
+
+        rtcPeer.oniceconnectionstatechange = () => {
+          if (!rtcPeer) return;
+          const st = rtcPeer.iceConnectionState;
+          if (st === "failed" || st === "disconnected" || st === "closed") {
+            if (isTurboReady) {
+              isTurboReady = false;
+              setSpeedModeUI(false);
+              log("직통 터보 채널 연결이 해제되어 고속 파이프라인 모드로 전환합니다.", "warn");
+            }
           }
         };
 
@@ -719,6 +767,7 @@
             sendPacket(remotePin, {
               cmd: "RTC_OFFER",
               from: myPin,
+              sigId: makeUniqueId("offer"),
               sdp: rtcPeer.localDescription
             }, true);
           }).catch(() => {});
@@ -730,29 +779,56 @@
       } catch (e) {}
     }
 
+    function flushPendingIceCandidates() {
+      if (!rtcPeer || !hasRemoteDescription || pendingIceCandidates.length === 0) return;
+      const queued = pendingIceCandidates.slice();
+      pendingIceCandidates = [];
+      queued.forEach((cand) => {
+        try {
+          rtcPeer.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+        } catch (e) {}
+      });
+    }
+
     function setupTurboDataChannel(dc) {
       rtcChannel = dc;
       rtcChannel.binaryType = "arraybuffer";
+      try { rtcChannel.bufferedAmountLowThreshold = 128 * 1024; } catch (e) {}
 
       rtcChannel.onopen = () => {
         isTurboReady = true;
-        const badge = document.getElementById("speedModeBadge");
-        badge.textContent = "🚀 P2P 직통 터보 가동됨";
-        badge.className = "px-2.5 py-0.5 rounded-lg bg-emerald-500/25 border border-emerald-400/50 text-xs font-extrabold text-emerald-300";
-        log("🚀 초고속 P2P 직통 터보 채널 개통 완료! (광속 전송 모드)", "ok");
+        setSpeedModeUI(true);
+        log("🚀 초고속 P2P 직통 터보 채널 개통 완료! (32KB Raw 직통 모드)", "ok");
       };
 
       rtcChannel.onclose = () => {
-        isTurboReady = false;
+        if (isTurboReady) {
+          isTurboReady = false;
+          setSpeedModeUI(false);
+        }
       };
 
+      rtcChannel.onerror = () => {
+        if (isTurboReady) {
+          isTurboReady = false;
+          setSpeedModeUI(false);
+        }
+      };
+
+      // Blob/ArrayBuffer 순서 보장을 위한 직렬 수신 큐
       rtcChannel.onmessage = (event) => {
-        handleTurboMessage(event.data);
+        const rawData = event.data;
+        turboMsgQueue = turboMsgQueue.then(() => handleTurboMessage(rawData)).catch(() => {});
       };
     }
 
     function closeWebRTCTurbo() {
       isTurboReady = false;
+      hasRemoteDescription = false;
+      pendingIceCandidates = [];
+      seenSignalIds.clear();
+      setSpeedModeUI(false);
+
       if (rtcChannel) {
         try { rtcChannel.close(); } catch (e) {}
         rtcChannel = null;
@@ -763,8 +839,8 @@
       }
     }
 
-    // WebRTC 직통 터보 수신 처리 (Base64 변환 없이 순수 ArrayBuffer 고속 조립)
-    function handleTurboMessage(rawData) {
+    // WebRTC 직통 터보 수신 처리 (ArrayBuffer 및 구형 브라우저 Blob 모두 안전 지원)
+    async function handleTurboMessage(rawData) {
       if (typeof rawData === "string") {
         let msg = null;
         try { msg = JSON.parse(rawData); } catch (e) { return; }
@@ -778,6 +854,15 @@
           updateProgress("📥 [터보] 받는 중: " + msg.name, 0, "0%");
         }
         else if (msg.cmd === "TURBO_END" && incomingMeta && incomingMeta.id === msg.id) {
+          const expectedSize = Number(incomingMeta.size) || 0;
+          if (receivedBytes !== expectedSize) {
+            log("❌ [터보] 수신 크기 불일치 (" + receivedBytes + " / " + expectedSize + " B) - 파일 손상 방지를 위해 폐기됨", "err");
+            incomingMeta = null;
+            incomingChunks = [];
+            receivedBytes = 0;
+            return;
+          }
+
           if (!completedTransferIds.has(msg.id)) {
             completedTransferIds.add(msg.id);
             const elapsed = Math.max(0.1, (Date.now() - transferStartTime) / 1000).toFixed(1);
@@ -787,15 +872,52 @@
             const url = URL.createObjectURL(blob);
             addReceivedItem(incomingMeta.name, incomingMeta.size, url, incomingMeta.mime, blob);
           }
+
+          // 데이터채널 즉시 ACK + MQTT 백업 ACK 동시 회신
+          if (rtcChannel && rtcChannel.readyState === "open") {
+            try { rtcChannel.send(JSON.stringify({ cmd: "TURBO_ACK", id: msg.id })); } catch (e) {}
+          }
           sendPacket(connectedPin, { cmd: "FILE_ACK", from: myPin, id: msg.id, seq: 999999 }, false);
           incomingMeta = null;
           incomingChunks = [];
+          receivedBytes = 0;
         }
-      } else if (rawData instanceof ArrayBuffer && incomingMeta) {
-        incomingChunks.push(new Uint8Array(rawData));
-        receivedBytes += rawData.byteLength;
-        const percent = Math.min(100, Math.round((receivedBytes / Math.max(1, incomingMeta.size)) * 100));
+        else if (msg.cmd === "TURBO_ACK" && msg.id) {
+          resolvePendingAck(msg.id + ":999999", true);
+        }
+      } else if (incomingMeta) {
+        let buf = null;
+        if (rawData instanceof ArrayBuffer) {
+          buf = rawData;
+        } else if (typeof Blob !== "undefined" && rawData instanceof Blob) {
+          buf = await readBlobAsArrayBuffer(rawData);
+        }
+        if (!buf) return;
+
+        incomingChunks.push(new Uint8Array(buf));
+        receivedBytes += buf.byteLength;
+        const percent = incomingMeta.size > 0
+          ? Math.min(100, Math.round((receivedBytes / incomingMeta.size) * 100))
+          : 100;
         updateProgress("📥 [터보] 받는 중: " + incomingMeta.name, percent, percent + "%");
+      }
+    }
+
+    function resolvePendingAck(key, value) {
+      if (pendingAckResolver && pendingAckKey === key) {
+        const resolve = pendingAckResolver;
+        pendingAckResolver = null;
+        pendingAckKey = "";
+        resolve(value);
+      }
+    }
+
+    function cancelPendingAck() {
+      if (pendingAckResolver) {
+        const resolve = pendingAckResolver;
+        pendingAckResolver = null;
+        pendingAckKey = "";
+        resolve(null);
       }
     }
 
@@ -803,6 +925,7 @@
     function handleIncomingPacket(data, brokerIdx) {
       if (!data || !data.cmd || !data.from) return;
       const fromPin = String(data.from);
+      if (fromPin === myPin) return;
 
       if (brokerIdx !== undefined && clients[brokerIdx] && clients[brokerIdx].connected) {
         peerBrokerIdx = brokerIdx;
@@ -825,29 +948,60 @@
           sendPacket(fromPin, { cmd: "HELLO_ACK", from: myPin }, true);
           log("🎉 [" + fromPin + "]번 기기와 연결 완료! 파일 전송 화면으로 전환합니다.", "ok");
           switchToTransferView(fromPin);
-          // 호출한 기기가 충돌 없이 WebRTC Offer 생성 시작
           initWebRTCTurbo(fromPin, true);
         }
       }
-      else if (data.cmd === "RTC_OFFER" && rtcPeer) {
+      else if (data.cmd === "RTC_OFFER" && connectedPin === fromPin) {
+        if (data.sigId && seenSignalIds.has(data.sigId)) return;
+        if (data.sigId) seenSignalIds.add(data.sigId);
+        if (!rtcPeer) initWebRTCTurbo(fromPin, false);
+        if (!rtcPeer || rtcPeer.signalingState !== "stable") return;
+
         rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp)).then(() => {
+          hasRemoteDescription = true;
+          flushPendingIceCandidates();
           return rtcPeer.createAnswer();
         }).then((answer) => {
           return rtcPeer.setLocalDescription(answer);
         }).then(() => {
-          sendPacket(fromPin, { cmd: "RTC_ANSWER", from: myPin, sdp: rtcPeer.localDescription }, true);
+          sendPacket(fromPin, {
+            cmd: "RTC_ANSWER",
+            from: myPin,
+            sigId: makeUniqueId("ans"),
+            sdp: rtcPeer.localDescription
+          }, true);
         }).catch(() => {});
       }
-      else if (data.cmd === "RTC_ANSWER" && rtcPeer) {
-        rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp)).catch(() => {});
+      else if (data.cmd === "RTC_ANSWER" && connectedPin === fromPin && rtcPeer) {
+        if (data.sigId && seenSignalIds.has(data.sigId)) return;
+        if (data.sigId) seenSignalIds.add(data.sigId);
+        if (rtcPeer.signalingState !== "have-local-offer") return;
+
+        rtcPeer.setRemoteDescription(new RTCSessionDescription(data.sdp)).then(() => {
+          hasRemoteDescription = true;
+          flushPendingIceCandidates();
+        }).catch(() => {});
       }
-      else if (data.cmd === "RTC_CAND" && rtcPeer && data.cand) {
-        rtcPeer.addIceCandidate(new RTCIceCandidate(data.cand)).catch(() => {});
+      else if (data.cmd === "RTC_CAND" && connectedPin === fromPin && data.cand) {
+        if (data.sigId && seenSignalIds.has(data.sigId)) return;
+        if (data.sigId) seenSignalIds.add(data.sigId);
+
+        if (rtcPeer && hasRemoteDescription) {
+          rtcPeer.addIceCandidate(new RTCIceCandidate(data.cand)).catch(() => {});
+        } else {
+          pendingIceCandidates.push(data.cand);
+        }
       }
       else if (data.cmd === "BYE") {
         if (connectedPin === fromPin) {
           log("상대방(" + fromPin + ")이 연결을 종료했습니다.", "warn");
           switchToConnectView();
+        }
+      }
+      // 터보 종료 확인 재요청(PING_END) 처리 -> 완료된 ID면 즉시 최종 ACK 재회신
+      else if (data.cmd === "PING_END" && data.id) {
+        if (completedTransferIds.has(data.id)) {
+          sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: 999999 }, false);
         }
       }
       // [파이프라인 수신 1] 메타데이터
@@ -862,18 +1016,20 @@
         }
         sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: -1 }, false);
       }
-      // [파이프라인 수신 2] 연속 청크 수신 (매 조각 ACK 생략 -> 속도 극대화)
+      // [파이프라인 수신 2] 연속 청크 수신
       else if (data.cmd === "FILE_CHUNK") {
-        if (incomingMeta && incomingMeta.id === data.id && !incomingChunks[data.seq]) {
+        if (incomingMeta && incomingMeta.id === data.id && data.seq >= 0 && data.seq < incomingMeta.totalChunks && !incomingChunks[data.seq]) {
           const bytes = base64ToUint8Array(data.chunk);
           incomingChunks[data.seq] = bytes;
           receivedBytes += bytes.byteLength;
 
-          const percent = Math.min(100, Math.round((receivedBytes / Math.max(1, incomingMeta.size)) * 100));
+          const percent = incomingMeta.size > 0
+            ? Math.min(100, Math.round((receivedBytes / incomingMeta.size) * 100))
+            : 100;
           updateProgress("📥 받는 중: " + incomingMeta.name, percent, percent + "%");
         }
       }
-      // [파이프라인 수신 3] 12개 배치 단위 일괄 점검 및 누락 번호 회신
+      // [파이프라인 수신 3] 배치 단위 일괄 점검 및 누락 번호 회신
       else if (data.cmd === "WINDOW_CHECK") {
         if (incomingMeta && incomingMeta.id === data.id) {
           const missing = [];
@@ -889,10 +1045,22 @@
           }, false);
         }
       }
-      // [파이프라인 수신 4] 전송 완료 및 결합
+      // [파이프라인 수신 4] 무결성 전수 검증 후 파일 조립 및 저장
       else if (data.cmd === "FILE_END") {
-        sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: 999999 }, false);
-        if (incomingMeta && incomingMeta.id === data.id && !completedTransferIds.has(data.id)) {
+        if (completedTransferIds.has(data.id)) {
+          sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: 999999 }, false);
+          return;
+        }
+        if (incomingMeta && incomingMeta.id === data.id) {
+          let missingCount = 0;
+          for (let i = 0; i < incomingMeta.totalChunks; i++) {
+            if (!incomingChunks[i]) missingCount++;
+          }
+          if (missingCount > 0) {
+            log("❌ 수신 조각 누락 감지(" + missingCount + "개) - 파일 조립을 보류합니다.", "err");
+            return;
+          }
+
           completedTransferIds.add(data.id);
           const elapsed = Math.max(0.1, (Date.now() - transferStartTime) / 1000).toFixed(1);
           log("🎉 수신 완료: " + incomingMeta.name + " (" + elapsed + "초 소요)", "ok");
@@ -902,51 +1070,53 @@
           addReceivedItem(incomingMeta.name, incomingMeta.size, url, incomingMeta.mime, blob);
           incomingMeta = null;
           incomingChunks = [];
+          receivedBytes = 0;
+
+          sendPacket(fromPin, { cmd: "FILE_ACK", from: myPin, id: data.id, seq: 999999 }, false);
         }
       }
       // 송신 측 단일 제어 ACK 수신
       else if (data.cmd === "FILE_ACK") {
-        const ackKey = data.id + ":" + data.seq;
-        if (pendingAckResolver && pendingAckKey === ackKey) {
-          const resolve = pendingAckResolver;
-          pendingAckResolver = null;
-          pendingAckKey = "";
-          resolve();
-        }
+        resolvePendingAck(data.id + ":" + data.seq, true);
       }
       // 송신 측 배치 윈도우 ACK 수신
       else if (data.cmd === "WINDOW_ACK") {
-        const winKey = data.id + ":win:" + data.endSeq;
-        if (pendingAckResolver && pendingAckKey === winKey) {
-          const resolve = pendingAckResolver;
-          pendingAckResolver = null;
-          pendingAckKey = "";
-          resolve(data.missing || []);
-        }
+        resolvePendingAck(data.id + ":win:" + data.endSeq, data.missing || []);
       }
     }
 
-    function sendControlWithAck(targetPin, packetObj, expectedId, expectedSeq) {
+    function sendControlWithAck(targetPin, packetObj, expectedId, expectedSeq, maxRetries = ACK_MAX_RETRIES) {
       return new Promise((resolve) => {
         let retryTimer = null;
+        let attempts = 0;
         const targetKey = expectedId + ":" + expectedSeq;
         pendingAckKey = targetKey;
 
-        pendingAckResolver = () => {
+        pendingAckResolver = (result) => {
           clearTimeout(retryTimer);
-          resolve();
+          resolve(result === true);
         };
 
         const attempt = () => {
-          if (!connectedPin) {
+          if (!connectedPin || pendingAckKey !== targetKey) {
             clearTimeout(retryTimer);
-            resolve();
+            resolve(false);
             return;
           }
+          if (attempts >= maxRetries) {
+            clearTimeout(retryTimer);
+            if (pendingAckKey === targetKey) {
+              pendingAckResolver = null;
+              pendingAckKey = "";
+            }
+            resolve(false);
+            return;
+          }
+          attempts++;
           sendPacket(targetPin, packetObj, false);
           retryTimer = setTimeout(() => {
             if (pendingAckKey === targetKey) attempt();
-          }, 900);
+          }, ACK_RETRY_INTERVAL);
         };
         attempt();
       });
@@ -955,6 +1125,7 @@
     function checkWindowWithAck(targetPin, transferId, startSeq, endSeq) {
       return new Promise((resolve) => {
         let retryTimer = null;
+        let attempts = 0;
         const targetKey = transferId + ":win:" + endSeq;
         pendingAckKey = targetKey;
 
@@ -964,11 +1135,21 @@
         };
 
         const attempt = () => {
-          if (!connectedPin) {
+          if (!connectedPin || pendingAckKey !== targetKey) {
             clearTimeout(retryTimer);
-            resolve([]);
+            resolve(null);
             return;
           }
+          if (attempts >= ACK_MAX_RETRIES) {
+            clearTimeout(retryTimer);
+            if (pendingAckKey === targetKey) {
+              pendingAckResolver = null;
+              pendingAckKey = "";
+            }
+            resolve(null);
+            return;
+          }
+          attempts++;
           sendPacket(targetPin, {
             cmd: "WINDOW_CHECK",
             from: myPin,
@@ -978,7 +1159,7 @@
           }, false);
           retryTimer = setTimeout(() => {
             if (pendingAckKey === targetKey) attempt();
-          }, 900);
+          }, ACK_RETRY_INTERVAL);
         };
         attempt();
       });
@@ -995,14 +1176,14 @@
     }
 
     function switchToConnectView() {
+      clearInterval(handshakeTimer);
       connectedPin = "";
       isSending = false;
-      pendingAckResolver = null;
+      incomingMeta = null;
+      incomingChunks = [];
+      receivedBytes = 0;
+      cancelPendingAck();
       closeWebRTCTurbo();
-
-      const badge = document.getElementById("speedModeBadge");
-      badge.textContent = "⚡ 고속 파이프라인 모드";
-      badge.className = "px-2.5 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-xs font-bold text-cyan-300";
 
       document.getElementById("stepTransferView").classList.add("hidden");
       document.getElementById("stepConnectView").classList.remove("hidden");
@@ -1013,16 +1194,24 @@
       resetConnectButton();
     }
 
-    function disconnectAndReset() {
+    function sendByeSignal() {
       if (connectedPin) {
         sendPacket(connectedPin, { cmd: "BYE", from: myPin }, true);
       }
+    }
+
+    function disconnectAndReset() {
+      sendByeSignal();
       switchToConnectView();
     }
 
-    // 4. 파일 선택 및 초고속 전송 (WebRTC 터보 우선 -> 12배치 파이프라인 자동 폴백)
+    // 4. 파일 선택 및 초고속 전송 (WebRTC 32KB 터보 우선 -> 8배치 파이프라인 자동 폴백)
     function triggerFileInput() {
       if (!connectedPin) return;
+      if (isSending) {
+        log("현재 파일을 전송 중입니다. 완료 후 다음 파일을 선택해 주세요.", "warn");
+        return;
+      }
       document.getElementById("fileInput").click();
     }
 
@@ -1037,140 +1226,230 @@
     dropZoneEl.addEventListener("drop", async (e) => {
       e.preventDefault();
       dropZoneEl.classList.remove("drag-over");
-      if (!connectedPin || isSending) return;
+      if (!connectedPin) return;
+      if (isSending) {
+        log("현재 파일을 전송 중입니다. 완료 후 다시 드롭해 주세요.", "warn");
+        return;
+      }
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        for (let i = 0; i < e.dataTransfer.files.length; i++) {
-          await sendFileObject(e.dataTransfer.files[i]);
+        const files = Array.from(e.dataTransfer.files);
+        for (let i = 0; i < files.length; i++) {
+          if (!connectedPin) break;
+          await sendFileObject(files[i]);
         }
       }
     });
 
     async function handleFileSelect(event) {
-      const files = event.target.files;
-      if (!files || !files.length || !connectedPin || isSending) return;
+      const files = event.target.files ? Array.from(event.target.files) : [];
+      event.target.value = "";
+      if (!files.length || !connectedPin) return;
+      if (isSending) {
+        log("현재 파일을 전송 중입니다. 완료 후 다시 선택해 주세요.", "warn");
+        return;
+      }
       for (let i = 0; i < files.length; i++) {
+        if (!connectedPin) break;
         await sendFileObject(files[i]);
       }
-      event.target.value = "";
+    }
+
+    function waitForTurboBufferDrain() {
+      return new Promise((resolve) => {
+        if (!rtcChannel || rtcChannel.readyState !== "open" || rtcChannel.bufferedAmount <= TURBO_BUFFER_HIGH) {
+          resolve();
+          return;
+        }
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (rtcChannel) rtcChannel.onbufferedamountlow = null;
+          resolve();
+        };
+        const timer = setTimeout(done, 50);
+        rtcChannel.onbufferedamountlow = done;
+      });
     }
 
     async function sendFileObject(file) {
       if (!connectedPin) return;
       isSending = true;
-      const startTime = Date.now();
-      const target = connectedPin;
-      const transferId = Date.now() + "_" + Math.random().toString(36).slice(2, 6);
 
-      // [경로 A] WebRTC P2P 직통 터보가 열려 있는 경우 (128KB Raw ArrayBuffer 초고속 스트리밍)
-      if (isTurboReady && rtcChannel && rtcChannel.readyState === "open") {
-        log("🚀 [터보] 직통 고속 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
-        updateProgress("🚀 [터보] 보내는 중: " + file.name, 0, "0%");
+      try {
+        const startTime = Date.now();
+        const target = connectedPin;
 
-        rtcChannel.send(JSON.stringify({
-          cmd: "TURBO_META",
+        // [경로 A] WebRTC P2P 직통 터보 (32KB Raw Binary)
+        if (isTurboReady && rtcChannel && rtcChannel.readyState === "open") {
+          const turboId = makeUniqueId("tb");
+          log("🚀 [터보] 직통 고속 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
+          updateProgress("🚀 [터보] 보내는 중: " + file.name, 0, "0%");
+
+          let turboSucceeded = false;
+          try {
+            rtcChannel.send(JSON.stringify({
+              cmd: "TURBO_META",
+              id: turboId,
+              name: file.name,
+              size: file.size,
+              mime: file.type || "application/octet-stream"
+            }));
+
+            let offset = 0;
+            while (offset < file.size) {
+              if (!connectedPin || !isTurboReady || !rtcChannel || rtcChannel.readyState !== "open") {
+                throw new Error("TURBO_CHANNEL_CLOSED");
+              }
+              if (rtcChannel.bufferedAmount > TURBO_BUFFER_HIGH) {
+                await waitForTurboBufferDrain();
+                continue;
+              }
+              const slice = file.slice(offset, offset + TURBO_CHUNK_SIZE);
+              const buffer = await readBlobAsArrayBuffer(slice);
+              if (!rtcChannel || rtcChannel.readyState !== "open") {
+                throw new Error("TURBO_CHANNEL_CLOSED");
+              }
+              rtcChannel.send(buffer);
+
+              offset += buffer.byteLength;
+              const percent = file.size > 0 ? Math.min(100, Math.round((offset / file.size) * 100)) : 100;
+              updateProgress("🚀 [터보] 보내는 중: " + file.name, percent, percent + "%");
+            }
+
+            if (!connectedPin || !rtcChannel || rtcChannel.readyState !== "open") {
+              throw new Error("TURBO_CHANNEL_CLOSED");
+            }
+
+            // TURBO_END 전송 직후 즉시 ACK 대기 (TURBO_ACK 또는 MQTT FILE_ACK 중 빠른 쪽으로 완료)
+            rtcChannel.send(JSON.stringify({ cmd: "TURBO_END", id: turboId }));
+            const ackOk = await sendControlWithAck(
+              target,
+              { cmd: "PING_END", from: myPin, id: turboId },
+              turboId,
+              999999,
+              8
+            );
+
+            if (ackOk) {
+              const elapsed = Math.max(0.1, (Date.now() - startTime) / 1000).toFixed(1);
+              log("✅ [터보] 전송 완료: " + file.name + " (" + elapsed + "초 소요)", "ok");
+              updateProgress("✅ [터보] 완료: " + file.name, 100, "100%");
+              addSentItem(file.name, file.size);
+              turboSucceeded = true;
+            } else {
+              throw new Error("TURBO_ACK_TIMEOUT");
+            }
+          } catch (turboErr) {
+            if (!connectedPin) return;
+            isTurboReady = false;
+            setSpeedModeUI(false);
+            log("⚠️ 직통 터보 전송 중단(" + turboErr.message + ") -> 고속 파이프라인으로 자동 전환해 재전송합니다.", "warn");
+          }
+
+          if (turboSucceeded) return;
+        }
+
+        // [경로 B] 방화벽·폴백 환경: 24KB x 8연속 무결성 배치 파이프라인 전송
+        if (!connectedPin) return;
+        const transferId = makeUniqueId("mq");
+        const totalChunks = file.size === 0 ? 0 : Math.ceil(file.size / MQTT_CHUNK_SIZE);
+
+        log("📤 [고속 파이프라인] 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
+        updateProgress("📤 보내는 중: " + file.name, 0, "0%");
+
+        const metaOk = await sendControlWithAck(target, {
+          cmd: "FILE_META",
+          from: myPin,
           id: transferId,
           name: file.name,
           size: file.size,
-          mime: file.type || "application/octet-stream"
-        }));
+          mime: file.type || "application/octet-stream",
+          totalChunks: totalChunks
+        }, transferId, -1);
 
-        let offset = 0;
-        while (offset < file.size && connectedPin && isTurboReady) {
-          // 버퍼가 1MB 이상 차면 비워질 때까지 짧게 대기 (메모리 보호 + 최고 속도 유지)
-          if (rtcChannel.bufferedAmount > 1024 * 1024) {
-            await new Promise((r) => setTimeout(r, 8));
-            continue;
-          }
-          const slice = file.slice(offset, offset + TURBO_CHUNK_SIZE);
-          const buffer = await readBlobAsArrayBuffer(slice);
-          rtcChannel.send(buffer);
-
-          offset += buffer.byteLength;
-          const percent = Math.min(100, Math.round((offset / Math.max(1, file.size)) * 100));
-          updateProgress("🚀 [터보] 보내는 중: " + file.name, percent, percent + "%");
+        if (!metaOk) {
+          log("❌ 전송 실패: 상대방 응답 시간이 초과되었습니다. 연결 상태를 확인해 주세요.", "err");
+          return;
         }
 
-        if (connectedPin) {
-          rtcChannel.send(JSON.stringify({ cmd: "TURBO_END", id: transferId }));
-          await sendControlWithAck(target, { cmd: "PING_END", from: myPin }, transferId, 999999);
-          const elapsed = Math.max(0.1, (Date.now() - startTime) / 1000).toFixed(1);
-          log("✅ [터보] 전송 완료: " + file.name + " (" + elapsed + "초 소요)", "ok");
-          addSentItem(file.name, file.size);
-        }
-        isSending = false;
-        return;
-      }
+        for (let winStart = 0; winStart < totalChunks && connectedPin; winStart += MQTT_WINDOW_SIZE) {
+          const winEnd = Math.min(totalChunks - 1, winStart + MQTT_WINDOW_SIZE - 1);
+          const windowCache = {};
 
-      // [경로 B] 방화벽 환경: 12연속 배치 파이프라인 전송 (매 조각 대기 없이 12개씩 연속 발사)
-      const totalChunks = Math.max(1, Math.ceil(file.size / MQTT_CHUNK_SIZE));
-      log("📤 [고속 파이프라인] 전송 시작: " + file.name + " (" + formatBytes(file.size) + ")");
-      updateProgress("📤 보내는 중: " + file.name, 0, "0%");
+          for (let seq = winStart; seq <= winEnd && connectedPin; seq++) {
+            const offset = seq * MQTT_CHUNK_SIZE;
+            const slice = file.slice(offset, offset + MQTT_CHUNK_SIZE);
+            const buffer = await readBlobAsArrayBuffer(slice);
+            const b64Chunk = bufferToBase64(buffer);
+            windowCache[seq] = b64Chunk;
 
-      await sendControlWithAck(target, {
-        cmd: "FILE_META",
-        from: myPin,
-        id: transferId,
-        name: file.name,
-        size: file.size,
-        mime: file.type || "application/octet-stream",
-        totalChunks: totalChunks
-      }, transferId, -1);
-
-      for (let winStart = 0; winStart < totalChunks && connectedPin; winStart += MQTT_WINDOW_SIZE) {
-        const winEnd = Math.min(totalChunks - 1, winStart + MQTT_WINDOW_SIZE - 1);
-        const windowCache = {};
-
-        // 윈도우 내 청크들을 ACK 대기 없이 연속 발송
-        for (let seq = winStart; seq <= winEnd && connectedPin; seq++) {
-          const offset = seq * MQTT_CHUNK_SIZE;
-          const slice = file.slice(offset, offset + MQTT_CHUNK_SIZE);
-          const buffer = await readBlobAsArrayBuffer(slice);
-          const b64Chunk = bufferToBase64(buffer);
-          windowCache[seq] = b64Chunk;
-
-          sendPacket(target, {
-            cmd: "FILE_CHUNK",
-            from: myPin,
-            id: transferId,
-            seq: seq,
-            chunk: b64Chunk
-          }, false);
-
-          const percent = Math.min(100, Math.round(((seq + 1) / totalChunks) * 100));
-          updateProgress("📤 보내는 중: " + file.name, percent, percent + "%");
-          await new Promise((r) => setTimeout(r, 8));
-        }
-
-        // 윈도우(12개) 전송 직후 1회만 누락 여부 확인 및 누락분 즉시 보충
-        while (connectedPin) {
-          const missing = await checkWindowWithAck(target, transferId, winStart, winEnd);
-          if (!missing || missing.length === 0) break;
-          for (let m = 0; m < missing.length; m++) {
-            const mSeq = missing[m];
             sendPacket(target, {
               cmd: "FILE_CHUNK",
               from: myPin,
               id: transferId,
-              seq: mSeq,
-              chunk: windowCache[mSeq]
+              seq: seq,
+              chunk: b64Chunk
             }, false);
-            await new Promise((r) => setTimeout(r, 10));
+
+            const percent = Math.min(100, Math.round(((seq + 1) / totalChunks) * 100));
+            updateProgress("📤 보내는 중: " + file.name, percent, percent + "%");
+            await new Promise((r) => setTimeout(r, 15));
+          }
+
+          // 윈도우 단위 누락분 보충 (최대 6회 재보충 제한으로 무한 루프 방지)
+          let repairRounds = 0;
+          while (connectedPin) {
+            const missing = await checkWindowWithAck(target, transferId, winStart, winEnd);
+            if (missing === null) {
+              log("❌ 전송 중단: 배치 응답 시간이 초과되었습니다.", "err");
+              return;
+            }
+            if (missing.length === 0) break;
+            repairRounds++;
+            if (repairRounds > 6) {
+              log("❌ 전송 중단: 네트워크 손실이 과도해 재전송 한도를 초과했습니다.", "err");
+              return;
+            }
+            for (let m = 0; m < missing.length && connectedPin; m++) {
+              const mSeq = missing[m];
+              if (windowCache[mSeq] !== undefined) {
+                sendPacket(target, {
+                  cmd: "FILE_CHUNK",
+                  from: myPin,
+                  id: transferId,
+                  seq: mSeq,
+                  chunk: windowCache[mSeq]
+                }, false);
+                await new Promise((r) => setTimeout(r, 18));
+              }
+            }
           }
         }
-      }
 
-      if (connectedPin) {
-        await sendControlWithAck(target, {
+        if (!connectedPin) return;
+
+        const endOk = await sendControlWithAck(target, {
           cmd: "FILE_END",
           from: myPin,
           id: transferId
         }, transferId, 999999);
 
+        if (!endOk) {
+          log("❌ 완료 확인 실패: 상대방의 최종 저장 확인 응답이 없습니다.", "err");
+          return;
+        }
+
         const elapsed = Math.max(0.1, (Date.now() - startTime) / 1000).toFixed(1);
         log("✅ 전송 완료: " + file.name + " (" + elapsed + "초 소요)", "ok");
+        updateProgress("✅ 전송 완료: " + file.name, 100, "100%");
         addSentItem(file.name, file.size);
+      } catch (err) {
+        log("❌ 파일 전송 중 예외 발생: " + (err && err.message ? err.message : err), "err");
+      } finally {
+        isSending = false;
       }
-      isSending = false;
     }
 
     function updateProgress(fileNameLabel, percent, percentText) {
@@ -1191,78 +1470,127 @@
       document.getElementById("fileCountBadge").textContent = totalFilesHandled + "개 파일";
     }
 
+    // XSS 및 특수문자 파일명 깨짐 방지를 위한 안전 DOM 생성 방식
     function addReceivedItem(name, size, url, mime, blob) {
       updateFileCount();
       const list = document.getElementById("downloadList");
       const isImage = mime && mime.indexOf("image/") === 0;
-      const thumbHtml = isImage
-        ? '<img src="' + url + '" class="w-11 h-11 rounded-lg object-cover border border-emerald-500/40 shrink-0" alt="미리보기" />'
-        : '<div class="w-11 h-11 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0">📥</div>';
 
-      const div = document.createElement("div");
-      div.className = "flex items-center justify-between gap-3 bg-emerald-950/35 border border-emerald-500/40 p-3 rounded-xl";
+      const card = document.createElement("div");
+      card.className = "flex items-center justify-between gap-3 bg-emerald-950/35 border border-emerald-500/40 p-3 rounded-xl";
 
-      const shareBtnId = "share_" + Math.random().toString(36).slice(2, 9);
-      const canMobileShare = typeof navigator.canShare === "function";
+      const left = document.createElement("div");
+      left.className = "flex items-center gap-3 min-w-0";
 
-      div.innerHTML =
-        '<div class="flex items-center gap-3 min-w-0">' +
-          thumbHtml +
-          '<div class="min-w-0">' +
-            '<div class="text-xs sm:text-sm font-bold text-white truncate">' + name + '</div>' +
-            '<div class="text-[11px] text-emerald-300 font-mono">수신 완료 · ' + formatBytes(size) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="flex items-center gap-1.5 shrink-0">' +
-          (canMobileShare
-            ? '<button id="' + shareBtnId + '" type="button" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition">공유/사진첩</button>'
-            : '') +
-          '<a href="' + url + '" download="' + name + '" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md hover:brightness-110 transition">저장하기</a>' +
-        '</div>';
-
-      list.prepend(div);
-
-      if (canMobileShare) {
-        const shareBtn = document.getElementById(shareBtnId);
-        if (shareBtn) {
-          shareBtn.addEventListener("click", async () => {
-            try {
-              const fileObj = new File([blob], name, { type: mime || "application/octet-stream" });
-              if (navigator.canShare({ files: [fileObj] })) {
-                await navigator.share({ files: [fileObj], title: name });
-              }
-            } catch (e) {}
-          });
-        }
+      if (isImage) {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "미리보기";
+        img.className = "w-11 h-11 rounded-lg object-cover border border-emerald-500/40 shrink-0";
+        left.appendChild(img);
+      } else {
+        const icon = document.createElement("div");
+        icon.className = "w-11 h-11 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-lg shrink-0";
+        icon.textContent = "📥";
+        left.appendChild(icon);
       }
+
+      const metaBox = document.createElement("div");
+      metaBox.className = "min-w-0";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "text-xs sm:text-sm font-bold text-white truncate";
+      titleEl.textContent = name;
+
+      const sizeEl = document.createElement("div");
+      sizeEl.className = "text-[11px] text-emerald-300 font-mono";
+      sizeEl.textContent = "수신 완료 · " + formatBytes(size);
+
+      metaBox.appendChild(titleEl);
+      metaBox.appendChild(sizeEl);
+      left.appendChild(metaBox);
+
+      const right = document.createElement("div");
+      right.className = "flex items-center gap-1.5 shrink-0";
+
+      if (typeof navigator.canShare === "function") {
+        const shareBtn = document.createElement("button");
+        shareBtn.type = "button";
+        shareBtn.className = "px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-bold text-xs transition";
+        shareBtn.textContent = "공유/사진첩";
+        shareBtn.addEventListener("click", async () => {
+          try {
+            const fileObj = new File([blob], name, { type: mime || "application/octet-stream" });
+            if (navigator.canShare({ files: [fileObj] })) {
+              await navigator.share({ files: [fileObj], title: name });
+            }
+          } catch (e) {}
+        });
+        right.appendChild(shareBtn);
+      }
+
+      const saveLink = document.createElement("a");
+      saveLink.href = url;
+      saveLink.download = name;
+      saveLink.className = "px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md hover:brightness-110 transition";
+      saveLink.textContent = "저장하기";
+      right.appendChild(saveLink);
+
+      card.appendChild(left);
+      card.appendChild(right);
+      list.prepend(card);
     }
 
     function addSentItem(name, size) {
       updateFileCount();
       const list = document.getElementById("downloadList");
-      const div = document.createElement("div");
-      div.className = "flex items-center justify-between gap-3 bg-slate-900/80 border border-slate-700/80 p-3 rounded-xl";
-      div.innerHTML =
-        '<div class="flex items-center gap-3 min-w-0">' +
-          '<div class="w-11 h-11 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-lg shrink-0">📤</div>' +
-          '<div class="min-w-0">' +
-            '<div class="text-xs sm:text-sm font-bold text-slate-200 truncate">' + name + '</div>' +
-            '<div class="text-[11px] text-cyan-300 font-mono">전송 완료 · ' + formatBytes(size) + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<span class="shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-cyan-300 font-bold text-xs border border-slate-700">보냄 ✓</span>';
-      list.prepend(div);
+
+      const card = document.createElement("div");
+      card.className = "flex items-center justify-between gap-3 bg-slate-900/80 border border-slate-700/80 p-3 rounded-xl";
+
+      const left = document.createElement("div");
+      left.className = "flex items-center gap-3 min-w-0";
+
+      const icon = document.createElement("div");
+      icon.className = "w-11 h-11 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-lg shrink-0";
+      icon.textContent = "📤";
+
+      const metaBox = document.createElement("div");
+      metaBox.className = "min-w-0";
+
+      const titleEl = document.createElement("div");
+      titleEl.className = "text-xs sm:text-sm font-bold text-slate-200 truncate";
+      titleEl.textContent = name;
+
+      const sizeEl = document.createElement("div");
+      sizeEl.className = "text-[11px] text-cyan-300 font-mono";
+      sizeEl.textContent = "전송 완료 · " + formatBytes(size);
+
+      metaBox.appendChild(titleEl);
+      metaBox.appendChild(sizeEl);
+      left.appendChild(icon);
+      left.appendChild(metaBox);
+
+      const badge = document.createElement("span");
+      badge.className = "shrink-0 px-3 py-1.5 rounded-lg bg-slate-800 text-cyan-300 font-bold text-xs border border-slate-700";
+      badge.textContent = "보냄 ✓";
+
+      card.appendChild(left);
+      card.appendChild(badge);
+      list.prepend(card);
     }
 
     function formatBytes(bytes) {
-      if (bytes === 0) return "0 B";
+      if (!bytes || bytes === 0) return "0 B";
       const k = 1024;
       const sizes = ["B", "KB", "MB", "GB"];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
     }
 
-    window.onload = initTunnels;
+    window.addEventListener("beforeunload", sendByeSignal);
+    window.addEventListener("pagehide", sendByeSignal);
+    window.addEventListener("DOMContentLoaded", initTunnels);
   </script>
 </body>
 </html>
