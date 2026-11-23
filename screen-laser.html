@@ -207,18 +207,7 @@
         </div>
       </div>
 
-      <!-- 모바일/WebRTC 자동재생 잠금 해제 배너 -->
-      <button
-        id="iosForcePlayBanner"
-        type="button"
-        onclick="forceUnlockVideoPlayback()"
-        class="hidden absolute top-14 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-2xl items-center gap-1.5 animate-bounce"
-      >
-        <span>▶️</span>
-        <span>여기를 터치하면 화면이 재생됩니다</span>
-      </button>
-
-      <!-- 1) 초기·연결 대기 화면 안내 (역할별 자동 분기) -->
+      <!-- 1) 초기·연결 대기 화면 안내 (수신자 화면에는 중앙 버튼 미표시) -->
       <div id="emptyStageGuide" class="z-10 max-w-xl text-center p-5">
         <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-3xl sm:text-4xl shadow-2xl">
           🖥️
@@ -232,7 +221,7 @@
           • <strong class="text-emerald-300">화면 보며 안내할 사람(수신자):</strong> 연결되면 이 화면으로 자동 이동해 상대방 화면을 즉시 수신합니다.
         </p>
 
-        <!-- 연결 완료 후 역할별 버튼 (수신자: 공유 요청 메인 / 송출자: 공유 메뉴 메인) -->
+        <!-- 연결 완료 후 송출자(요청자) 전용 재호출 버튼 (수신자 화면에서는 모두 숨김) -->
         <div class="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
@@ -250,7 +239,7 @@
             class="hidden px-4 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs sm:text-sm font-bold transition items-center gap-1.5"
           >
             <span>📤</span>
-            <span id="openShareModalBtnText">내 화면 대신 공유하기</span>
+            <span id="openShareModalBtnText">보여줄 화면 선택하기</span>
           </button>
         </div>
       </div>
@@ -426,7 +415,7 @@
   </main>
 </div>
 
-<!-- 공유 선택 액션 모달 (송출자 연결 시 자동 오픈 / 수신자 공유 요청 수신 시 오픈) -->
+<!-- 공유 선택 액션 모달 (송출자 연결 시 자동 오픈 / 상대방 공유 요청 수신 시 오픈) -->
 <div id="inviteeModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
   <div class="glass-panel rounded-3xl p-6 max-w-md w-full text-center relative border border-cyan-500/40 shadow-2xl">
     <button type="button" onclick="closeInviteeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold px-2">✕</button>
@@ -499,7 +488,7 @@
 
 <script>
 /* ============================================================================
- *  You-tility Screen & Laser v4.4 — 역할 분리(송출자/수신자) · 자동 스크롤 · 버튼 통합
+ *  You-tility Screen & Laser v4.5 — 수신자 중앙 버튼 제거 · 노란 재생 배너 삭제
  *  --------------------------------------------------------------------------
  *  [검증 완료 6개 경로 — 엔진 로직 100% 그대로 보존]
  *   1) PC -> PC            : PeerJS WebRTC 60fps 직접 스트리밍
@@ -647,7 +636,6 @@ const el = {
   stageResolutionBadge: document.getElementById("stageResolutionBadge"),
   switchCameraBtn: document.getElementById("switchCameraBtn"),
   fitModeToggleBtn: document.getElementById("fitModeToggleBtn"),
-  iosForcePlayBanner: document.getElementById("iosForcePlayBanner"),
   emptyStageGuide: document.getElementById("emptyStageGuide"),
   emptyStageRoleBadge: document.getElementById("emptyStageRoleBadge"),
   emptyStageHeading: document.getElementById("emptyStageHeading"),
@@ -969,11 +957,11 @@ function updateEmptyStageUI() {
     return;
   }
 
-  // 연결 완료 상태 — 역할에 따라 버튼 위계와 안내 문구를 명확히 분리
+  // 연결 완료 상태 — 역할별 화면 분리
   el.emptyStageRoleBadge.classList.remove("hidden");
 
-if (state.role === "host") {
-    // [수신·안내자] QR·PIN을 띄워놓은 쪽: 버튼 없이 순수 수신 대기 화면만 표시
+  if (state.role === "host") {
+    // [수신·안내자] QR·PIN을 띄워놓은 쪽: 중앙 버튼 없이 순수 수신 대기 화면만 표시
     el.emptyStageRoleBadge.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold mb-2.5 border bg-emerald-500/15 border-emerald-400/50 text-emerald-300";
     el.emptyStageRoleBadge.textContent = `👀 수신·안내자 · 상대방(${state.remoteOS || "기기"}) 연결됨`;
     el.emptyStageHeading.textContent = "상대방이 화면을 선택하면 여기에 바로 표시됩니다";
@@ -1302,10 +1290,7 @@ function attachWebRtcRemoteVideo(remoteStream, incomingRoute) {
   const tryPlay = () => {
     const p = el.video.play();
     if (p && typeof p.catch === "function") {
-      p.catch(() => {
-        el.iosForcePlayBanner.classList.remove("hidden");
-        el.iosForcePlayBanner.classList.add("flex");
-      });
+      p.catch(() => {});
     }
   };
   tryPlay();
@@ -1319,8 +1304,6 @@ function attachWebRtcRemoteVideo(remoteStream, incomingRoute) {
     if (el.video.videoWidth > 0 && !el.video.paused && el.video.readyState >= 2) {
       state.mediaNaturalW = el.video.videoWidth;
       state.mediaNaturalH = el.video.videoHeight;
-      el.iosForcePlayBanner.classList.add("hidden");
-      el.iosForcePlayBanner.classList.remove("flex");
       setStageStatus(
         `[${incomingRoute.label}] WebRTC 실시간 수신 중`,
         true,
@@ -1857,22 +1840,12 @@ function resetRemoteStageOnly() {
   el.frameCanvas.classList.add("hidden");
   el.mediaViewportWrap.classList.add("hidden");
   el.fitModeToggleBtn.classList.add("hidden");
-  el.iosForcePlayBanner.classList.add("hidden");
-  el.iosForcePlayBanner.classList.remove("flex");
   el.emptyStageGuide.classList.remove("hidden");
   if (!state.peerConnected) {
     setStageStatus("화면 대기 중 (초대 링크나 QR을 상대방에게 보내세요)", false);
   }
   updateEmptyStageUI();
   updateEngineHintUI();
-}
-
-function forceUnlockVideoPlayback() {
-  el.video.muted = true;
-  el.video.play().then(() => {
-    el.iosForcePlayBanner.classList.add("hidden");
-    el.iosForcePlayBanner.classList.remove("flex");
-  }).catch(() => {});
 }
 
 function toggleVideoFitMode() {
