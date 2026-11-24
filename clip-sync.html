@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>텍스트 슝 (실시간 클립보드) - You-틸리티</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MQTT.js (3중 WSS 브로커 실시간 양방향 동기화) -->
+  <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overscroll-behavior: none;
+    }
+    body {
+      background: radial-gradient(circle at 15% 10%, #0f172a 0%, #020617 55%, #090d1f 100%);
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .app-shell {
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .brand-gradient {
+      background: linear-gradient(90deg, #22d3ee 0%, #818cf8 55%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.76);
+      border: 1px solid rgba(51, 65, 85, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 12px 32px rgba(2, 6, 23, 0.45);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+      color: #020617;
+      transition: all 0.16s ease;
+    }
+    .btn-primary:hover {
+      filter: brightness(1.08);
+    }
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    #qrcodeContainer img,
+    #qrcodeContainer canvas {
+      display: block;
+      width: 176px !important;
+      height: 176px !important;
+      margin: 0 auto;
+    }
+    #chatList::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chatList::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #chatList::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.55);
+      border-radius: 9999px;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .msg-pop {
+      animation: popIn 0.18s ease-out;
+    }
+    .safe-bottom {
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ==================== 상단 헤더 (초간결 고정 바) ==================== -->
+  <header class="shrink-0 px-3.5 py-3 border-b border-slate-800/80 bg-slate-950/75 backdrop-blur-md flex items-center justify-between gap-2">
+    <a href="./index.html" class="px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-xs font-bold text-slate-200 flex items-center gap-1 transition shrink-0 whitespace-nowrap">
+      <span>←</span>
+      <span>대시보드</span>
+    </a>
+
+    <!-- 1단계 타이틀 -->
+    <div id="headerTitleIdle" class="flex items-center gap-1.5 min-w-0">
+      <span class="text-sm sm:text-base font-black tracking-tight brand-gradient whitespace-nowrap">You-틸리티</span>
+      <span class="text-slate-600 text-xs">·</span>
+      <span class="text-sm sm:text-base font-extrabold text-white truncate">텍스트 슝</span>
+    </div>
+
+    <!-- 2단계 연결 상태 표시 (연결 후 자동 노출) -->
+    <div id="headerStatusConnected" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 min-w-0">
+      <span id="connectedDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+      <span id="connectedLabel" class="text-xs font-extrabold text-emerald-200 truncate">연결됨</span>
+    </div>
+
+    <!-- 우측 액션: 2단계에서만 [끊기] 노출 -->
+    <div class="shrink-0 flex items-center justify-end min-w-[64px]">
+      <button
+        type="button"
+        id="disconnectBtn"
+        onclick="disconnectSession(true)"
+        class="hidden px-3 py-1.5 rounded-lg bg-rose-950/90 hover:bg-rose-900 border border-rose-500/50 text-xs font-extrabold text-rose-200 transition whitespace-nowrap"
+      >
+        끊기
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== 1단계: 연결 화면 (QR / 4자리 PIN) ==================== -->
+  <main id="stepConnectView" class="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center justify-center">
+    <div class="glass-panel rounded-3xl p-6 sm:p-8 w-full max-w-sm text-center">
+
+      <!-- QR / 수동 접속 중 안내 배너 (hidden 단독 사용 — 표시 시 JS에서 flex 토글) -->
+      <div id="autoJoinBanner" class="hidden mb-4 px-3.5 py-2.5 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-xs font-bold text-cyan-200 items-center justify-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0"></span>
+        <span id="autoJoinText">상대방 기기와 자동 연결 중...</span>
+      </div>
+
+      <!-- QR 코드 박스 -->
+      <div class="inline-flex flex-col items-center justify-center bg-white p-3.5 rounded-2xl shadow-xl mb-3.5">
+        <div id="qrcodeContainer" class="w-[176px] h-[176px] flex items-center justify-center text-slate-400 text-xs font-bold">
+          QR 생성 중...
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">
+        스마트폰 카메라로 스캔하면 양방향 채팅창이 바로 열립니다
+      </p>
+
+      <!-- 내 연결 번호 4자리 (클릭 시 복사) -->
+      <button
+        type="button"
+        onclick="copyMyPin()"
+        title="클릭하여 연결 번호 복사"
+        class="w-full py-3 px-4 rounded-2xl bg-slate-950/85 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/40 transition flex items-center justify-center gap-3 mb-2"
+      >
+        <span class="text-xs font-bold text-slate-400">내 연결 번호</span>
+        <span id="myPinDisplay" class="text-2xl sm:text-3xl font-black tracking-[0.28em] text-cyan-300 font-mono pl-1">
+          ----
+        </span>
+      </button>
+
+      <!-- 서버 연결 대기 상태 표시 -->
+      <div class="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400 mb-5">
+        <span id="brokerStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="brokerStatusText">연결 채널 준비 중...</span>
+      </div>
+
+      <!-- 구분선 -->
+      <div class="flex items-center gap-3 mb-5">
+        <div class="h-px flex-1 bg-slate-800"></div>
+        <span class="text-[11px] font-bold text-slate-500">또는</span>
+        <div class="h-px flex-1 bg-slate-800"></div>
+      </div>
+
+      <!-- 상대방 4자리 번호 입력 -->
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          id="remotePinInput"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="4"
+          autocomplete="off"
+          placeholder="상대 번호 4자리"
+          oninput="sanitizePinInput(this)"
+          onkeydown="if(event.key==='Enter') joinByManualPin();"
+          class="flex-1 min-w-0 bg-slate-950 border border-slate-700 focus:border-cyan-400 rounded-xl px-3.5 py-3 text-center text-base font-black tracking-[0.25em] text-white placeholder:tracking-normal placeholder:font-semibold placeholder:text-slate-500 font-mono focus:outline-none transition"
+        />
+        <button
+          type="button"
+          id="manualConnectBtn"
+          onclick="joinByManualPin()"
+          class="btn-primary px-5 py-3 rounded-xl text-sm font-black shrink-0 shadow-lg whitespace-nowrap"
+        >
+          연결
+        </button>
+      </div>
+
+      <p class="mt-5 text-[11px] text-slate-500 leading-relaxed">
+        🔒 종단간 암호화 · 서버 저장 없음 · 닫으면 즉시 삭제
+      </p>
+    </div>
+  </main>
+
+  <!-- ==================== 2단계: 양방향 클립보드 채팅창 (hidden 단독 — 전환 시 flex 토글) ==================== -->
+  <section id="stepChatView" class="hidden flex-1 flex-col min-h-0">
+
+    <!-- 메시지 영역 -->
+    <div id="chatList" class="flex-1 overflow-y-auto px-3.5 py-4 space-y-3">
+      <!-- 초기 안내 (첫 메시지 도착 시 자동 숨김) -->
+      <div id="chatEmptyState" class="h-full flex flex-col items-center justify-center text-center px-4 py-10">
+        <div class="w-14 h-14 rounded-2xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-center text-2xl mb-3 shadow-lg">
+          🚀
+        </div>
+        <p class="text-sm font-extrabold text-slate-200 mb-1">두 기기가 실시간으로 연결되었습니다</p>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          아래에 링크·계좌번호·메모를 입력하거나<br />
+          <strong class="text-cyan-300">[📋 클립보드 붙여넣기]</strong>를 눌러 바로 보내보세요.
+        </p>
+      </div>
+    </div>
+
+    <!-- 하단 입력 & 원클릭 액션 바 -->
+    <footer class="shrink-0 px-3.5 pt-2.5 safe-bottom border-t border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
+      <div class="mb-2">
+        <textarea
+          id="msgInput"
+          rows="2"
+          maxlength="100000"
+          placeholder="보낼 글자나 주소를 입력하거나 아래 붙여넣기 버튼을 누르세요..."
+          oninput="autoResizeTextarea(this)"
+          onkeydown="handleMsgKeydown(event)"
+          class="w-full resize-none bg-slate-900/95 border border-slate-700/90 focus:border-cyan-400 rounded-2xl px-3.5 py-2.5 text-base text-white placeholder-slate-500 focus:outline-none leading-snug max-h-36 transition"
+        ></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onclick="pasteFromClipboard()"
+          class="py-3 px-3 rounded-xl bg-slate-800/95 hover:bg-slate-700 active:scale-[0.98] border border-slate-600/70 text-xs sm:text-sm font-extrabold text-slate-100 flex items-center justify-center gap-1.5 transition"
+        >
+          <span>📋</span>
+          <span>클립보드 붙여넣기</span>
+        </button>
+
+        <button
+          type="button"
+          id="sendBtn"
+          onclick="sendCurrentText()"
+          class="btn-primary py-3 px-3 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 shadow-lg"
+        >
+          <span>🚀</span>
+          <span>슝 전송</span>
+        </button>
+      </div>
+    </footer>
+
+  </section>
+
+</div>
+
+<!-- 토스트 알림 컨테이너 -->
+<div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-[90%] max-w-xs"></div>
+
+<script>
+/* ============================================================================
+ *  You-tility 텍스트 슝 (clip-sync.html) v1.0
+ *  - 3중 MQTT WSS 동시 접속 (EMQX / HiveMQ / Eclipse) + 메시지 중복 제거
+ *  - PIN 기반 SHA-256 토픽 + AES-GCM 종단간 암호화 (비HTTPS 환경 안전 폴백)
+ *  - QR 스캔 즉시 2단계 1:1 양방향 클립보드 채팅창 자동 전환
+ *  - 모바일 백그라운드 복귀(visibilitychange) 자동 복구 & 동기 BYE 패킷 캐시
+ * ============================================================================ */
+
+const WSS_BROKERS = [
+  { name: "EMQX",    url: "wss://broker.emqx.io:8084/mqtt" },
+  { name: "HiveMQ",  url: "wss://broker.hivemq.com:8884/mqtt" },
+  { name: "Eclipse", url: "wss://mqtt.eclipseprojects.io:443/mqtt" }
+];
+
+const MAX_TEXT_LENGTH = 100000;
+
+function detectDeviceLabel() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) return "아이폰";
+  if (/Android/i.test(ua)) return "안드로이드";
+  return "PC";
+}
+
+const MY_DEVICE = detectDeviceLabel();
+const IS_MOBILE = MY_DEVICE !== "PC";
+const MY_CLIENT_ID = "cs_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now().toString(36).slice(-4);
+
+// ---------------- 앱 전역 상태 ----------------
+const state = {
+  step: "connect",          // 'connect' | 'chat'
+  role: "host",             // 'host' | 'guest'
+  myPin: "",
+  activePin: "",
+  roomTopic: "",
+  aesKey: null,
+  preEncodedByePacket: null,
+
+  // 3중 브로커 클라이언트 목록
+  clients: [],              // { name, url, client, connected }
+  connectedBrokerCount: 0,
+  recoveryTimer: null,
+
+  // 1:1 상대방 세션 정보
+  peerConnected: false,
+  remoteClientId: null,
+  remoteDevice: "",
+
+  // 타이머 & 중복/재전송 관리
+  helloRetryTimer: null,
+  helloRetryCount: 0,
+  seenMsgIds: new Set(),
+  pendingAcks: new Map(),
+  hasMessages: false
+};
+
+// ---------------- DOM 참조 ----------------
+const el = {
+  headerTitleIdle: document.getElementById("headerTitleIdle"),
+  headerStatusConnected: document.getElementById("headerStatusConnected"),
+  connectedDot: document.getElementById("connectedDot"),
+  connectedLabel: document.getElementById("connectedLabel"),
+  disconnectBtn: document.getElementById("disconnectBtn"),
+
+  stepConnectView: document.getElementById("stepConnectView"),
+  stepChatView: document.getElementById("stepChatView"),
+
+  autoJoinBanner: document.getElementById("autoJoinBanner"),
+  autoJoinText: document.getElementById("autoJoinText"),
+  qrcodeContainer: document.getElementById("qrcodeContainer"),
+  myPinDisplay: document.getElementById("myPinDisplay"),
+  brokerStatusDot: document.getElementById("brokerStatusDot"),
+  brokerStatusText: document.getElementById("brokerStatusText"),
+  remotePinInput: document.getElementById("remotePinInput"),
+  manualConnectBtn: document.getElementById("manualConnectBtn"),
+
+  chatList: document.getElementById("chatList"),
+  chatEmptyState: document.getElementById("chatEmptyState"),
+  msgInput: document.getElementById("msgInput"),
+  sendBtn: document.getElementById("sendBtn"),
+  toastContainer: document.getElementById("toastContainer")
+};
+
+// ---------------- 토스트 알림 ----------------
+function showToast(message, type = "info") {
+  const styles = {
+    info:    "bg-slate-900/95 border-cyan-500/60 text-cyan-100",
+    success: "bg-emerald-950/95 border-emerald-400/60 text-emerald-100",
+    warn:    "bg-amber-950/95 border-amber-400/60 text-amber-100",
+    error:   "bg-rose-950/95 border-rose-400/60 text-rose-100"
+  };
+  const toast = document.createElement("div");
+  toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border text-xs font-extrabold shadow-2xl backdrop-blur-md text-center transition-all duration-300 ${styles[type] || styles.info}`;
+  toast.textContent = message;
+  el.toastContainer.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-6px)";
+    setTimeout(() => toast.remove(), 260);
+  }, 2200);
+}
+
+// ---------------- 암호화 & 토픽 생성 (PIN 기반 종단간 AES-GCM) ----------------
+async function deriveRoomSecurity(pin) {
+  const cleanPin = String(pin).replace(/\D/g, "").slice(0, 4);
+  const seed = `youtility-clip-sync-v1-e2ee::${cleanPin}`;
+
+  if (window.crypto && window.crypto.subtle) {
+    const raw = new TextEncoder().encode(seed);
+    const hashBuf = await crypto.subtle.digest("SHA-256", raw);
+    const hashArr = Array.from(new Uint8Array(hashBuf));
+    const hex = hashArr.slice(0, 10).map(b => b.toString(16).padStart(2, "0")).join("");
+    const aesKey = await crypto.subtle.importKey(
+      "raw",
+      hashBuf,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+    state.roomTopic = `youtility/clip-sync/v1/${hex}`;
+    state.aesKey = aesKey;
+  } else {
+    let h1 = 0x811c9dc5;
+    let h2 = 0x9e3779b9;
+    for (let i = 0; i < seed.length; i++) {
+      h1 = Math.imul(h1 ^ seed.charCodeAt(i), 0x01000193);
+      h2 = Math.imul(h2 ^ seed.charCodeAt(i), 0x85ebca6b);
+    }
+    const hex = (h1 >>> 0).toString(16).padStart(8, "0") + (h2 >>> 0).toString(16).padStart(8, "0");
+    state.roomTopic = `youtility/clip-sync/v1/plain_${hex}`;
+    state.aesKey = null;
+  }
+
+  // pagehide 시 비동기 대기 없이 즉시 발사할 수 있도록 BYE 패킷 사전 암호화 캐시
+  state.preEncodedByePacket = await encodePacket({
+    type: "BYE",
+    from: MY_CLIENT_ID,
+    device: MY_DEVICE,
+    msgId: generateMsgId(),
+    ts: Date.now()
+  });
+}
+
+function uint8ToBase64(bytes) {
+  let bin = "";
+  const chunkSize = 0x4000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(bin);
+}
+
+function base64ToUint8(b64) {
+  const bin = atob(b64);
+  const len = bin.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function encodePacket(obj) {
+  const jsonStr = JSON.stringify(obj);
+  if (state.aesKey && window.crypto && window.crypto.subtle) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plainBytes = new TextEncoder().encode(jsonStr);
+    const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, state.aesKey, plainBytes);
+    return JSON.stringify({
+      e: 1,
+      iv: uint8ToBase64(iv),
+      d: uint8ToBase64(new Uint8Array(cipherBuf))
+    });
+  }
+  return JSON.stringify({ e: 0, d: jsonStr });
+}
+
+async function decodePacket(rawBytes) {
+  let wrapper;
+  try {
+    wrapper = JSON.parse(new TextDecoder().decode(rawBytes));
+  } catch (_) {
+    return null;
+  }
+  if (!wrapper || typeof wrapper !== "object") return null;
+
+  try {
+    if (wrapper.e === 1) {
+      if (!state.aesKey) return null;
+      const iv = base64ToUint8(wrapper.iv);
+      const cipher = base64ToUint8(wrapper.d);
+      const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, state.aesKey, cipher);
+      return JSON.parse(new TextDecoder().decode(plainBuf));
+    }
+    if (wrapper.e === 0 && typeof wrapper.d === "string") {
+      return JSON.parse(wrapper.d);
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
+}
+
+// ---------------- 3중 MQTT WSS 연결 엔진 ----------------
+function closeAllBrokers() {
+  stopHelloRetry();
+  if (state.recoveryTimer) {
+    clearTimeout(state.recoveryTimer);
+    state.recoveryTimer = null;
+  }
+  for (const entry of state.clients) {
+    try { entry.client.end(true); } catch (_) {}
+  }
+  state.clients = [];
+  state.connectedBrokerCount = 0;
+}
+
+function updateBrokerStatusUI() {
+  const count = state.clients.filter(c => c.connected).length;
+  state.connectedBrokerCount = count;
+
+  if (count > 0) {
+    el.brokerStatusDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+    el.brokerStatusText.textContent = `연결 대기 중 (${count}개 고속 채널 활성)`;
+    if (state.peerConnected) {
+      el.connectedDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0";
+    }
+  } else {
+    el.brokerStatusDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+    el.brokerStatusText.textContent = "연결 채널 복구 중...";
+    if (state.peerConnected) {
+      el.connectedDot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0";
+    }
+  }
+}
+
+function spawnBrokersForCurrentTopic() {
+  const currentTopic = state.roomTopic;
+  if (!currentTopic) return;
+
+  if (typeof mqtt === "undefined") {
+    el.brokerStatusDot.className = "w-2 h-2 rounded-full bg-rose-500";
+    el.brokerStatusText.textContent = "통신 라이브러리 로딩 실패 (인터넷을 확인하세요)";
+    showToast("네트워크 연결을 확인해 주세요.", "error");
+    return;
+  }
+
+  WSS_BROKERS.forEach((broker) => {
+    const entry = { name: broker.name, url: broker.url, client: null, connected: false };
+    try {
+      const client = mqtt.connect(broker.url, {
+        clientId: `${MY_CLIENT_ID}_${broker.name}_${Math.random().toString(36).slice(2, 5)}`,
+        clean: true,
+        keepalive: 25,
+        connectTimeout: 6000,
+        reconnectPeriod: 3500
+      });
+      entry.client = client;
+      state.clients.push(entry);
+
+      client.on("connect", () => {
+        if (state.roomTopic !== currentTopic) {
+          try { client.end(true); } catch (_) {}
+          return;
+        }
+        entry.connected = true;
+        client.subscribe(currentTopic, { qos: 0 }, (err) => {
+          if (err) return;
+          updateBrokerStatusUI();
+          if (state.role === "guest" && !state.peerConnected) {
+            startHelloRetry();
+          } else if (state.peerConnected) {
+            publishSignal({ type: "PING" });
+          }
+        });
+      });
+
+      client.on("message", (topic, payload) => {
+        if (topic !== state.roomTopic) return;
+        handleIncomingRawMessage(payload);
+      });
+
+      client.on("offline", () => {
+        entry.connected = false;
+        updateBrokerStatusUI();
+      });
+
+      client.on("close", () => {
+        entry.connected = false;
+        updateBrokerStatusUI();
+      });
+
+      client.on("error", () => {
+        entry.connected = false;
+        updateBrokerStatusUI();
+      });
+    } catch (_) {
+      entry.connected = false;
+    }
+  });
+
+  updateBrokerStatusUI();
+}
+
+async function connectRoomPin(pin, role) {
+  closeAllBrokers();
+  state.role = role;
+  state.activePin = pin;
+  state.peerConnected = false;
+  state.remoteClientId = null;
+  state.remoteDevice = "";
+  state.seenMsgIds.clear();
+  clearAllPendingAcks();
+
+  await deriveRoomSecurity(pin);
+  spawnBrokersForCurrentTopic();
+}
+
+async function publishSignal(payloadObj) {
+  const activeClients = state.clients.filter(c => c.connected && c.client);
+  if (activeClients.length === 0 || !state.roomTopic) return false;
+
+  const fullObj = {
+    ...payloadObj,
+    from: MY_CLIENT_ID,
+    device: MY_DEVICE,
+    msgId: payloadObj.msgId || generateMsgId(),
+    ts: payloadObj.ts || Date.now()
+  };
+  const encoded = await encodePacket(fullObj);
+
+  let sentAny = false;
+  for (const entry of activeClients) {
+    try {
+      entry.client.publish(state.roomTopic, encoded, { qos: 0 });
+      sentAny = true;
+    } catch (_) {}
+  }
+  return sentAny;
+}
+
+function publishByeSync() {
+  if (!state.peerConnected || !state.roomTopic || !state.preEncodedByePacket) return;
+  for (const entry of state.clients) {
+    if (entry.connected && entry.client) {
+      try {
+        entry.client.publish(state.roomTopic, state.preEncodedByePacket, { qos: 0 });
+      } catch (_) {}
+    }
+  }
+}
+
+function generateMsgId() {
+  return Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+// ---------------- 핸드셰이크 (QR/PIN 연결 즉시 2단계 전환) ----------------
+function startHelloRetry() {
+  if (state.helloRetryTimer || state.peerConnected) return;
+  state.helloRetryCount = 0;
+
+  const sendHelloOnce = () => {
+    if (state.peerConnected || state.role !== "guest") {
+      stopHelloRetry();
+      return;
+    }
+    state.helloRetryCount += 1;
+    publishSignal({ type: "HELLO" });
+
+    if (state.helloRetryCount >= 18) {
+      stopHelloRetry();
+      hideAutoJoinBanner();
+      showToast("상대방 기기를 찾지 못했습니다. 내 연결 번호로 대기를 재개합니다.", "warn");
+      // 게스트 접속 실패 시 내 QR 방(host)으로 자동 복원하여 QR 스캔 가능 상태 유지
+      if (state.myPin) {
+        connectRoomPin(state.myPin, "host");
+      }
+    }
+  };
+
+  sendHelloOnce();
+  state.helloRetryTimer = setInterval(sendHelloOnce, 1400);
+}
+
+function stopHelloRetry() {
+  if (state.helloRetryTimer) {
+    clearInterval(state.helloRetryTimer);
+    state.helloRetryTimer = null;
+  }
+}
+
+async function handleIncomingRawMessage(rawBytes) {
+  const msg = await decodePacket(rawBytes);
+  if (!msg || !msg.from || msg.from === MY_CLIENT_ID) return;
+
+  // 3중 브로커 중복 패킷 제거
+  if (msg.msgId) {
+    if (state.seenMsgIds.has(msg.msgId)) return;
+    state.seenMsgIds.add(msg.msgId);
+    if (state.seenMsgIds.size > 400) {
+      const firstKey = state.seenMsgIds.values().next().value;
+      state.seenMsgIds.delete(firstKey);
+    }
+  }
+
+  // 이미 1:1 연결된 상태에서는 다른 제3자 패킷 차단
+  if (state.peerConnected && state.remoteClientId && msg.from !== state.remoteClientId) {
+    return;
+  }
+
+  switch (msg.type) {
+    case "HELLO": {
+      if (!state.peerConnected) {
+        state.peerConnected = true;
+        state.remoteClientId = msg.from;
+        state.remoteDevice = msg.device || "상대방";
+        stopHelloRetry();
+        publishSignal({ type: "HELLO_ACK", to: msg.from });
+        enterChatStep();
+        showToast(`${state.remoteDevice}과(와) 연결되었습니다!`, "success");
+      } else if (msg.from === state.remoteClientId) {
+        publishSignal({ type: "HELLO_ACK", to: msg.from });
+      }
+      break;
+    }
+
+    case "HELLO_ACK": {
+      if (msg.to && msg.to !== MY_CLIENT_ID) return;
+      if (!state.peerConnected) {
+        state.peerConnected = true;
+        state.remoteClientId = msg.from;
+        state.remoteDevice = msg.device || "상대방";
+        stopHelloRetry();
+        hideAutoJoinBanner();
+        enterChatStep();
+        showToast(`${state.remoteDevice}과(와) 연결되었습니다!`, "success");
+      }
+      break;
+    }
+
+    case "CLIP_TEXT": {
+      if (!state.peerConnected) {
+        state.peerConnected = true;
+        state.remoteClientId = msg.from;
+        state.remoteDevice = msg.device || "상대방";
+        enterChatStep();
+      }
+      if (typeof msg.text === "string" && msg.text.length > 0) {
+        appendMessageBubble({
+          text: msg.text,
+          isMine: false,
+          ts: msg.ts || Date.now()
+        });
+        publishSignal({ type: "CLIP_ACK", ackId: msg.msgId });
+      }
+      break;
+    }
+
+    case "CLIP_ACK": {
+      if (msg.ackId && state.pendingAcks.has(msg.ackId)) {
+        const pending = state.pendingAcks.get(msg.ackId);
+        clearTimeout(pending.retryTimer);
+        if (pending.statusEl) {
+          pending.statusEl.textContent = "✓ 전달됨";
+          pending.statusEl.className = "text-[10px] font-bold text-cyan-300/80";
+        }
+        state.pendingAcks.delete(msg.ackId);
+      }
+      break;
+    }
+
+    case "BYE": {
+      showToast("상대방이 연결을 종료했습니다.", "warn");
+      disconnectSession(false);
+      break;
+    }
+
+    case "PING": {
+      break;
+    }
+  }
+}
+
+// ---------------- 1단계 ↔ 2단계 화면 전환 ----------------
+function enterChatStep() {
+  state.step = "chat";
+  el.stepConnectView.classList.add("hidden");
+  el.stepConnectView.classList.remove("flex");
+
+  el.stepChatView.classList.remove("hidden");
+  el.stepChatView.classList.add("flex");
+
+  el.headerTitleIdle.classList.add("hidden");
+  el.headerTitleIdle.classList.remove("flex");
+
+  el.headerStatusConnected.classList.remove("hidden");
+  el.headerStatusConnected.classList.add("flex");
+  el.disconnectBtn.classList.remove("hidden");
+
+  el.connectedLabel.textContent = `연결됨 (${MY_DEVICE} ↔ ${state.remoteDevice || "상대방"})`;
+  updateBrokerStatusUI();
+
+  if (!IS_MOBILE) {
+    setTimeout(() => el.msgInput.focus(), 100);
+  }
+}
+
+function resetToConnectStep() {
+  state.step = "connect";
+  state.peerConnected = false;
+  state.remoteClientId = null;
+  state.remoteDevice = "";
+  state.hasMessages = false;
+  clearAllPendingAcks();
+
+  Array.from(el.chatList.children).forEach((child) => {
+    if (child.id !== "chatEmptyState") child.remove();
+  });
+  el.chatEmptyState.classList.remove("hidden");
+  el.msgInput.value = "";
+  autoResizeTextarea(el.msgInput);
+
+  el.stepChatView.classList.add("hidden");
+  el.stepChatView.classList.remove("flex");
+
+  el.stepConnectView.classList.remove("hidden");
+  el.stepConnectView.classList.add("flex");
+
+  el.headerStatusConnected.classList.add("hidden");
+  el.headerStatusConnected.classList.remove("flex");
+  el.disconnectBtn.classList.add("hidden");
+
+  el.headerTitleIdle.classList.remove("hidden");
+  el.headerTitleIdle.classList.add("flex");
+
+  hideAutoJoinBanner();
+  el.remotePinInput.value = "";
+}
+
+async function disconnectSession(notifyPeer = false) {
+  if (notifyPeer && state.peerConnected) {
+    await publishSignal({ type: "BYE" });
+  }
+  closeAllBrokers();
+  resetToConnectStep();
+
+  try {
+    const cleanUrl = window.location.href.split("?")[0];
+    if (window.location.search) {
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  } catch (_) {}
+
+  await startFreshHostRoom();
+  if (notifyPeer) {
+    showToast("연결을 끊고 대화 내용을 모두 삭제했습니다.", "info");
+  }
+}
+
+// ---------------- PIN / QR 생성 & 수동 연결 ----------------
+function generateFourDigitPin() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function formatPinSpaced(pin) {
+  return String(pin || "").split("").join(" ");
+}
+
+function buildInviteUrl(pin) {
+  const base = window.location.href.split("?")[0].split("#")[0];
+  return `${base}?pin=${encodeURIComponent(pin)}`;
+}
+
+function renderQrCode(pin) {
+  el.myPinDisplay.textContent = formatPinSpaced(pin);
+  el.qrcodeContainer.innerHTML = "";
+
+  if (typeof QRCode === "undefined") {
+    el.qrcodeContainer.textContent = "QR 로딩 실패";
+    return;
+  }
+
+  new QRCode(el.qrcodeContainer, {
+    text: buildInviteUrl(pin),
+    width: 176,
+    height: 176,
+    colorDark: "#020617",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+async function startFreshHostRoom() {
+  const pin = generateFourDigitPin();
+  state.myPin = pin;
+  renderQrCode(pin);
+  await connectRoomPin(pin, "host");
+}
+
+function sanitizePinInput(inputEl) {
+  inputEl.value = inputEl.value.replace(/\D/g, "").slice(0, 4);
+}
+
+function showAutoJoinBanner(pin) {
+  el.autoJoinText.textContent = `번호 ${formatPinSpaced(pin)} 기기와 연결 중...`;
+  el.autoJoinBanner.classList.remove("hidden");
+  el.autoJoinBanner.classList.add("flex");
+}
+
+function hideAutoJoinBanner() {
+  el.autoJoinBanner.classList.add("hidden");
+  el.autoJoinBanner.classList.remove("flex");
+}
+
+async function joinByManualPin() {
+  const pin = (el.remotePinInput.value || "").replace(/\D/g, "").slice(0, 4);
+  if (pin.length !== 4) {
+    showToast("상대방의 4자리 숫자 번호를 입력해 주세요.", "warn");
+    el.remotePinInput.focus();
+    return;
+  }
+  if (pin === state.myPin && state.role === "host") {
+    showToast("내 연결 번호입니다. 상대방 화면의 번호를 입력해 주세요.", "warn");
+    return;
+  }
+  el.remotePinInput.blur();
+  showAutoJoinBanner(pin);
+  await connectRoomPin(pin, "guest");
+}
+
+function copyMyPin() {
+  if (!state.myPin) return;
+  copyTextToClipboard(state.myPin).then((ok) => {
+    if (ok) showToast(`연결 번호 ${state.myPin} 복사됨`, "success");
+  });
+}
+
+// ---------------- 텍스트 전송 & 재전송 보장 ----------------
+function clearAllPendingAcks() {
+  for (const [, pending] of state.pendingAcks) {
+    clearTimeout(pending.retryTimer);
+  }
+  state.pendingAcks.clear();
+}
+
+function handleMsgKeydown(e) {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (!IS_MOBILE && e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendCurrentText();
+  }
+}
+
+function autoResizeTextarea(textarea) {
+  textarea.style.height = "auto";
+  const nextHeight = Math.min(textarea.scrollHeight, 144);
+  textarea.style.height = Math.max(52, nextHeight) + "px";
+}
+
+async function sendCurrentText() {
+  const raw = el.msgInput.value;
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    el.msgInput.focus();
+    return;
+  }
+  if (raw.length > MAX_TEXT_LENGTH) {
+    showToast("텍스트가 너무 깁니다. 최대 10만 자까지 전송할 수 있습니다.", "warn");
+    return;
+  }
+  if (!state.peerConnected) {
+    showToast("상대방과 연결되어 있지 않습니다.", "error");
+    return;
+  }
+
+  const msgId = generateMsgId();
+  const ts = Date.now();
+  el.msgInput.value = "";
+  autoResizeTextarea(el.msgInput);
+
+  const statusEl = appendMessageBubble({
+    text: raw,
+    isMine: true,
+    ts
+  });
+
+  const payload = { type: "CLIP_TEXT", text: raw, msgId, ts };
+  const sent = await publishSignal(payload);
+  if (!sent && statusEl) {
+    statusEl.textContent = "재연결 대기...";
+  }
+
+  const scheduleRetry = (retriesLeft) => {
+    return setTimeout(async () => {
+      if (!state.pendingAcks.has(msgId)) return;
+      if (retriesLeft <= 0) {
+        if (statusEl) {
+          statusEl.textContent = "전송됨";
+          statusEl.className = "text-[10px] font-semibold text-slate-400";
+        }
+        state.pendingAcks.delete(msgId);
+        return;
+      }
+      await publishSignal(payload);
+      const item = state.pendingAcks.get(msgId);
+      if (item) {
+        item.retryTimer = scheduleRetry(retriesLeft - 1);
+      }
+    }, 1800);
+  };
+
+  state.pendingAcks.set(msgId, {
+    payloadObj: payload,
+    statusEl,
+    retryTimer: scheduleRetry(2)
+  });
+
+  if (!IS_MOBILE) {
+    el.msgInput.focus();
+  }
+}
+
+// ---------------- 안전한 URL 감지 & 말풍선 렌더링 ----------------
+function extractFirstSafeUrl(text) {
+  if (!text) return null;
+  const regex = /(?:https?:\/\/|www\.)[^\s<>"'`]+/i;
+  const match = text.match(regex);
+  if (!match) return null;
+
+  let candidate = match[0].replace(/[.,!?;:)\]}'"’”]+$/g, "");
+  if (/^www\./i.test(candidate)) {
+    candidate = "https://" + candidate;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function formatTimeHHMM(ts) {
+  return new Date(ts).toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+}
+
+function appendMessageBubble({ text, isMine, ts }) {
+  if (!state.hasMessages) {
+    state.hasMessages = true;
+    el.chatEmptyState.classList.add("hidden");
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = `msg-pop flex flex-col ${isMine ? "items-end" : "items-start"}`;
+
+  const metaRow = document.createElement("div");
+  metaRow.className = "flex items-center gap-1.5 px-1 mb-1 text-[11px] font-bold text-slate-400";
+  const whoText = isMine ? "나" : (state.remoteDevice || "상대방");
+  metaRow.textContent = `${whoText} · ${formatTimeHHMM(ts)}`;
+  wrapper.appendChild(metaRow);
+
+  const bubble = document.createElement("div");
+  bubble.className = isMine
+    ? "max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 bg-cyan-950/85 border border-cyan-500/45 shadow-md"
+    : "max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 bg-slate-900/95 border border-slate-700/80 shadow-md";
+
+  const body = document.createElement("div");
+  body.className = "text-sm sm:text-[15px] text-slate-100 whitespace-pre-wrap break-words leading-relaxed select-text";
+  body.textContent = text;
+  bubble.appendChild(body);
+
+  const footer = document.createElement("div");
+  footer.className = "mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between gap-2";
+
+  const statusSpan = document.createElement("span");
+  if (isMine) {
+    statusSpan.className = "text-[10px] font-bold text-slate-400";
+    statusSpan.textContent = "전송 중...";
+  } else {
+    statusSpan.className = "text-[10px] font-semibold text-slate-500";
+    statusSpan.textContent = `${text.length.toLocaleString()}자`;
+  }
+  footer.appendChild(statusSpan);
+
+  const actions = document.createElement("div");
+  actions.className = "flex items-center gap-1.5 shrink-0";
+
+  const safeUrl = extractFirstSafeUrl(text);
+  if (safeUrl) {
+    const openLink = document.createElement("a");
+    openLink.href = safeUrl;
+    openLink.target = "_blank";
+    openLink.rel = "noopener noreferrer";
+    openLink.className = "px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-600/80 text-xs font-extrabold text-cyan-300 transition flex items-center gap-1";
+    openLink.textContent = "🔗 열기";
+    actions.appendChild(openLink);
+  }
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = isMine
+    ? "px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 text-xs font-extrabold text-cyan-100 transition flex items-center gap-1"
+    : "px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 text-xs font-extrabold text-emerald-200 transition flex items-center gap-1";
+  copyBtn.textContent = "📋 복사";
+  copyBtn.addEventListener("click", async () => {
+    const ok = await copyTextToClipboard(text);
+    if (ok) {
+      copyBtn.textContent = "✅ 복사됨";
+      showToast("클립보드에 복사되었습니다!", "success");
+      setTimeout(() => {
+        copyBtn.textContent = "📋 복사";
+      }, 1500);
+    } else {
+      showToast("복사에 실패했습니다. 글자를 길게 눌러 복사해 주세요.", "error");
+    }
+  });
+  actions.appendChild(copyBtn);
+
+  footer.appendChild(actions);
+  bubble.appendChild(footer);
+  wrapper.appendChild(bubble);
+  el.chatList.appendChild(wrapper);
+
+  el.chatList.scrollTop = el.chatList.scrollHeight;
+  return isMine ? statusSpan : null;
+}
+
+// ---------------- 클립보드 복사 / 붙여넣기 (전 기기 폴백 포함) ----------------
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {}
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-9999px";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function pasteFromClipboard() {
+  if (navigator.clipboard && typeof navigator.clipboard.readText === "function") {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (!clipText) {
+        showToast("클립보드가 비어 있거나 텍스트가 아닙니다.", "warn");
+        return;
+      }
+      const existing = el.msgInput.value;
+      el.msgInput.value = existing ? `${existing}\n${clipText}` : clipText;
+      autoResizeTextarea(el.msgInput);
+      el.msgInput.focus();
+      showToast("클립보드 내용을 붙여넣었습니다.", "success");
+      return;
+    } catch (_) {}
+  }
+  el.msgInput.focus();
+  showToast("브라우저 보안 정책으로 자동 읽기가 제한됩니다. 입력창을 길게 눌러 붙여넣기 하세요.", "warn");
+}
+
+// ---------------- 모바일 백그라운드 복귀 시 즉시 연결 복구 & 종료 알림 ----------------
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !state.roomTopic) return;
+  const aliveCount = state.clients.filter(c => c.connected).length;
+
+  if (aliveCount === 0) {
+    for (const entry of state.clients) {
+      try {
+        if (entry.client && !entry.connected) entry.client.reconnect();
+      } catch (_) {}
+    }
+    // 3초 후에도 살아난 브로커가 없으면 현재 세션을 유지한 채 브로커만 새로 재생성
+    if (state.recoveryTimer) clearTimeout(state.recoveryTimer);
+    state.recoveryTimer = setTimeout(() => {
+      if (state.clients.filter(c => c.connected).length === 0 && state.roomTopic) {
+        for (const entry of state.clients) {
+          try { entry.client.end(true); } catch (_) {}
+        }
+        state.clients = [];
+        spawnBrokersForCurrentTopic();
+      }
+    }, 3000);
+  } else if (state.peerConnected) {
+    publishSignal({ type: "PING" });
+  }
+});
+
+window.addEventListener("pagehide", () => {
+  publishByeSync();
+});
+
+// ---------------- 앱 시작 (URL ?pin= 자동 인식) ----------------
+(async function bootstrap() {
+  const params = new URLSearchParams(window.location.search);
+  const invitedPin = (params.get("pin") || "").replace(/\D/g, "").slice(0, 4);
+
+  if (invitedPin.length === 4) {
+    state.myPin = generateFourDigitPin();
+    renderQrCode(state.myPin);
+    el.remotePinInput.value = invitedPin;
+    showAutoJoinBanner(invitedPin);
+    await connectRoomPin(invitedPin, "guest");
+  } else {
+    await startFreshHostRoom();
+  }
+})();
+</script>
+</body>
+</html>
